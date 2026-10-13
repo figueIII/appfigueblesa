@@ -162,4 +162,4 @@ Así se distinguen sin mirar. La skill pide no abusar de la háptica; aquí cada
 
 1. **Probar en un dispositivo Android e iOS reales.** En este entorno no hay SDK de Android ni de iOS: lo comprobado es el análisis estático, los tests en el anfitrión (Linux, con la misma FFI `CLOCK_BOOTTIME`) y las capturas. Hay que confirmar en móvil que `/proc/.../boot_id` se puede leer (si no, entra la aproximación) y probar a pleno sol y con guantes.
 2. **Nota de voz** (mantener pulsado → adjuntar a la última marca), con la tabla `attachment` y la escritura atómica de §3.1 de la especificación.
-3. Pantalla de preparación del partido. Mientras no exista, `main.dart` reanuda la evaluación abierta o crea un partido de ejemplo.
+3. ~~Pantalla de preparación del partido.~~ Hecha: ver [UI_SETUP_E_INICIO.md](UI_SETUP_E_INICIO.md). La app arranca en la lista de partidos.

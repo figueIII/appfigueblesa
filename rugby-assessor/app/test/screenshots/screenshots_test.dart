@@ -16,6 +16,10 @@ import '../features/review/review_screen_test.dart' as review;
 import '../features/evaluation/evaluation_screen_test.dart' as evaluation;
 import '../export/fixture.dart' as exportfx;
 import '../export/export_ui_test.dart' show FakeSharer;
+import '../features/home/home_screen_test.dart' show ListRepository, summary;
+import '../features/setup/match_setup_screen_test.dart' show FakeMatchRepository;
+import 'package:ref_assess/features/home/home_screen.dart';
+import 'package:ref_assess/features/setup/match_setup_screen.dart';
 import 'package:ref_assess/core/design_system/theme.dart';
 import 'package:ref_assess/data/drift_evaluation_repository.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
@@ -192,5 +196,64 @@ void main() {
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/23_exportacion_light.png'));
     await tester.runAsync(() => f.dispose());
+  });
+
+  Future<void> phone(WidgetTester tester, Brightness b, Widget home) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(debugShowCheckedModeBanner: false, theme: buildRefTheme(b), home: home));
+    await tester.pumpAndSettle();
+  }
+
+  for (final b in Brightness.values) {
+    testWidgets('inicio: lista de partidos (${b.name})', (tester) async {
+      await phone(
+        tester,
+        b,
+        HomeScreen(
+          repository: ListRepository([
+            summary('live', 'LIVE', marks: 7),
+            summary('review', 'POST_MATCH', marks: 14, home: 'CR Sant Cugat'),
+            summary('done', 'FINALIZED', marks: 12, band: BandCode.at, home: 'UE Santboiana'),
+          ]),
+          rubric: kDefaultRubric,
+          onNewMatch: () async {},
+          onOpenMatch: (_) async {},
+        ),
+      );
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/30_inicio_${b.name}.png'));
+    });
+
+    testWidgets('preparación del partido (${b.name})', (tester) async {
+      await phone(
+        tester,
+        b,
+        MatchSetupScreen(
+          repository: FakeMatchRepository(lastAssessor: 'Evaluadora Ejemplo'),
+          onStart: (_) {},
+          now: () => DateTime(2026, 10, 17, 16, 52),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('preset-SM_DHCAT_1_2_3')));
+      await tester.pumpAndSettle();
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/31_preparacion_${b.name}.png'));
+    });
+  }
+
+  testWidgets('preparación: errores al comenzar con datos incompletos (light)', (tester) async {
+    await phone(tester, Brightness.light, MatchSetupScreen(repository: FakeMatchRepository(), onStart: (_) {}, now: () => DateTime(2026, 10, 17, 16, 52)));
+    await tester.tap(find.byKey(const ValueKey('start-match')));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/32_preparacion_errores_light.png'));
+  });
+
+  testWidgets('inicio vacío (light)', (tester) async {
+    await phone(
+      tester,
+      Brightness.light,
+      HomeScreen(repository: ListRepository(const []), rubric: kDefaultRubric, onNewMatch: () async {}, onOpenMatch: (_) async {}),
+    );
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33_inicio_vacio_light.png'));
   });
 }

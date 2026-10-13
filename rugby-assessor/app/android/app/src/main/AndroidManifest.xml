@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="ref_assess"
+        android:label="RefAssess"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

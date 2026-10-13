@@ -228,8 +228,8 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
           ));
 }
 
-/// Alta mínima de una evaluación para la captura en directo. La pantalla de preparación del
-/// partido (fuera de esta entrega) usará este mismo servicio con los datos del formulario.
+/// Alta de una evaluación con los datos de la pantalla de preparación del partido
+/// (vía `DriftMatchRepository.createMatch`).
 class AssessmentSetup {
   AssessmentSetup(this.db, this.ids);
   final AppDatabase db;
@@ -249,9 +249,14 @@ class AssessmentSetup {
     required String assessorName,
     required DateTime kickoffLocal,
     String kickoffTz = 'Europe/Madrid',
+    String? round,
+    String? ar1Name,
+    String? ar2Name,
+    String? difficulty, // LOW | MEDIUM | HIGH | VERY_HIGH (solo descriptiva)
   }) {
     final now = DateTime.now().toUtc().toIso8601String();
-    final id = ids.next(), refereeId = ids.next(), assessorId = ids.next();
+    final id = ids.next();
+    String? opt(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
     return db.transaction(() async {
       await db.into(db.rubric).insert(
             RubricCompanion.insert(
@@ -263,8 +268,10 @@ class AssessmentSetup {
             ),
             mode: InsertMode.insertOrIgnore,
           );
-      await db.into(db.assessorProfile).insert(AssessorProfileCompanion.insert(id: assessorId, fullName: assessorName));
-      await db.into(db.official).insert(OfficialCompanion.insert(id: refereeId, fullName: refereeName, createdAt: now, updatedAt: now));
+      // El MISMO árbitro (y evaluador) se reutiliza entre partidos: de ello depende el
+      // seguimiento de recomendaciones de un informe al siguiente (spec §1.4).
+      final refereeId = await _officialIdFor(refereeName.trim(), now);
+      final assessorId = await _assessorIdFor(assessorName.trim());
       final k = kickoffLocal;
       String two(int v) => v.toString().padLeft(2, '0');
       await db.into(db.assessment).insert(AssessmentCompanion.insert(
@@ -273,13 +280,17 @@ class AssessmentSetup {
             rubricId: rubricId,
             assessorId: assessorId,
             refereeId: refereeId,
-            competition: competition,
+            ar1Name: Value(opt(ar1Name)),
+            ar2Name: Value(opt(ar2Name)),
+            competition: competition.trim(),
+            round: Value(opt(round)),
             kickoffLocal: '${k.year}-${two(k.month)}-${two(k.day)}T${two(k.hour)}:${two(k.minute)}',
             kickoffTz: kickoffTz,
-            venue: venue,
-            homeTeam: homeTeam,
-            awayTeam: awayTeam,
+            venue: venue.trim(),
+            homeTeam: homeTeam.trim(),
+            awayTeam: awayTeam.trim(),
             observationMode: 'LIVE',
+            difficulty: Value(difficulty),
             categoryCode: category.code,
             categoryJson: encodeCategoryConfig(category),
             createdAt: now,
@@ -287,6 +298,37 @@ class AssessmentSetup {
           ));
       return id;
     });
+  }
+
+  /// Igualdad de nombres sin distinguir mayúsculas, tildes ni espacios sobrantes.
+  static String normalizeName(String v) => v
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp('[áàä]'), 'a')
+      .replaceAll(RegExp('[éèë]'), 'e')
+      .replaceAll(RegExp('[íìï]'), 'i')
+      .replaceAll(RegExp('[óòö]'), 'o')
+      .replaceAll(RegExp('[úùü]'), 'u');
+
+  Future<String> _officialIdFor(String name, String now) async {
+    final key = normalizeName(name);
+    for (final o in await db.select(db.official).get()) {
+      if (normalizeName(o.fullName) == key) return o.id;
+    }
+    final id = ids.next();
+    await db.into(db.official).insert(OfficialCompanion.insert(id: id, fullName: name, createdAt: now, updatedAt: now));
+    return id;
+  }
+
+  Future<String> _assessorIdFor(String name) async {
+    final key = normalizeName(name);
+    for (final a in await db.select(db.assessorProfile).get()) {
+      if (normalizeName(a.fullName) == key) return a.id;
+    }
+    final id = ids.next();
+    await db.into(db.assessorProfile).insert(AssessorProfileCompanion.insert(id: id, fullName: name));
+    return id;
   }
 
   /// Evaluación sin cerrar más reciente (READY, LIVE o POST_MATCH), para reanudar tras un cierre
