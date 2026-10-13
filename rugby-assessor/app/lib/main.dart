@@ -2,31 +2,45 @@ import 'package:flutter/material.dart';
 
 import 'core/design_system/theme.dart';
 import 'core/platform_ports.dart';
-import 'data/live_session_repository.dart';
+import 'data/db/app_database.dart';
+import 'data/drift_live_session_repository.dart';
+import 'data/session_time.dart';
 import 'domain/category_presets.dart';
 import 'features/live/live_controller.dart';
 import 'features/live/live_screen.dart';
 
-/// Arranque de demostración: un partido DHCAT en memoria. La capa Drift sustituirá a
-/// InMemoryLiveSessionRepository sin tocar la UI.
-void main() {
+/// Arranque de producción: base de datos Drift en el dispositivo + reloj de sesión anclado.
+/// Reanuda la evaluación abierta más reciente; si no hay ninguna, crea un partido de ejemplo
+/// (la pantalla de preparación del partido sustituirá a este alta automática).
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const assessmentId = 'demo';
-  final controller = LiveController(
-    assessmentId: assessmentId,
-    repository: InMemoryLiveSessionRepository(
-      LiveSessionSnapshot(
-        assessmentId: assessmentId,
+  final db = AppDatabase.onDevice();
+  final ids = UuidV7Generator();
+  final setup = AssessmentSetup(db, ids);
+  final assessmentId = await setup.latestOpenAssessment() ??
+      await setup.createLiveAssessment(
         category: categoryPreset('SM_DHCAT_1_2_3'),
+        competition: 'DHCAT',
+        venue: 'Campo Municipal',
         homeTeam: 'Club Local RC',
         awayTeam: 'Visitante RT',
-        clockLog: const [],
-        incidents: const [],
-      ),
-    ),
-    clock: StopwatchSessionClock(),
-    ids: UuidV7Generator(),
+        refereeName: 'Árbitro de ejemplo',
+        assessorName: 'Evaluador',
+        kickoffLocal: DateTime.now(),
+      );
+  final repo = DriftLiveSessionRepository(db);
+  final (clock, recovery) = await openSessionClock(
+    assessmentId: assessmentId,
+    store: repo,
+    mono: NativeMonotonicSource(),
+  );
+  final controller = LiveController(
+    assessmentId: assessmentId,
+    repository: repo,
+    clock: clock,
+    ids: ids,
     haptics: const SystemHaptics(),
+    clockRecovery: recovery,
   );
   runApp(RefAssessApp(controller: controller));
 }

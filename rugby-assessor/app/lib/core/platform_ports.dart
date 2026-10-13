@@ -5,14 +5,24 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+/// Instante completo: eje de sesión (para calcular) + origen crudo (para auditar, spec §2.1.1).
+class TimeSample {
+  const TimeSample({required this.sessionMs, required this.monoMs, required this.bootId, required this.wallUtc});
+  final int sessionMs;
+  final int monoMs;
+  final String bootId;
+  final DateTime wallUtc;
+}
+
 /// Eje de tiempo monotónico de la sesión (spec §2.1.1). Nunca la hora de pared.
+/// La implementación de producción es AnchoredSessionClock (data/session_time.dart).
 abstract interface class SessionClock {
   int now();
   DateTime wallUtc();
+  TimeSample sample();
 }
 
-/// Implementación del MVP: Stopwatch es monotónico (no salta si cambia la hora del sistema).
-/// La versión con SystemClock.elapsedRealtime + anclas por arranque llega con la capa Drift.
+/// Reloj simple para demos y tests: monotónico, pero no sobrevive a un cierre de la app.
 class StopwatchSessionClock implements SessionClock {
   StopwatchSessionClock({int originMs = 0}) : _origin = originMs {
     _sw.start();
@@ -23,6 +33,11 @@ class StopwatchSessionClock implements SessionClock {
   int now() => _origin + _sw.elapsedMilliseconds;
   @override
   DateTime wallUtc() => DateTime.now().toUtc();
+  @override
+  TimeSample sample() {
+    final t = now();
+    return TimeSample(sessionMs: t, monoMs: t, bootId: 'stopwatch', wallUtc: wallUtc());
+  }
 }
 
 abstract interface class IdGenerator {

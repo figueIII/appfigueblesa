@@ -34,16 +34,20 @@ class LiveScreen extends StatefulWidget {
 
 class _LiveScreenState extends State<LiveScreen> {
   LiveController get _ctl => widget.controller;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
+    // Al pasar a segundo plano (llamada, bloqueo, cambio de app) se vacía la cola de escritura.
+    _lifecycle = AppLifecycleListener(onHide: _ctl.flush, onPause: _ctl.flush);
     widget.screenAwake.enable();
     if (_ctl.loadState != LiveLoadState.ready) _ctl.load();
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     widget.screenAwake.disable();
     super.dispose();
   }

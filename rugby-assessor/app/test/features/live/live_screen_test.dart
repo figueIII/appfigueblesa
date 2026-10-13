@@ -17,6 +17,8 @@ class FakeClock implements SessionClock {
   int now() => t;
   @override
   DateTime wallUtc() => DateTime.utc(2026, 10, 17, 15).add(Duration(milliseconds: t));
+  @override
+  TimeSample sample() => TimeSample(sessionMs: t, monoMs: t, bootId: 'fake', wallUtc: wallUtc());
 }
 
 class SeqIds implements IdGenerator {

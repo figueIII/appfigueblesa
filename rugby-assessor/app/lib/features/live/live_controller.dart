@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/platform_ports.dart';
 import '../../data/live_session_repository.dart';
+import '../../data/session_time.dart';
 import '../../domain/clock.dart';
 import '../../domain/model.dart';
 
@@ -50,13 +51,19 @@ class LiveController extends ChangeNotifier {
     required this._clock,
     required this._ids,
     required this._haptics,
-  }) : _repo = repository;
+    AnchorResolution? clockRecovery,
+  })  : _repo = repository,
+        _recovery = clockRecovery;
 
   final String assessmentId;
   final LiveSessionRepository _repo;
   final SessionClock _clock;
   final IdGenerator _ids;
   final Haptics _haptics;
+
+  /// Resultado de abrir el reloj de sesión (data/session_time.dart). Si el ancla es estimada
+  /// (reinicio del móvil) y el reloj de partido estaba en marcha, se registra INTEGRITY_LOST.
+  AnchorResolution? _recovery;
 
   LiveLoadState loadState = LiveLoadState.loading;
   late CategoryConfig category;
@@ -124,6 +131,8 @@ class LiveController extends ChangeNotifier {
 
   bool get canUndoClock => effectiveEvents(_clockLog).isNotEmpty;
 
+  List<ClockEvent> get clockLog => List.unmodifiable(_clockLog);
+
   // ───────────── Carga ─────────────
 
   Future<void> load() async {
@@ -140,6 +149,11 @@ class LiveController extends ChangeNotifier {
         ..clear()
         ..addAll(snap.incidents);
       loadState = LiveLoadState.ready;
+      final recovery = _recovery;
+      _recovery = null; // una sola vez, aunque se recargue
+      if (recovery != null && recovery.estimated && clockState.status == ClockStatus.running) {
+        applyClock(IntegrityLost(recovery.estimatedGapMs ?? 0));
+      }
     } catch (_) {
       loadState = LiveLoadState.failed;
     }
@@ -209,14 +223,15 @@ class LiveController extends ChangeNotifier {
   /// Aplica un evento de reloj. Devuelve el error de regla si la transición no es legal.
   ClockRuleException? applyClock(ClockEventBody body) {
     try {
-      final t = _clock.now();
-      final next = appendClockEvent(_clockLog, body, t, category);
+      final at = _clock.sample();
+      final next = appendClockEvent(_clockLog, body, at.sessionMs, category);
       final event = next.last;
       _clockLog = next;
       clockState = foldClock(_clockLog, category);
+      final phase = phaseFor(clockState.status);
       _haptics.clockChanged();
       _notify();
-      _persist(() => _repo.appendClockEvent(assessmentId, event));
+      _persist(() => _repo.appendClockEvent(assessmentId, event, at, phase));
       return null;
     } on ClockRuleException catch (e) {
       _haptics.warning();
@@ -245,6 +260,14 @@ class LiveController extends ChangeNotifier {
   }
 
   Future<void> retryPendingWrites() => _drain();
+
+  /// Espera a que la cola quede vacía (o falle). Se llama al pasar la app a segundo plano.
+  Future<void> flush() async {
+    await _drain();
+    while (_draining) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+  }
 
   Future<void> _drain() async {
     if (_draining) return;

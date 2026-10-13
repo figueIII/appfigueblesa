@@ -127,9 +127,39 @@ Así se distinguen sin mirar. La skill pide no abusar de la háptica; aquí cada
 | Tema oscuro comprobado por separado | ✅ tests de contraste y guías en ambos temas; capturas `*_dark.png` |
 | Movimiento reducido | ✅ no hay animaciones decorativas; el único progreso es informativo |
 
-## 6. Pendiente para cerrar la captura en directo
+## 6. Persistencia en campo real (Drift + reloj tolerante a reinicios)
 
-1. **Adaptador Drift** de `LiveSessionRepository` (schema.sql v2, una transacción por tap, `synchronous=FULL`) y migración del almacenamiento en memoria.
-2. **`SessionClock` de plataforma**: `SystemClock.elapsedRealtime()` + `BOOT_COUNT` con anclas (spec §2.1.1). El MVP usa `Stopwatch`, que es monotónico pero no sobrevive a que la app se cierre.
-3. **Nota de voz** (mantener pulsado → adjuntar a la última marca). Queda fuera de esta entrega para no añadir permisos de micrófono sin la capa de adjuntos.
-4. Prueba en dispositivo real a pleno sol y con guantes. Las capturas y tests no sustituyen esta prueba.
+### 6.1 Base de datos
+
+| Pieza | Implementación |
+|---|---|
+| Esquema | `lib/data/db/schema.drift` es una **copia literal** de `persistence/schema.sql` v2, con las mismas tablas, CHECK y triggers. Un test compara las dos sentencia a sentencia. La única diferencia es el nombre Dart de una columna `text`. |
+| Conexión | `AppDatabase.onDevice()` (`drift_flutter`): SQLite empaquetado y consultas en un *isolate* de fondo, así que una escritura nunca retrasa un frame. |
+| Durabilidad | Al abrir se fijan `foreign_keys=ON`, `journal_mode=WAL` y **`synchronous=FULL`** (comprobado por test). |
+| Taps | **Una transacción por tap**, en orden estricto a través de la cola del controlador. Cuando el `Future` completa, el dato está en disco. Medido en el anfitrión de pruebas: 40 taps confirmados en unos 50 ms (≈ 1,2 ms por tap). |
+| Reloj | `appendClockEvent` inserta el evento (con `boot_id`, `mono_ms` y hora de pared para auditar) y actualiza `assessment.status` (READY → LIVE → POST_MATCH) **en la misma transacción**. |
+| Segundo plano | `AppLifecycleListener` vacía la cola al ocultarse o pausarse la app (llamada, bloqueo, cambio de app). |
+| Reglas en la base de datos | Probadas contra el archivo real: log de reloj append-only, claves foráneas, enumerados por CHECK, auditoría de cada edición en `incident_revision`. |
+
+### 6.2 Reloj de sesión (`lib/data/session_time.dart`)
+
+| Situación | Resultado |
+|---|---|
+| **El sistema mata la app** (o el evaluador la cierra) | Mismo arranque del móvil, así que se reutiliza la misma ancla y el reloj vuelve **exacto**. Test: tras 7 min con la app muerta, el reloj marca 22:00 y las marcas conservan sus minutos. |
+| **Reinicio del móvil** | Se crea un ancla nueva, estimada con la hora de pared desde el último instante guardado. Si el reloj de partido estaba en marcha, se registra `INTEGRITY_LOST`, la cabecera muestra "Reloj sin verificar" y las marcas se guardan como DEGRADED hasta un ajuste. Test: 20:00 + 4 min de reinicio da 24:00 estimado; ajuste −0:10 da 23:50 y el reloj vuelve a OK. |
+| Reinicio en el descanso o con el tiempo parado | No hay tiempo de juego corriendo, así que no se marca la integridad. |
+| Hora del sistema atrasada | El eje de sesión **nunca retrocede** (el hueco se acota a 0). |
+
+- **Fuente monotónica por FFI** (síncrona, válida en cada frame):
+  - Android: `clock_gettime(CLOCK_BOOTTIME)`, equivalente a `SystemClock.elapsedRealtime()`: sigue contando con el móvil en reposo.
+  - iOS: `CLOCK_MONOTONIC`, que en Darwin también avanza en reposo.
+- **Identificador de arranque:**
+  - En Android se lee de `/proc/sys/kernel/random/boot_id`.
+  - Si no se puede leer, se usa una aproximación (instante de arranque en hora de pared, con ±2 min de tolerancia).
+  - Además, si la fuente retrocede, se trata como reinicio aunque el id coincida.
+
+## 7. Pendiente
+
+1. **Probar en un dispositivo Android e iOS reales.** En este entorno no hay SDK de Android ni de iOS: lo comprobado es el análisis estático, los tests en el anfitrión (Linux, con la misma FFI `CLOCK_BOOTTIME`) y las capturas. Hay que confirmar en móvil que `/proc/.../boot_id` se puede leer (si no, entra la aproximación) y probar a pleno sol y con guantes.
+2. **Nota de voz** (mantener pulsado → adjuntar a la última marca), con la tabla `attachment` y la escritura atómica de §3.1 de la especificación.
+3. Pantalla de preparación del partido. Mientras no exista, `main.dart` reanuda la evaluación abierta o crea un partido de ejemplo.

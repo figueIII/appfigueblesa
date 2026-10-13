@@ -1,8 +1,18 @@
 // Puerto de persistencia de la captura en directo. La implementación Drift (schema.sql v2,
 // una transacción por tap, synchronous=FULL) implementará esta misma interfaz; la UI no cambia.
 
+import '../core/platform_ports.dart';
 import '../domain/clock.dart';
 import '../domain/model.dart';
+
+/// Estado de la evaluación que deriva del reloj (spec §4): READY → LIVE → POST_MATCH.
+enum AssessmentPhase { ready, live, postMatch }
+
+AssessmentPhase phaseFor(ClockStatus s) => switch (s) {
+      ClockStatus.preMatch => AssessmentPhase.ready,
+      ClockStatus.running || ClockStatus.stopped || ClockStatus.interval => AssessmentPhase.live,
+      ClockStatus.fullTime || ClockStatus.abandoned => AssessmentPhase.postMatch,
+    };
 
 class LiveSessionSnapshot {
   const LiveSessionSnapshot({
@@ -23,7 +33,10 @@ class LiveSessionSnapshot {
 
 abstract interface class LiveSessionRepository {
   Future<LiveSessionSnapshot> load(String assessmentId);
-  Future<void> appendClockEvent(String assessmentId, ClockEvent event);
+  /// Añade el evento (append-only) y actualiza el estado de la evaluación en UNA transacción.
+  Future<void> appendClockEvent(String assessmentId, ClockEvent event, TimeSample at, AssessmentPhase phase);
+
+  /// Una transacción por tap.
   Future<void> insertIncident(Incident incident);
   Future<void> updateIncident(Incident incident);
 }
@@ -61,7 +74,7 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository {
   }
 
   @override
-  Future<void> appendClockEvent(String assessmentId, ClockEvent event) async {
+  Future<void> appendClockEvent(String assessmentId, ClockEvent event, TimeSample at, AssessmentPhase phase) async {
     _guard();
     _clock.add(event);
   }
