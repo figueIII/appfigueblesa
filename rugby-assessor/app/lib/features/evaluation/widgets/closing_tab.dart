@@ -7,16 +7,21 @@ import '../../../domain/rubric.dart';
 import '../../review/widgets/choice_controls.dart';
 import '../evaluation_controller.dart';
 import '../evaluation_labels.dart';
+import '../export_controller.dart';
+import 'export_section.dart';
 import 'band_widgets.dart';
 
 /// Pestaña "Cierre": banda global, resumen, fortalezas, áreas de mejora, recomendaciones,
 /// seguimiento de las recomendaciones anteriores y comprobación previa al cierre.
 class ClosingTab extends StatefulWidget {
-  const ClosingTab({super.key, required this.controller, required this.onGoToCriterion, required this.onOpenReview});
+  const ClosingTab({super.key, required this.controller, required this.onGoToCriterion, required this.onOpenReview, this.export});
 
   final EvaluationController controller;
   final ValueChanged<String> onGoToCriterion;
   final VoidCallback onOpenReview;
+
+  /// Exportación (solo con el informe cerrado). Null en contextos sin exportación (tests, demos).
+  final ExportController? export;
 
   @override
   State<ClosingTab> createState() => _ClosingTabState();
@@ -58,6 +63,10 @@ class _ClosingTabState extends State<ClosingTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (ctl.finalized != null) _FinalizedBanner(controller: ctl),
+          if (ctl.finalized != null && widget.export != null) ...[
+            ExportSection(controller: widget.export!),
+            const SizedBox(height: RefSpace.l),
+          ],
           _GlobalBandPanel(controller: ctl),
           _Header(key: _summaryKey, title: 'Resumen del partido', required: true),
           _SyncedTextField(

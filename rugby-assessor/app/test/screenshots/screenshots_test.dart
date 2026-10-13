@@ -14,6 +14,14 @@ import 'package:ref_assess/domain/rubric.dart';
 import '../features/live/live_screen_test.dart' show Harness, tile;
 import '../features/review/review_screen_test.dart' as review;
 import '../features/evaluation/evaluation_screen_test.dart' as evaluation;
+import '../export/fixture.dart' as exportfx;
+import '../export/export_ui_test.dart' show FakeSharer;
+import 'package:ref_assess/core/design_system/theme.dart';
+import 'package:ref_assess/data/drift_evaluation_repository.dart';
+import 'package:ref_assess/domain/rubric_default.dart';
+import 'package:ref_assess/features/evaluation/evaluation_controller.dart';
+import 'package:ref_assess/features/evaluation/evaluation_screen.dart';
+import 'package:ref_assess/features/evaluation/export_controller.dart';
 
 const min = 60000;
 
@@ -157,5 +165,32 @@ void main() {
     await h.controller.finalize();
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/22_evaluacion_cerrado_light.png'));
+  });
+
+  testWidgets('exportación del informe cerrado (light)', (tester) async {
+    late exportfx.ExportFixture f;
+    late EvaluationController c;
+    await tester.runAsync(() async {
+      f = await exportfx.ExportFixture.create();
+      c = EvaluationController(assessmentId: f.firstId, repository: DriftEvaluationRepository(f.db), rubric: kDefaultRubric, ids: exportfx.SeqIds('s'));
+      await c.load();
+    });
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildRefTheme(Brightness.light),
+      home: EvaluationScreen(
+        controller: c,
+        onOpenReview: () {},
+        createExport: (h, a) => ExportController(assessmentId: f.firstId, exporter: f.exporter(), sharer: FakeSharer(), homeTeam: h, awayTeam: a),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tab-close')));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/23_exportacion_light.png'));
+    await tester.runAsync(() => f.dispose());
   });
 }

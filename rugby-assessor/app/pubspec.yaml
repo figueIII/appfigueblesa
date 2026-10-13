@@ -13,7 +13,10 @@ dependencies:
   ffi: ^2.2.0
   flutter:
     sdk: flutter
+  json_schema: ^5.2.2
   path_provider: ^2.1.6
+  pdf: ^3.13.1
+  share_plus: ^13.3.1
   uuid: ^4.6.0
   wakelock_plus: ^1.8.1
 
@@ -26,3 +29,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Fuentes incrustadas en el PDF (offline: no se descargan nunca). Licencia Apache 2.0.
+    - assets/fonts/
+    # Copia del esquema de exportación: test/export/ comprueba que es idéntica a export/.
+    - assets/export/

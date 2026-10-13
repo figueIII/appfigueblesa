@@ -1,0 +1,467 @@
+{
+  "format": "rugby-referee-assessment",
+  "formatVersion": "2.0",
+  "exportedAt": "2026-10-18T09:30:00.000Z",
+  "generator": {
+    "app": "RefAssess",
+    "appVersion": "0.4.0",
+    "rubricEngineVersion": "2.0.0"
+  },
+  "match": {
+    "assessmentId": "m2-1",
+    "competition": "Liga DHCAT",
+    "round": "J5",
+    "category": {
+      "code": "SM_DHCAT_1_2_3",
+      "name": "Sénior masc. · DHCAT, 1ª, 2ª, 3ª",
+      "format": "XV",
+      "periodLengthMin": 40,
+      "sinBinMin": 10,
+      "lawVariations": []
+    },
+    "kickoff": {
+      "local": "2026-10-17T17:00",
+      "tz": "Europe/Madrid"
+    },
+    "venue": "Campo Municipal de La Foixarda",
+    "home": {
+      "name": "Club Local RC"
+    },
+    "away": {
+      "name": "Visitante RT"
+    },
+    "finalScore": {
+      "home": 24,
+      "away": 19
+    },
+    "observationMode": "LIVE",
+    "difficulty": "HIGH",
+    "refereeName": "Árbitro Ejemplo",
+    "assistants": {
+      "ar1": "Asistente Uno",
+      "ar2": "Asistente Dos"
+    }
+  },
+  "referee": {
+    "id": "m1-2",
+    "fullName": "Árbitro Ejemplo"
+  },
+  "assessor": {
+    "id": "m2-3",
+    "fullName": "Evaluadora Ejemplo"
+  },
+  "rubric": {
+    "id": "01929d6e-0000-7000-8000-000000000001",
+    "code": "RUGBY-XV-BASE",
+    "version": "2.0.0",
+    "bands": [
+      {
+        "code": "ABOVE",
+        "label": "Por encima del nivel"
+      },
+      {
+        "code": "AT",
+        "label": "En el nivel"
+      },
+      {
+        "code": "BELOW",
+        "label": "Por debajo del nivel"
+      }
+    ],
+    "areas": [
+      {
+        "code": "PHASES",
+        "name": "Gestión de fases de juego",
+        "weight": 35.0,
+        "criteria": [
+          {
+            "code": "A1_SCRUM",
+            "name": "Scrum",
+            "weight": 25.0
+          },
+          {
+            "code": "A2_LINEOUT_MAUL",
+            "name": "Touch y maul",
+            "weight": 20.0
+          },
+          {
+            "code": "A3_TACKLE_RUCK",
+            "name": "Placaje y ruck",
+            "weight": 35.0
+          },
+          {
+            "code": "A4_OFFSIDE_SPACE",
+            "name": "Espacio y fuera de juego",
+            "weight": 20.0
+          }
+        ]
+      },
+      {
+        "code": "MANAGEMENT",
+        "name": "Comunicación y gestión del partido",
+        "weight": 20.0,
+        "criteria": [
+          {
+            "code": "B1_VERBAL_CONTROL",
+            "name": "Control verbal y preventivo",
+            "weight": 30.0
+          },
+          {
+            "code": "B2_TONE_PRESENCE",
+            "name": "Tono, señalización y presencia",
+            "weight": 20.0
+          },
+          {
+            "code": "B3_CAPTAINS_PLAYERS",
+            "name": "Gestión de capitanes y jugadores",
+            "weight": 20.0
+          },
+          {
+            "code": "B4_ADVANTAGE",
+            "name": "Aplicación de la ventaja",
+            "weight": 30.0
+          }
+        ]
+      },
+      {
+        "code": "LAW_DISCIPLINE",
+        "name": "Aplicación de leyes y consistencia disciplinaria",
+        "weight": 30.0,
+        "criteria": [
+          {
+            "code": "C1_LAW_ACCURACY",
+            "name": "Exactitud en la aplicación de las leyes",
+            "weight": 50.0
+          },
+          {
+            "code": "C2_FOUL_PLAY",
+            "name": "Detección y sanción del juego desleal",
+            "weight": 30.0
+          },
+          {
+            "code": "C3_SANCTION_CONSISTENCY",
+            "name": "Consistencia disciplinaria",
+            "weight": 20.0
+          }
+        ]
+      },
+      {
+        "code": "FITNESS_POSITIONING",
+        "name": "Condición física, posicionamiento y líneas de carrera",
+        "weight": 15.0,
+        "criteria": [
+          {
+            "code": "D1_FITNESS",
+            "name": "Condición física",
+            "weight": 30.0
+          },
+          {
+            "code": "D2_POSITIONING",
+            "name": "Posicionamiento",
+            "weight": 40.0
+          },
+          {
+            "code": "D3_RUNNING_LINES",
+            "name": "Líneas de carrera",
+            "weight": 30.0
+          }
+        ]
+      }
+    ]
+  },
+  "report": {
+    "actionPoints": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "id": "m2-e-3",
+        "successIndicator": "Ningún colapso sin sancionar en 22 en el próximo partido.",
+        "text": "Situarse en el lado del pilar dominante en scrums dentro de 22."
+      }
+    ],
+    "areaScores": [
+      {
+        "areaCode": "PHASES",
+        "band": "AT",
+        "score": 6.375
+      },
+      {
+        "areaCode": "MANAGEMENT",
+        "band": "AT",
+        "score": 7.6
+      },
+      {
+        "areaCode": "LAW_DISCIPLINE",
+        "band": "AT",
+        "score": 7
+      },
+      {
+        "areaCode": "FITNESS_POSITIONING",
+        "band": "AT",
+        "score": 7
+      }
+    ],
+    "band": "AT",
+    "criterionScores": [
+      {
+        "capBand": "BELOW",
+        "criterionCode": "A1_SCRUM",
+        "evidenceIncidentIds": [
+          "m2-1-inc-30"
+        ],
+        "finalBand": "BELOW",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 3.5714285714285716,
+        "suggestedBand": "BELOW"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A2_LINEOUT_MAUL",
+        "evidenceIncidentIds": [],
+        "finalBand": null,
+        "justification": "Sin touchs disputadas en zona de influencia.",
+        "notObserved": true,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A3_TACKLE_RUCK",
+        "evidenceIncidentIds": [
+          "m2-1-inc-12"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 7.5,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A4_OFFSIDE_SPACE",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B1_VERBAL_CONTROL",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B2_TONE_PRESENCE",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B3_CAPTAINS_PLAYERS",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B4_ADVANTAGE",
+        "evidenceIncidentIds": [
+          "m2-1-inc-65"
+        ],
+        "finalBand": "ABOVE",
+        "justification": "Ventajas largas, bien leídas y cerradas con claridad en todo el partido.",
+        "notObserved": false,
+        "suggested": 7.285714285714286,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C1_LAW_ACCURACY",
+        "evidenceIncidentIds": [
+          "m2-1-inc-52"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 7.8,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C2_FOUL_PLAY",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C3_SANCTION_CONSISTENCY",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D1_FITNESS",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D2_POSITIONING",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D3_RUNNING_LINES",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      }
+    ],
+    "developmentAreas": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "evidenceIncidentIds": [],
+        "text": "Colapsos de scrum cerca de la línea de marca."
+      }
+    ],
+    "finalizedAt": "2026-10-18T09:12:00.000Z",
+    "keyDecisionAccuracy": {
+      "correct": 1,
+      "ratio": 0.5,
+      "total": 2
+    },
+    "overallScore": 6.90125,
+    "previousActionPointReviews": [
+      {
+        "actionPointId": "m1-e-3",
+        "comment": "Mejor posición, un colapso sin ver al final.",
+        "status": "PARTIAL",
+        "text": "Situarse en el lado del pilar dominante en scrums dentro de 22."
+      }
+    ],
+    "strengths": [
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "evidenceIncidentIds": [],
+        "text": "Ventaja territorial bien leída."
+      }
+    ],
+    "summary": "Partido de alta exigencia bien gestionado en lo físico y en la ventaja; la prioridad es el scrum en zona de marca.",
+    "version": 1,
+    "status": "FINALIZED"
+  },
+  "incidents": [
+    {
+      "id": "m2-1-inc-12",
+      "seq": 12,
+      "matchClock": "12:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "TACKLE",
+      "criterionCode": "A3_TACKLE_RUCK",
+      "verdict": "CORRECT",
+      "impact": "MEDIUM",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-30",
+      "seq": 30,
+      "matchClock": "30:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "SCRUM",
+      "criterionCode": "A1_SCRUM",
+      "decisionTaken": {
+        "outcomes": [
+          "PLAY_ON"
+        ]
+      },
+      "decisionExpected": {
+        "outcomes": [
+          "PENALTY",
+          "YELLOW_CARD"
+        ],
+        "againstTeam": "AWAY",
+        "lawRef": "19.10"
+      },
+      "verdict": "MISSED",
+      "impact": "MATCH_DEFINING",
+      "notes": "Colapso intencionado del pilar visitante a 5 m de su línea; no sancionado.",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-52",
+      "seq": 52,
+      "matchClock": "52:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "TRY_GROUNDING",
+      "criterionCode": "C1_LAW_ACCURACY",
+      "decisionTaken": {
+        "outcomes": [
+          "TRY"
+        ]
+      },
+      "verdict": "CORRECT",
+      "impact": "HIGH",
+      "notes": "Ensayo bien concedido: buena posición en la zona de ensayo.",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-65",
+      "seq": 65,
+      "matchClock": "65:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "ADVANTAGE",
+      "criterionCode": "B4_ADVANTAGE",
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "attachments": []
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "canonicalization": "sorted-keys-no-whitespace-v1",
+    "hashedPointer": "/report",
+    "contentHash": "46ab8bec188ec46b8ac6a717b2803fe92ae9308d9c267b28cbbf9f409d82ba77"
+  }
+}

@@ -4,6 +4,7 @@ import '../../core/design_system/theme.dart';
 import '../../core/design_system/tokens.dart';
 import '../../domain/rubric.dart';
 import 'evaluation_controller.dart';
+import 'export_controller.dart';
 import 'widgets/band_widgets.dart';
 import 'widgets/closing_tab.dart';
 import 'widgets/criterion_card.dart';
@@ -15,9 +16,12 @@ import 'widgets/criterion_card.dart';
 /// informe y la comprobación previa. En toda la pantalla no aparece ninguna puntuación: solo
 /// "Por debajo del nivel", "En el nivel" y "Por encima del nivel".
 class EvaluationScreen extends StatefulWidget {
-  const EvaluationScreen({super.key, required this.controller, required this.onOpenReview});
+  const EvaluationScreen({super.key, required this.controller, required this.onOpenReview, this.createExport});
   final EvaluationController controller;
   final VoidCallback onOpenReview;
+
+  /// Crea el controlador de exportación cuando el informe está cerrado (equipos ya cargados).
+  final ExportController Function(String homeTeam, String awayTeam)? createExport;
 
   @override
   State<EvaluationScreen> createState() => _EvaluationScreenState();
@@ -36,8 +40,16 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
 
   @override
   void dispose() {
+    _export?.dispose();
     _tabs.dispose();
     super.dispose();
+  }
+
+  ExportController? _export;
+
+  ExportController? _exportController() {
+    if (!_ctl.isFinalized || widget.createExport == null) return null;
+    return _export ??= widget.createExport!(_ctl.homeTeam, _ctl.awayTeam);
   }
 
   GlobalKey _keyFor(String code) => _criterionKeys.putIfAbsent(code, GlobalKey.new);
@@ -85,7 +97,12 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
                 controller: _tabs,
                 children: [
                   for (final (i, area) in _ctl.rubric.areas.indexed) _areaTab(context, area, i),
-                  ClosingTab(controller: _ctl, onGoToCriterion: goToCriterion, onOpenReview: widget.onOpenReview),
+                  ClosingTab(
+                    controller: _ctl,
+                    onGoToCriterion: goToCriterion,
+                    onOpenReview: widget.onOpenReview,
+                    export: _exportController(),
+                  ),
                 ],
               ),
             },
