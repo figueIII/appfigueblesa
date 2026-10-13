@@ -77,6 +77,7 @@ Lo único numérico en pantalla son **recuentos y referencias**, no valoraciones
 
 ## 4. Pendiente
 
-- **Exportación** a JSON (esquema 2.0) y a PDF (plantilla de la spec §3.4) a partir del informe cerrado: el objeto firmado ya tiene exactamente la forma de `report` en el esquema.
-- **Enmiendas** (versión 2 o posterior, con motivo): el esquema ya las soporta.
-- Pantallas de preparación del partido y de historial del árbitro.
+- ~~Exportación a JSON y PDF.~~ Hecha: ver [EXPORTACION.md](EXPORTACION.md).
+- ~~Preparación del partido.~~ Hecha: ver [UI_SETUP_E_INICIO.md](UI_SETUP_E_INICIO.md).
+- **Enmiendas** (versión 2 o posterior, con motivo): backlog v1.1, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v11).
+- Historial por árbitro: sin prioridad asignada.

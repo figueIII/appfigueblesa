@@ -57,7 +57,7 @@ class ReportExporter {
     required this.fonts,
     required this.exportsDirectory,
     required this.ids,
-    this.appVersion = '0.4.0',
+    this.appVersion = '1.0.0', // = version de pubspec.yaml
     DateTime Function()? now,
   }) : _now = now ?? (() => DateTime.now().toUtc());
 

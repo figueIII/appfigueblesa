@@ -4,7 +4,7 @@
   "exportedAt": "2026-10-18T09:30:00.000Z",
   "generator": {
     "app": "RefAssess",
-    "appVersion": "0.4.0",
+    "appVersion": "1.0.0",
     "rubricEngineVersion": "2.0.0"
   },
   "match": {
@@ -47,7 +47,7 @@
     "fullName": "Árbitro Ejemplo"
   },
   "assessor": {
-    "id": "m2-3",
+    "id": "m1-3",
     "fullName": "Evaluadora Ejemplo"
   },
   "rubric": {

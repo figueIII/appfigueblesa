@@ -106,6 +106,6 @@ El botón "Ir a revisión" del directo (tras el final) **vacía primero la cola 
 
 ## 7. Pendiente
 
-- **Corregir el minuto** de una marca (`matchClockOverrideMs`, spec §2.1): falta el control en el editor.
-- **Adjuntos** (nota de voz o foto) en el editor, junto con la nota de voz del directo.
-- **Pantalla 3:** rúbrica y bandas por criterio, con la sugerencia calculada a partir de estas incidencias (`scoring.ts` → port a Dart).
+- **Corregir el minuto** de una marca (`matchClockOverrideMs`, spec §2.1): backlog v1.1, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v11).
+- **Adjuntos** (nota de voz) en el editor, junto con la nota de voz del directo: backlog v1.1.
+- ~~Pantalla 3.~~ Hecha: ver [UI_PANTALLA_3_EVALUACION.md](UI_PANTALLA_3_EVALUACION.md).

@@ -6,7 +6,7 @@
 > - Navegación: `app/lib/app/`.
 > - Script del APK: `app/scripts/build_apk.sh`.
 >
-> **Comprobado:** `flutter analyze` sin incidencias y 199 tests en verde (1 omitido); los tests de TypeScript siguen en verde.
+> **Comprobado:** `flutter analyze` sin incidencias y 200 tests en verde (1 omitido); los tests de TypeScript siguen en verde.
 > **No comprobado aquí:** la compilación del APK. Este entorno no tiene Android SDK y la política de red bloquea `dl.google.com`.
 
 ## 1. Flujo
@@ -84,10 +84,11 @@ SKIP_TESTS=1 ./scripts/build_apk.sh     # sin análisis ni tests
 | `test/features/setup/match_setup_screen_test.dart` (12) | Presets, hora por defecto, errores y contador, mismo equipo, alta completa con `onStart`, dificultad opcional, autocompletado, selector de hora, fallo de guardado, accesibilidad en claro y oscuro, y texto ×1.6. |
 | `test/features/home/home_screen_test.dart` (8) | Estado vacío, secciones y orden, textos de estado y banda, apertura y recarga, accesibilidad, y texto ×1.6. |
 | `test/app/app_flow_test.dart` (2) | **De extremo a extremo con Drift real:** inicio → preparación → "Comenzar partido" → directo en ANTES DEL INICIO y 00:00, sin eventos de reloj → atrás vuelve al inicio con el partido en curso → continuar. Además, un informe finalizado abre la evaluación con la sección de exportación. |
+| `test/app/version_test.dart` (1) | La versión que figura en los informes exportados coincide con la de `pubspec.yaml` (1.0.0). |
 | `test/screenshots` | Capturas 30 a 33: inicio, preparación, errores e inicio vacío. |
 
 ## 6. Pendiente
 
-- Compilar y probar el APK en un Android físico: hoja de compartir, reloj de arranque tras reiniciar, vibración y pantalla siempre encendida.
-- Enmiendas de informes cerrados (aplazadas).
+- Compilar y probar el APK en un Android físico: protocolo en [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md).
+- Enmiendas de informes cerrados: backlog v1.1.
 - Archivar o borrar partidos desde la lista (hoy no hay borrado: el historial es local y completo).

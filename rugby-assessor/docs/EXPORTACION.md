@@ -73,5 +73,5 @@ documento de exportación 2.0 (buildExportDocument, puro)
 
 ## 6. Pendiente
 
-- Probar la hoja de compartir en Android e iOS reales (`share_plus` usa su propio *FileProvider*; en este entorno no hay SDK móvil).
-- Enmiendas (versión 2 o posterior): la exportación ya toma la versión vigente y el pie muestra su número.
+- Probar la hoja de compartir en Android e iOS reales; es la prueba 8 de [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md) (`share_plus` usa su propio *FileProvider*; en este entorno no hay SDK móvil).
+- Enmiendas (versión 2 o posterior), en el backlog v1.1: la exportación ya toma la versión vigente y el pie muestra su número.
