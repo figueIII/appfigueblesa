@@ -144,3 +144,11 @@ abstract final class RefType {
   static const TextStyle body = TextStyle(fontSize: 16, height: 1.5, fontWeight: FontWeight.w500);
   static const TextStyle caption = TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w600, fontFeatures: tabular);
 }
+
+/// Colores de las tarjetas disciplinarias: son el objeto real (amarilla, roja), no un estado de
+/// la interfaz. Siempre van con borde oscuro y con su nombre en texto o en la etiqueta accesible.
+abstract final class RefCardColors {
+  static const Color yellow = Color(0xFFFACC15);
+  static const Color red = Color(0xFFDC2626);
+  static const Color border = Color(0xFF0F172A);
+}

@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 import '../../core/design_system/theme.dart';
 import '../../core/design_system/tokens.dart';
 import '../../domain/clock.dart';
+import '../../domain/laws.dart';
 import '../../domain/model.dart';
 import '../../domain/review.dart';
 import '../live/live_controller.dart' show periodLabel;
+import '../common/infraction_picker.dart';
 import '../live/live_labels.dart';
 import 'review_controller.dart';
 import 'review_labels.dart';
 import 'widgets/choice_controls.dart';
 
 /// Editor de una incidencia. Orden de arriba abajo = orden en que se razona:
-/// ¿qué pasó? → veredicto → impacto → decisiones → notas → contexto (opcional).
+/// ¿qué pasó? → veredicto → ley → impacto → decisiones → notas → contexto (opcional).
 /// Los errores se muestran junto a su campo, no en un resumen lejano.
 class IncidentEditorScreen extends StatefulWidget {
   const IncidentEditorScreen({super.key, required this.controller, required this.incidentId});
@@ -225,6 +227,24 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                   ],
                 ),
 
+                // ─── Ley / infracción (acierto o error) ───
+                const SectionHeader(
+                  title: 'Ley / infracción',
+                  subtitle: 'La ley concreta de la acción, tanto si se aplicó bien como si no (opcional).',
+                ),
+                _InfractionField(
+                  value: i.infraction,
+                  onPick: () async {
+                    final choice = await showInfractionPicker(
+                      context,
+                      title: 'Ley · ${kCategoryLabel[i.category] ?? ''}',
+                      groups: lawGroupsFor(i.category),
+                      current: i.infraction,
+                    );
+                    if (choice != null && mounted) _update(_draft.copyWith(infraction: choice.value));
+                  },
+                ),
+
                 // ─── Impacto ───
                 SectionHeader(
                   title: 'Impacto en el partido',
@@ -411,6 +431,61 @@ const List<DecisionOutcome> kFrequentOutcomes = [
   DecisionOutcome.scrum,
   DecisionOutcome.yellowCard,
 ];
+
+/// Campo de solo lectura que abre el selector de leyes.
+class _InfractionField extends StatelessWidget {
+  const _InfractionField({required this.value, required this.onPick});
+  final InfractionRef? value;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.refColors;
+    final v = value;
+    return Material(
+      color: c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(RefRadius.control),
+        side: BorderSide(color: c.outline, width: v == null ? 1.5 : 3),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: const ValueKey('infraction-field'),
+        onTap: onPick,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: RefTouch.control),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: RefSpace.m, vertical: RefSpace.s),
+            child: Row(
+              children: [
+                Icon(Icons.menu_book_rounded, color: c.onSurface),
+                const SizedBox(width: RefSpace.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        v?.label ?? 'Elegir ley o infracción',
+                        style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
+                      ),
+                      if (v != null)
+                        Text(
+                          [if (v.catalog != null) v.catalog!.english, if (v.lawRef != null) v.lawRef!, if (v.isCustom) 'Personalizada'].join(' · '),
+                          style: RefType.caption.copyWith(color: c.onSurfaceMuted),
+                        ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: c.onSurfaceMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _DecisionEditor extends StatefulWidget {
   const _DecisionEditor({required this.keyPrefix, required this.decision, required this.onOutcomes, required this.onTeam});

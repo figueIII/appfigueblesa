@@ -1,5 +1,7 @@
 # Evaluador arbitral de rugby: base técnica y lógica (sin UI)
 
+> **Ampliación v1.1:** marcador, sanciones del árbitro y ley de cada acción (esquema SQLite v3, exportación 2.1). Detalle en [MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md).
+
 > **Estado:** **v0.2: base técnica aceptada** con las resoluciones R1–R6 de la [sección 0](#0-registro-de-resoluciones-vinculantes), que prevalecen sobre el resto del texto. Lista para empezar la UI.
 > **Producto:** app móvil offline-first para evaluadores e informadores arbitrales (*match observers / assessors*), derivada de la idea #1 (SinBin Ref).
 > **Alcance:** modelo de datos, máquina de estados, motor de puntuación, persistencia, exportación y API de casos de uso. **La interfaz gráfica queda fuera.**

@@ -14,10 +14,35 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.onDevice() => AppDatabase(driftDatabase(name: 'refassess'));
 
   @override
-  int get schemaVersion => 2; // = PRAGMA user_version de persistence/schema.sql
+  int get schemaVersion => 3; // = PRAGMA user_version de persistence/schema.sql
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          // v2 → v3: marcador, sanciones e infracción de cada incidencia. Solo añade: los
+          // partidos ya registrados en el móvil se conservan tal cual.
+          if (from < 3) {
+            await m.addColumn(incident, incident.infractionCode);
+            await m.addColumn(incident, incident.infractionCustom);
+            await m.addColumn(incident, incident.infractionLawRef);
+            await m.drop(incidentAudit);
+            await m.createTrigger(incidentAudit);
+            await m.createTable(scoreEvent);
+            await m.createTable(sanctionEvent);
+            for (final t in [
+              scoreEventVoidOnly,
+              sanctionEventVoidOrReason,
+              scoreEventNoDelete,
+              sanctionEventNoDelete,
+              scoreEventLockedInsert,
+              scoreEventLockedUpdate,
+              sanctionEventLockedInsert,
+              sanctionEventLockedUpdate,
+            ]) {
+              await m.createTrigger(t);
+            }
+          }
+        },
         beforeOpen: (details) async {
           // Integridad referencial y durabilidad (spec §3.1): con synchronous=FULL cada
           // transacción confirmada sobrevive a un apagado por batería, no solo a un cierre de la app.

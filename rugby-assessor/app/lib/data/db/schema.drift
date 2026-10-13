@@ -1,4 +1,4 @@
--- Esquema Drift: copia LITERAL de persistence/schema.sql v2 (sin PRAGMAs, que se fijan al abrir
+-- Esquema Drift: copia LITERAL de persistence/schema.sql v3 (sin PRAGMAs, que se fijan al abrir
 -- la conexión en app_database.dart). Si cambias uno, cambia el otro: test/data/schema_parity_test.dart
 -- comprueba que las sentencias coinciden.
 
@@ -129,7 +129,12 @@ CREATE TABLE incident (
   status           TEXT NOT NULL CHECK (status IN ('QUICK','ENRICHED','VOID')),
   void_reason      TEXT,
   updated_at       TEXT NOT NULL,
-  UNIQUE (assessment_id, seq)
+  -- v3: ley o infracción de la acción (laws.dart); CUSTOM = texto libre del evaluador
+  infraction_code  TEXT,
+  infraction_custom TEXT,
+  infraction_law_ref TEXT,
+  UNIQUE (assessment_id, seq),
+  CHECK (infraction_code IS NOT 'CUSTOM' OR infraction_custom IS NOT NULL)
 ) STRICT;
 CREATE INDEX incident_by_criterion ON incident(assessment_id, criterion_code) WHERE status <> 'VOID';
 CREATE INDEX incident_pending ON incident(assessment_id) WHERE verdict = 'PENDING' AND status <> 'VOID';
@@ -148,7 +153,8 @@ BEGIN
     'category', OLD.category, 'criterion_code', OLD.criterion_code, 'verdict', OLD.verdict,
     'impact', OLD.impact, 'impact_confirmed', OLD.impact_confirmed, 'notes', OLD.notes,
     'decision_taken', json(OLD.decision_taken_json), 'decision_expected', json(OLD.decision_expected_json),
-    'match_clock_ms', OLD.match_clock_ms, 'status', OLD.status, 'updated_at', OLD.updated_at));
+    'match_clock_ms', OLD.match_clock_ms, 'status', OLD.status, 'updated_at', OLD.updated_at,
+    'infraction_code', OLD.infraction_code, 'infraction_custom', OLD.infraction_custom));
 END;
 
 -- Con la evaluación finalizada, las incidencias quedan congeladas (las enmiendas no las tocan).
@@ -170,6 +176,74 @@ CREATE TABLE attachment (
   created_at       TEXT NOT NULL,
   CHECK ((kind = 'VIDEO_LINK' AND url IS NOT NULL) OR (kind <> 'VIDEO_LINK' AND relative_path IS NOT NULL))
 ) STRICT;
+
+-- ───────────── Hechos del partido (v3): marcador y sanciones ─────────────
+-- Registros de solo inserción, como el reloj: "deshacer" anula (status VOID), nunca borra.
+
+CREATE TABLE score_event (
+  id               TEXT PRIMARY KEY,
+  assessment_id    TEXT NOT NULL REFERENCES assessment(id) ON DELETE CASCADE,
+  seq              INTEGER NOT NULL,
+  team             TEXT NOT NULL CHECK (team IN ('HOME','AWAY')),
+  kind             TEXT NOT NULL CHECK (kind IN ('TRY','CONVERSION','PENALTY_GOAL','DROP_GOAL')),
+  points           INTEGER NOT NULL,
+  t_session_ms     INTEGER NOT NULL,
+  wall_utc         TEXT NOT NULL,
+  period           TEXT CHECK (period IN ('H1','H2','ET1','ET2','SD')),
+  match_clock_ms   INTEGER NOT NULL,
+  status           TEXT NOT NULL CHECK (status IN ('ACTIVE','VOID')),
+  UNIQUE (assessment_id, seq),
+  CHECK ((kind = 'TRY' AND points = 5) OR (kind = 'CONVERSION' AND points = 2)
+         OR (kind IN ('PENALTY_GOAL','DROP_GOAL') AND points = 3))
+) STRICT;
+
+CREATE TABLE sanction_event (
+  id               TEXT PRIMARY KEY,
+  assessment_id    TEXT NOT NULL REFERENCES assessment(id) ON DELETE CASCADE,
+  seq              INTEGER NOT NULL,
+  team             TEXT NOT NULL CHECK (team IN ('HOME','AWAY')),  -- equipo infractor
+  kind             TEXT NOT NULL CHECK (kind IN ('PENALTY','FREE_KICK','YELLOW_CARD','RED_CARD')),
+  infraction_code  TEXT,                                            -- NULL = sin especificar
+  infraction_custom TEXT,
+  infraction_law_ref TEXT,
+  t_session_ms     INTEGER NOT NULL,
+  wall_utc         TEXT NOT NULL,
+  period           TEXT CHECK (period IN ('H1','H2','ET1','ET2','SD')),
+  match_clock_ms   INTEGER NOT NULL,
+  status           TEXT NOT NULL CHECK (status IN ('ACTIVE','VOID')),
+  UNIQUE (assessment_id, seq),
+  CHECK (infraction_code IS NOT 'CUSTOM' OR infraction_custom IS NOT NULL)
+) STRICT;
+
+-- Solo se permite anular (ACTIVE → VOID) y, en las sanciones, completar el motivo.
+CREATE TRIGGER score_event_void_only BEFORE UPDATE ON score_event
+WHEN NOT (OLD.status = 'ACTIVE' AND NEW.status = 'VOID' AND NEW.team = OLD.team AND NEW.kind = OLD.kind
+          AND NEW.points = OLD.points AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms)
+BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
+CREATE TRIGGER sanction_event_void_or_reason BEFORE UPDATE ON sanction_event
+WHEN NOT (NEW.team = OLD.team AND NEW.kind = OLD.kind AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms
+          AND (NEW.status = OLD.status OR (OLD.status = 'ACTIVE' AND NEW.status = 'VOID')))
+BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
+CREATE TRIGGER score_event_no_delete BEFORE DELETE ON score_event
+WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL
+BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
+CREATE TRIGGER sanction_event_no_delete BEFORE DELETE ON sanction_event
+WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL
+BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
+
+-- Con la evaluación finalizada, los hechos del partido quedan congelados.
+CREATE TRIGGER score_event_locked_insert BEFORE INSERT ON score_event
+WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN ('FINALIZED','ARCHIVED')
+BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
+CREATE TRIGGER score_event_locked_update BEFORE UPDATE ON score_event
+WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN ('FINALIZED','ARCHIVED')
+BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
+CREATE TRIGGER sanction_event_locked_insert BEFORE INSERT ON sanction_event
+WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN ('FINALIZED','ARCHIVED')
+BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
+CREATE TRIGGER sanction_event_locked_update BEFORE UPDATE ON sanction_event
+WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN ('FINALIZED','ARCHIVED')
+BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
 
 -- ───────────── Informe (versionado) ─────────────
 

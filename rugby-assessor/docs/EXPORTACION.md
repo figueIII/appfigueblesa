@@ -1,5 +1,7 @@
 # Exportación del informe cerrado: JSON y PDF
 
+> **v1.1 (formato 2.1):** añade `matchStats` (marcador y sanciones) y la infracción de cada incidencia; el PDF gana la sección "Marcador y disciplina". Ver [MARCADOR_SANCIONES_LEYES.md §6](MARCADOR_SANCIONES_LEYES.md#6-exportación-21).
+
 > **Estado:** v0.1 implementada (`app/lib/export/`) e integrada en la pestaña **Cierre** de la Pantalla 3.
 > **Comprobado:**
 > - `flutter analyze` sin incidencias.
@@ -74,4 +76,4 @@ documento de exportación 2.0 (buildExportDocument, puro)
 ## 6. Pendiente
 
 - Probar la hoja de compartir en Android e iOS reales; es la prueba 8 de [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md) (`share_plus` usa su propio *FileProvider*; en este entorno no hay SDK móvil).
-- Enmiendas (versión 2 o posterior), en el backlog v1.1: la exportación ya toma la versión vigente y el pie muestra su número.
+- Enmiendas (versión 2 o posterior), en el backlog v1.2: la exportación ya toma la versión vigente y el pie muestra su número.

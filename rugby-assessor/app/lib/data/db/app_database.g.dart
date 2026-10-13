@@ -3826,6 +3826,39 @@ class Incident extends Table with TableInfo<Incident, IncidentData> {
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
+  static const VerificationMeta _infractionCodeMeta = const VerificationMeta(
+    'infractionCode',
+  );
+  late final GeneratedColumn<String> infractionCode = GeneratedColumn<String>(
+    'infraction_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _infractionCustomMeta = const VerificationMeta(
+    'infractionCustom',
+  );
+  late final GeneratedColumn<String> infractionCustom = GeneratedColumn<String>(
+    'infraction_custom',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _infractionLawRefMeta = const VerificationMeta(
+    'infractionLawRef',
+  );
+  late final GeneratedColumn<String> infractionLawRef = GeneratedColumn<String>(
+    'infraction_law_ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3855,6 +3888,9 @@ class Incident extends Table with TableInfo<Incident, IncidentData> {
     status,
     voidReason,
     updatedAt,
+    infractionCode,
+    infractionCustom,
+    infractionLawRef,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4093,6 +4129,33 @@ class Incident extends Table with TableInfo<Incident, IncidentData> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('infraction_code')) {
+      context.handle(
+        _infractionCodeMeta,
+        infractionCode.isAcceptableOrUnknown(
+          data['infraction_code']!,
+          _infractionCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('infraction_custom')) {
+      context.handle(
+        _infractionCustomMeta,
+        infractionCustom.isAcceptableOrUnknown(
+          data['infraction_custom']!,
+          _infractionCustomMeta,
+        ),
+      );
+    }
+    if (data.containsKey('infraction_law_ref')) {
+      context.handle(
+        _infractionLawRefMeta,
+        infractionLawRef.isAcceptableOrUnknown(
+          data['infraction_law_ref']!,
+          _infractionLawRefMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4214,6 +4277,18 @@ class Incident extends Table with TableInfo<Incident, IncidentData> {
         DriftSqlType.string,
         data['${effectivePrefix}updated_at'],
       )!,
+      infractionCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_code'],
+      ),
+      infractionCustom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_custom'],
+      ),
+      infractionLawRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_law_ref'],
+      ),
     );
   }
 
@@ -4225,7 +4300,10 @@ class Incident extends Table with TableInfo<Incident, IncidentData> {
   @override
   bool get isStrict => true;
   @override
-  List<String> get customConstraints => const ['UNIQUE(assessment_id, seq)'];
+  List<String> get customConstraints => const [
+    'UNIQUE(assessment_id, seq)',
+    'CHECK(infraction_code IS NOT \'CUSTOM\' OR infraction_custom IS NOT NULL)',
+  ];
   @override
   bool get dontWriteConstraints => true;
 }
@@ -4262,6 +4340,11 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
   final String status;
   final String? voidReason;
   final String updatedAt;
+
+  /// v3: ley o infracción de la acción (laws.dart); CUSTOM = texto libre del evaluador
+  final String? infractionCode;
+  final String? infractionCustom;
+  final String? infractionLawRef;
   const IncidentData({
     required this.id,
     required this.assessmentId,
@@ -4290,6 +4373,9 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
     required this.status,
     this.voidReason,
     required this.updatedAt,
+    this.infractionCode,
+    this.infractionCustom,
+    this.infractionLawRef,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4335,6 +4421,15 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
       map['void_reason'] = Variable<String>(voidReason);
     }
     map['updated_at'] = Variable<String>(updatedAt);
+    if (!nullToAbsent || infractionCode != null) {
+      map['infraction_code'] = Variable<String>(infractionCode);
+    }
+    if (!nullToAbsent || infractionCustom != null) {
+      map['infraction_custom'] = Variable<String>(infractionCustom);
+    }
+    if (!nullToAbsent || infractionLawRef != null) {
+      map['infraction_law_ref'] = Variable<String>(infractionLawRef);
+    }
     return map;
   }
 
@@ -4381,6 +4476,15 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
           ? const Value.absent()
           : Value(voidReason),
       updatedAt: Value(updatedAt),
+      infractionCode: infractionCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionCode),
+      infractionCustom: infractionCustom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionCustom),
+      infractionLawRef: infractionLawRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionLawRef),
     );
   }
 
@@ -4423,6 +4527,11 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
       status: serializer.fromJson<String>(json['status']),
       voidReason: serializer.fromJson<String?>(json['void_reason']),
       updatedAt: serializer.fromJson<String>(json['updated_at']),
+      infractionCode: serializer.fromJson<String?>(json['infraction_code']),
+      infractionCustom: serializer.fromJson<String?>(json['infraction_custom']),
+      infractionLawRef: serializer.fromJson<String?>(
+        json['infraction_law_ref'],
+      ),
     );
   }
   @override
@@ -4458,6 +4567,9 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
       'status': serializer.toJson<String>(status),
       'void_reason': serializer.toJson<String?>(voidReason),
       'updated_at': serializer.toJson<String>(updatedAt),
+      'infraction_code': serializer.toJson<String?>(infractionCode),
+      'infraction_custom': serializer.toJson<String?>(infractionCustom),
+      'infraction_law_ref': serializer.toJson<String?>(infractionLawRef),
     };
   }
 
@@ -4489,6 +4601,9 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
     String? status,
     Value<String?> voidReason = const Value.absent(),
     String? updatedAt,
+    Value<String?> infractionCode = const Value.absent(),
+    Value<String?> infractionCustom = const Value.absent(),
+    Value<String?> infractionLawRef = const Value.absent(),
   }) => IncidentData(
     id: id ?? this.id,
     assessmentId: assessmentId ?? this.assessmentId,
@@ -4521,6 +4636,15 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
     status: status ?? this.status,
     voidReason: voidReason.present ? voidReason.value : this.voidReason,
     updatedAt: updatedAt ?? this.updatedAt,
+    infractionCode: infractionCode.present
+        ? infractionCode.value
+        : this.infractionCode,
+    infractionCustom: infractionCustom.present
+        ? infractionCustom.value
+        : this.infractionCustom,
+    infractionLawRef: infractionLawRef.present
+        ? infractionLawRef.value
+        : this.infractionLawRef,
   );
   IncidentData copyWithCompanion(IncidentCompanion data) {
     return IncidentData(
@@ -4577,6 +4701,15 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
           ? data.voidReason.value
           : this.voidReason,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      infractionCode: data.infractionCode.present
+          ? data.infractionCode.value
+          : this.infractionCode,
+      infractionCustom: data.infractionCustom.present
+          ? data.infractionCustom.value
+          : this.infractionCustom,
+      infractionLawRef: data.infractionLawRef.present
+          ? data.infractionLawRef.value
+          : this.infractionLawRef,
     );
   }
 
@@ -4609,7 +4742,10 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
           ..write('source: $source, ')
           ..write('status: $status, ')
           ..write('voidReason: $voidReason, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('infractionCode: $infractionCode, ')
+          ..write('infractionCustom: $infractionCustom, ')
+          ..write('infractionLawRef: $infractionLawRef')
           ..write(')'))
         .toString();
   }
@@ -4643,6 +4779,9 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
     status,
     voidReason,
     updatedAt,
+    infractionCode,
+    infractionCustom,
+    infractionLawRef,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -4674,7 +4813,10 @@ class IncidentData extends DataClass implements Insertable<IncidentData> {
           other.source == this.source &&
           other.status == this.status &&
           other.voidReason == this.voidReason &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.infractionCode == this.infractionCode &&
+          other.infractionCustom == this.infractionCustom &&
+          other.infractionLawRef == this.infractionLawRef);
 }
 
 class IncidentCompanion extends UpdateCompanion<IncidentData> {
@@ -4705,6 +4847,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
   final Value<String> status;
   final Value<String?> voidReason;
   final Value<String> updatedAt;
+  final Value<String?> infractionCode;
+  final Value<String?> infractionCustom;
+  final Value<String?> infractionLawRef;
   final Value<int> rowid;
   const IncidentCompanion({
     this.id = const Value.absent(),
@@ -4734,6 +4879,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
     this.status = const Value.absent(),
     this.voidReason = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.infractionCode = const Value.absent(),
+    this.infractionCustom = const Value.absent(),
+    this.infractionLawRef = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IncidentCompanion.insert({
@@ -4764,6 +4912,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
     required String status,
     this.voidReason = const Value.absent(),
     required String updatedAt,
+    this.infractionCode = const Value.absent(),
+    this.infractionCustom = const Value.absent(),
+    this.infractionLawRef = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        assessmentId = Value(assessmentId),
@@ -4811,6 +4962,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
     Expression<String>? status,
     Expression<String>? voidReason,
     Expression<String>? updatedAt,
+    Expression<String>? infractionCode,
+    Expression<String>? infractionCustom,
+    Expression<String>? infractionLawRef,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4843,6 +4997,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
       if (status != null) 'status': status,
       if (voidReason != null) 'void_reason': voidReason,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (infractionCode != null) 'infraction_code': infractionCode,
+      if (infractionCustom != null) 'infraction_custom': infractionCustom,
+      if (infractionLawRef != null) 'infraction_law_ref': infractionLawRef,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4875,6 +5032,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
     Value<String>? status,
     Value<String?>? voidReason,
     Value<String>? updatedAt,
+    Value<String?>? infractionCode,
+    Value<String?>? infractionCustom,
+    Value<String?>? infractionLawRef,
     Value<int>? rowid,
   }) {
     return IncidentCompanion(
@@ -4905,6 +5065,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
       status: status ?? this.status,
       voidReason: voidReason ?? this.voidReason,
       updatedAt: updatedAt ?? this.updatedAt,
+      infractionCode: infractionCode ?? this.infractionCode,
+      infractionCustom: infractionCustom ?? this.infractionCustom,
+      infractionLawRef: infractionLawRef ?? this.infractionLawRef,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4995,6 +5158,15 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<String>(updatedAt.value);
     }
+    if (infractionCode.present) {
+      map['infraction_code'] = Variable<String>(infractionCode.value);
+    }
+    if (infractionCustom.present) {
+      map['infraction_custom'] = Variable<String>(infractionCustom.value);
+    }
+    if (infractionLawRef.present) {
+      map['infraction_law_ref'] = Variable<String>(infractionLawRef.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5031,6 +5203,9 @@ class IncidentCompanion extends UpdateCompanion<IncidentData> {
           ..write('status: $status, ')
           ..write('voidReason: $voidReason, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('infractionCode: $infractionCode, ')
+          ..write('infractionCustom: $infractionCustom, ')
+          ..write('infractionLawRef: $infractionLawRef, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5991,6 +6166,1484 @@ class AttachmentCompanion extends UpdateCompanion<AttachmentData> {
           ..write('status: $status, ')
           ..write('transcript: $transcript, ')
           ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class ScoreEvent extends Table with TableInfo<ScoreEvent, ScoreEventData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  ScoreEvent(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'PRIMARY KEY',
+  );
+  static const VerificationMeta _assessmentIdMeta = const VerificationMeta(
+    'assessmentId',
+  );
+  late final GeneratedColumn<String> assessmentId = GeneratedColumn<String>(
+    'assessment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES assessment(id)ON DELETE CASCADE',
+  );
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _teamMeta = const VerificationMeta('team');
+  late final GeneratedColumn<String> team = GeneratedColumn<String>(
+    'team',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (team IN (\'HOME\', \'AWAY\'))',
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (kind IN (\'TRY\', \'CONVERSION\', \'PENALTY_GOAL\', \'DROP_GOAL\'))',
+  );
+  static const VerificationMeta _pointsMeta = const VerificationMeta('points');
+  late final GeneratedColumn<int> points = GeneratedColumn<int>(
+    'points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _tSessionMsMeta = const VerificationMeta(
+    'tSessionMs',
+  );
+  late final GeneratedColumn<int> tSessionMs = GeneratedColumn<int>(
+    't_session_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _wallUtcMeta = const VerificationMeta(
+    'wallUtc',
+  );
+  late final GeneratedColumn<String> wallUtc = GeneratedColumn<String>(
+    'wall_utc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
+  late final GeneratedColumn<String> period = GeneratedColumn<String>(
+    'period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'CHECK (period IN (\'H1\', \'H2\', \'ET1\', \'ET2\', \'SD\'))',
+  );
+  static const VerificationMeta _matchClockMsMeta = const VerificationMeta(
+    'matchClockMs',
+  );
+  late final GeneratedColumn<int> matchClockMs = GeneratedColumn<int>(
+    'match_clock_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (status IN (\'ACTIVE\', \'VOID\'))',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    assessmentId,
+    seq,
+    team,
+    kind,
+    points,
+    tSessionMs,
+    wallUtc,
+    period,
+    matchClockMs,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'score_event';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScoreEventData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('assessment_id')) {
+      context.handle(
+        _assessmentIdMeta,
+        assessmentId.isAcceptableOrUnknown(
+          data['assessment_id']!,
+          _assessmentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_assessmentIdMeta);
+    }
+    if (data.containsKey('seq')) {
+      context.handle(
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seqMeta);
+    }
+    if (data.containsKey('team')) {
+      context.handle(
+        _teamMeta,
+        team.isAcceptableOrUnknown(data['team']!, _teamMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('points')) {
+      context.handle(
+        _pointsMeta,
+        points.isAcceptableOrUnknown(data['points']!, _pointsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pointsMeta);
+    }
+    if (data.containsKey('t_session_ms')) {
+      context.handle(
+        _tSessionMsMeta,
+        tSessionMs.isAcceptableOrUnknown(
+          data['t_session_ms']!,
+          _tSessionMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_tSessionMsMeta);
+    }
+    if (data.containsKey('wall_utc')) {
+      context.handle(
+        _wallUtcMeta,
+        wallUtc.isAcceptableOrUnknown(data['wall_utc']!, _wallUtcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wallUtcMeta);
+    }
+    if (data.containsKey('period')) {
+      context.handle(
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
+      );
+    }
+    if (data.containsKey('match_clock_ms')) {
+      context.handle(
+        _matchClockMsMeta,
+        matchClockMs.isAcceptableOrUnknown(
+          data['match_clock_ms']!,
+          _matchClockMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_matchClockMsMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {assessmentId, seq},
+  ];
+  @override
+  ScoreEventData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScoreEventData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      assessmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assessment_id'],
+      )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+      team: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      points: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}points'],
+      )!,
+      tSessionMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}t_session_ms'],
+      )!,
+      wallUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wall_utc'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}period'],
+      ),
+      matchClockMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}match_clock_ms'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  ScoreEvent createAlias(String alias) {
+    return ScoreEvent(attachedDatabase, alias);
+  }
+
+  @override
+  bool get isStrict => true;
+  @override
+  List<String> get customConstraints => const [
+    'UNIQUE(assessment_id, seq)',
+    'CHECK((kind = \'TRY\' AND points = 5)OR(kind = \'CONVERSION\' AND points = 2)OR(kind IN (\'PENALTY_GOAL\', \'DROP_GOAL\') AND points = 3))',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class ScoreEventData extends DataClass implements Insertable<ScoreEventData> {
+  final String id;
+  final String assessmentId;
+  final int seq;
+  final String team;
+  final String kind;
+  final int points;
+  final int tSessionMs;
+  final String wallUtc;
+  final String? period;
+  final int matchClockMs;
+  final String status;
+  const ScoreEventData({
+    required this.id,
+    required this.assessmentId,
+    required this.seq,
+    required this.team,
+    required this.kind,
+    required this.points,
+    required this.tSessionMs,
+    required this.wallUtc,
+    this.period,
+    required this.matchClockMs,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['assessment_id'] = Variable<String>(assessmentId);
+    map['seq'] = Variable<int>(seq);
+    map['team'] = Variable<String>(team);
+    map['kind'] = Variable<String>(kind);
+    map['points'] = Variable<int>(points);
+    map['t_session_ms'] = Variable<int>(tSessionMs);
+    map['wall_utc'] = Variable<String>(wallUtc);
+    if (!nullToAbsent || period != null) {
+      map['period'] = Variable<String>(period);
+    }
+    map['match_clock_ms'] = Variable<int>(matchClockMs);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  ScoreEventCompanion toCompanion(bool nullToAbsent) {
+    return ScoreEventCompanion(
+      id: Value(id),
+      assessmentId: Value(assessmentId),
+      seq: Value(seq),
+      team: Value(team),
+      kind: Value(kind),
+      points: Value(points),
+      tSessionMs: Value(tSessionMs),
+      wallUtc: Value(wallUtc),
+      period: period == null && nullToAbsent
+          ? const Value.absent()
+          : Value(period),
+      matchClockMs: Value(matchClockMs),
+      status: Value(status),
+    );
+  }
+
+  factory ScoreEventData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScoreEventData(
+      id: serializer.fromJson<String>(json['id']),
+      assessmentId: serializer.fromJson<String>(json['assessment_id']),
+      seq: serializer.fromJson<int>(json['seq']),
+      team: serializer.fromJson<String>(json['team']),
+      kind: serializer.fromJson<String>(json['kind']),
+      points: serializer.fromJson<int>(json['points']),
+      tSessionMs: serializer.fromJson<int>(json['t_session_ms']),
+      wallUtc: serializer.fromJson<String>(json['wall_utc']),
+      period: serializer.fromJson<String?>(json['period']),
+      matchClockMs: serializer.fromJson<int>(json['match_clock_ms']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'assessment_id': serializer.toJson<String>(assessmentId),
+      'seq': serializer.toJson<int>(seq),
+      'team': serializer.toJson<String>(team),
+      'kind': serializer.toJson<String>(kind),
+      'points': serializer.toJson<int>(points),
+      't_session_ms': serializer.toJson<int>(tSessionMs),
+      'wall_utc': serializer.toJson<String>(wallUtc),
+      'period': serializer.toJson<String?>(period),
+      'match_clock_ms': serializer.toJson<int>(matchClockMs),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  ScoreEventData copyWith({
+    String? id,
+    String? assessmentId,
+    int? seq,
+    String? team,
+    String? kind,
+    int? points,
+    int? tSessionMs,
+    String? wallUtc,
+    Value<String?> period = const Value.absent(),
+    int? matchClockMs,
+    String? status,
+  }) => ScoreEventData(
+    id: id ?? this.id,
+    assessmentId: assessmentId ?? this.assessmentId,
+    seq: seq ?? this.seq,
+    team: team ?? this.team,
+    kind: kind ?? this.kind,
+    points: points ?? this.points,
+    tSessionMs: tSessionMs ?? this.tSessionMs,
+    wallUtc: wallUtc ?? this.wallUtc,
+    period: period.present ? period.value : this.period,
+    matchClockMs: matchClockMs ?? this.matchClockMs,
+    status: status ?? this.status,
+  );
+  ScoreEventData copyWithCompanion(ScoreEventCompanion data) {
+    return ScoreEventData(
+      id: data.id.present ? data.id.value : this.id,
+      assessmentId: data.assessmentId.present
+          ? data.assessmentId.value
+          : this.assessmentId,
+      seq: data.seq.present ? data.seq.value : this.seq,
+      team: data.team.present ? data.team.value : this.team,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      points: data.points.present ? data.points.value : this.points,
+      tSessionMs: data.tSessionMs.present
+          ? data.tSessionMs.value
+          : this.tSessionMs,
+      wallUtc: data.wallUtc.present ? data.wallUtc.value : this.wallUtc,
+      period: data.period.present ? data.period.value : this.period,
+      matchClockMs: data.matchClockMs.present
+          ? data.matchClockMs.value
+          : this.matchClockMs,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScoreEventData(')
+          ..write('id: $id, ')
+          ..write('assessmentId: $assessmentId, ')
+          ..write('seq: $seq, ')
+          ..write('team: $team, ')
+          ..write('kind: $kind, ')
+          ..write('points: $points, ')
+          ..write('tSessionMs: $tSessionMs, ')
+          ..write('wallUtc: $wallUtc, ')
+          ..write('period: $period, ')
+          ..write('matchClockMs: $matchClockMs, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    assessmentId,
+    seq,
+    team,
+    kind,
+    points,
+    tSessionMs,
+    wallUtc,
+    period,
+    matchClockMs,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScoreEventData &&
+          other.id == this.id &&
+          other.assessmentId == this.assessmentId &&
+          other.seq == this.seq &&
+          other.team == this.team &&
+          other.kind == this.kind &&
+          other.points == this.points &&
+          other.tSessionMs == this.tSessionMs &&
+          other.wallUtc == this.wallUtc &&
+          other.period == this.period &&
+          other.matchClockMs == this.matchClockMs &&
+          other.status == this.status);
+}
+
+class ScoreEventCompanion extends UpdateCompanion<ScoreEventData> {
+  final Value<String> id;
+  final Value<String> assessmentId;
+  final Value<int> seq;
+  final Value<String> team;
+  final Value<String> kind;
+  final Value<int> points;
+  final Value<int> tSessionMs;
+  final Value<String> wallUtc;
+  final Value<String?> period;
+  final Value<int> matchClockMs;
+  final Value<String> status;
+  final Value<int> rowid;
+  const ScoreEventCompanion({
+    this.id = const Value.absent(),
+    this.assessmentId = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.team = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.points = const Value.absent(),
+    this.tSessionMs = const Value.absent(),
+    this.wallUtc = const Value.absent(),
+    this.period = const Value.absent(),
+    this.matchClockMs = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ScoreEventCompanion.insert({
+    required String id,
+    required String assessmentId,
+    required int seq,
+    required String team,
+    required String kind,
+    required int points,
+    required int tSessionMs,
+    required String wallUtc,
+    this.period = const Value.absent(),
+    required int matchClockMs,
+    required String status,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       assessmentId = Value(assessmentId),
+       seq = Value(seq),
+       team = Value(team),
+       kind = Value(kind),
+       points = Value(points),
+       tSessionMs = Value(tSessionMs),
+       wallUtc = Value(wallUtc),
+       matchClockMs = Value(matchClockMs),
+       status = Value(status);
+  static Insertable<ScoreEventData> custom({
+    Expression<String>? id,
+    Expression<String>? assessmentId,
+    Expression<int>? seq,
+    Expression<String>? team,
+    Expression<String>? kind,
+    Expression<int>? points,
+    Expression<int>? tSessionMs,
+    Expression<String>? wallUtc,
+    Expression<String>? period,
+    Expression<int>? matchClockMs,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (assessmentId != null) 'assessment_id': assessmentId,
+      if (seq != null) 'seq': seq,
+      if (team != null) 'team': team,
+      if (kind != null) 'kind': kind,
+      if (points != null) 'points': points,
+      if (tSessionMs != null) 't_session_ms': tSessionMs,
+      if (wallUtc != null) 'wall_utc': wallUtc,
+      if (period != null) 'period': period,
+      if (matchClockMs != null) 'match_clock_ms': matchClockMs,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ScoreEventCompanion copyWith({
+    Value<String>? id,
+    Value<String>? assessmentId,
+    Value<int>? seq,
+    Value<String>? team,
+    Value<String>? kind,
+    Value<int>? points,
+    Value<int>? tSessionMs,
+    Value<String>? wallUtc,
+    Value<String?>? period,
+    Value<int>? matchClockMs,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return ScoreEventCompanion(
+      id: id ?? this.id,
+      assessmentId: assessmentId ?? this.assessmentId,
+      seq: seq ?? this.seq,
+      team: team ?? this.team,
+      kind: kind ?? this.kind,
+      points: points ?? this.points,
+      tSessionMs: tSessionMs ?? this.tSessionMs,
+      wallUtc: wallUtc ?? this.wallUtc,
+      period: period ?? this.period,
+      matchClockMs: matchClockMs ?? this.matchClockMs,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (assessmentId.present) {
+      map['assessment_id'] = Variable<String>(assessmentId.value);
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (team.present) {
+      map['team'] = Variable<String>(team.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (points.present) {
+      map['points'] = Variable<int>(points.value);
+    }
+    if (tSessionMs.present) {
+      map['t_session_ms'] = Variable<int>(tSessionMs.value);
+    }
+    if (wallUtc.present) {
+      map['wall_utc'] = Variable<String>(wallUtc.value);
+    }
+    if (period.present) {
+      map['period'] = Variable<String>(period.value);
+    }
+    if (matchClockMs.present) {
+      map['match_clock_ms'] = Variable<int>(matchClockMs.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScoreEventCompanion(')
+          ..write('id: $id, ')
+          ..write('assessmentId: $assessmentId, ')
+          ..write('seq: $seq, ')
+          ..write('team: $team, ')
+          ..write('kind: $kind, ')
+          ..write('points: $points, ')
+          ..write('tSessionMs: $tSessionMs, ')
+          ..write('wallUtc: $wallUtc, ')
+          ..write('period: $period, ')
+          ..write('matchClockMs: $matchClockMs, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class SanctionEvent extends Table
+    with TableInfo<SanctionEvent, SanctionEventData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SanctionEvent(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'PRIMARY KEY',
+  );
+  static const VerificationMeta _assessmentIdMeta = const VerificationMeta(
+    'assessmentId',
+  );
+  late final GeneratedColumn<String> assessmentId = GeneratedColumn<String>(
+    'assessment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES assessment(id)ON DELETE CASCADE',
+  );
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _teamMeta = const VerificationMeta('team');
+  late final GeneratedColumn<String> team = GeneratedColumn<String>(
+    'team',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (team IN (\'HOME\', \'AWAY\'))',
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (kind IN (\'PENALTY\', \'FREE_KICK\', \'YELLOW_CARD\', \'RED_CARD\'))',
+  );
+  static const VerificationMeta _infractionCodeMeta = const VerificationMeta(
+    'infractionCode',
+  );
+  late final GeneratedColumn<String> infractionCode = GeneratedColumn<String>(
+    'infraction_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _infractionCustomMeta = const VerificationMeta(
+    'infractionCustom',
+  );
+  late final GeneratedColumn<String> infractionCustom = GeneratedColumn<String>(
+    'infraction_custom',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _infractionLawRefMeta = const VerificationMeta(
+    'infractionLawRef',
+  );
+  late final GeneratedColumn<String> infractionLawRef = GeneratedColumn<String>(
+    'infraction_law_ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _tSessionMsMeta = const VerificationMeta(
+    'tSessionMs',
+  );
+  late final GeneratedColumn<int> tSessionMs = GeneratedColumn<int>(
+    't_session_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _wallUtcMeta = const VerificationMeta(
+    'wallUtc',
+  );
+  late final GeneratedColumn<String> wallUtc = GeneratedColumn<String>(
+    'wall_utc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
+  late final GeneratedColumn<String> period = GeneratedColumn<String>(
+    'period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'CHECK (period IN (\'H1\', \'H2\', \'ET1\', \'ET2\', \'SD\'))',
+  );
+  static const VerificationMeta _matchClockMsMeta = const VerificationMeta(
+    'matchClockMs',
+  );
+  late final GeneratedColumn<int> matchClockMs = GeneratedColumn<int>(
+    'match_clock_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (status IN (\'ACTIVE\', \'VOID\'))',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    assessmentId,
+    seq,
+    team,
+    kind,
+    infractionCode,
+    infractionCustom,
+    infractionLawRef,
+    tSessionMs,
+    wallUtc,
+    period,
+    matchClockMs,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sanction_event';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SanctionEventData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('assessment_id')) {
+      context.handle(
+        _assessmentIdMeta,
+        assessmentId.isAcceptableOrUnknown(
+          data['assessment_id']!,
+          _assessmentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_assessmentIdMeta);
+    }
+    if (data.containsKey('seq')) {
+      context.handle(
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seqMeta);
+    }
+    if (data.containsKey('team')) {
+      context.handle(
+        _teamMeta,
+        team.isAcceptableOrUnknown(data['team']!, _teamMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_teamMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('infraction_code')) {
+      context.handle(
+        _infractionCodeMeta,
+        infractionCode.isAcceptableOrUnknown(
+          data['infraction_code']!,
+          _infractionCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('infraction_custom')) {
+      context.handle(
+        _infractionCustomMeta,
+        infractionCustom.isAcceptableOrUnknown(
+          data['infraction_custom']!,
+          _infractionCustomMeta,
+        ),
+      );
+    }
+    if (data.containsKey('infraction_law_ref')) {
+      context.handle(
+        _infractionLawRefMeta,
+        infractionLawRef.isAcceptableOrUnknown(
+          data['infraction_law_ref']!,
+          _infractionLawRefMeta,
+        ),
+      );
+    }
+    if (data.containsKey('t_session_ms')) {
+      context.handle(
+        _tSessionMsMeta,
+        tSessionMs.isAcceptableOrUnknown(
+          data['t_session_ms']!,
+          _tSessionMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_tSessionMsMeta);
+    }
+    if (data.containsKey('wall_utc')) {
+      context.handle(
+        _wallUtcMeta,
+        wallUtc.isAcceptableOrUnknown(data['wall_utc']!, _wallUtcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wallUtcMeta);
+    }
+    if (data.containsKey('period')) {
+      context.handle(
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
+      );
+    }
+    if (data.containsKey('match_clock_ms')) {
+      context.handle(
+        _matchClockMsMeta,
+        matchClockMs.isAcceptableOrUnknown(
+          data['match_clock_ms']!,
+          _matchClockMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_matchClockMsMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {assessmentId, seq},
+  ];
+  @override
+  SanctionEventData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SanctionEventData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      assessmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assessment_id'],
+      )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+      team: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}team'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      infractionCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_code'],
+      ),
+      infractionCustom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_custom'],
+      ),
+      infractionLawRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}infraction_law_ref'],
+      ),
+      tSessionMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}t_session_ms'],
+      )!,
+      wallUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wall_utc'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}period'],
+      ),
+      matchClockMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}match_clock_ms'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  SanctionEvent createAlias(String alias) {
+    return SanctionEvent(attachedDatabase, alias);
+  }
+
+  @override
+  bool get isStrict => true;
+  @override
+  List<String> get customConstraints => const [
+    'UNIQUE(assessment_id, seq)',
+    'CHECK(infraction_code IS NOT \'CUSTOM\' OR infraction_custom IS NOT NULL)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SanctionEventData extends DataClass
+    implements Insertable<SanctionEventData> {
+  final String id;
+  final String assessmentId;
+  final int seq;
+  final String team;
+
+  /// equipo infractor
+  final String kind;
+  final String? infractionCode;
+
+  /// NULL = sin especificar
+  final String? infractionCustom;
+  final String? infractionLawRef;
+  final int tSessionMs;
+  final String wallUtc;
+  final String? period;
+  final int matchClockMs;
+  final String status;
+  const SanctionEventData({
+    required this.id,
+    required this.assessmentId,
+    required this.seq,
+    required this.team,
+    required this.kind,
+    this.infractionCode,
+    this.infractionCustom,
+    this.infractionLawRef,
+    required this.tSessionMs,
+    required this.wallUtc,
+    this.period,
+    required this.matchClockMs,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['assessment_id'] = Variable<String>(assessmentId);
+    map['seq'] = Variable<int>(seq);
+    map['team'] = Variable<String>(team);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || infractionCode != null) {
+      map['infraction_code'] = Variable<String>(infractionCode);
+    }
+    if (!nullToAbsent || infractionCustom != null) {
+      map['infraction_custom'] = Variable<String>(infractionCustom);
+    }
+    if (!nullToAbsent || infractionLawRef != null) {
+      map['infraction_law_ref'] = Variable<String>(infractionLawRef);
+    }
+    map['t_session_ms'] = Variable<int>(tSessionMs);
+    map['wall_utc'] = Variable<String>(wallUtc);
+    if (!nullToAbsent || period != null) {
+      map['period'] = Variable<String>(period);
+    }
+    map['match_clock_ms'] = Variable<int>(matchClockMs);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  SanctionEventCompanion toCompanion(bool nullToAbsent) {
+    return SanctionEventCompanion(
+      id: Value(id),
+      assessmentId: Value(assessmentId),
+      seq: Value(seq),
+      team: Value(team),
+      kind: Value(kind),
+      infractionCode: infractionCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionCode),
+      infractionCustom: infractionCustom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionCustom),
+      infractionLawRef: infractionLawRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(infractionLawRef),
+      tSessionMs: Value(tSessionMs),
+      wallUtc: Value(wallUtc),
+      period: period == null && nullToAbsent
+          ? const Value.absent()
+          : Value(period),
+      matchClockMs: Value(matchClockMs),
+      status: Value(status),
+    );
+  }
+
+  factory SanctionEventData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SanctionEventData(
+      id: serializer.fromJson<String>(json['id']),
+      assessmentId: serializer.fromJson<String>(json['assessment_id']),
+      seq: serializer.fromJson<int>(json['seq']),
+      team: serializer.fromJson<String>(json['team']),
+      kind: serializer.fromJson<String>(json['kind']),
+      infractionCode: serializer.fromJson<String?>(json['infraction_code']),
+      infractionCustom: serializer.fromJson<String?>(json['infraction_custom']),
+      infractionLawRef: serializer.fromJson<String?>(
+        json['infraction_law_ref'],
+      ),
+      tSessionMs: serializer.fromJson<int>(json['t_session_ms']),
+      wallUtc: serializer.fromJson<String>(json['wall_utc']),
+      period: serializer.fromJson<String?>(json['period']),
+      matchClockMs: serializer.fromJson<int>(json['match_clock_ms']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'assessment_id': serializer.toJson<String>(assessmentId),
+      'seq': serializer.toJson<int>(seq),
+      'team': serializer.toJson<String>(team),
+      'kind': serializer.toJson<String>(kind),
+      'infraction_code': serializer.toJson<String?>(infractionCode),
+      'infraction_custom': serializer.toJson<String?>(infractionCustom),
+      'infraction_law_ref': serializer.toJson<String?>(infractionLawRef),
+      't_session_ms': serializer.toJson<int>(tSessionMs),
+      'wall_utc': serializer.toJson<String>(wallUtc),
+      'period': serializer.toJson<String?>(period),
+      'match_clock_ms': serializer.toJson<int>(matchClockMs),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  SanctionEventData copyWith({
+    String? id,
+    String? assessmentId,
+    int? seq,
+    String? team,
+    String? kind,
+    Value<String?> infractionCode = const Value.absent(),
+    Value<String?> infractionCustom = const Value.absent(),
+    Value<String?> infractionLawRef = const Value.absent(),
+    int? tSessionMs,
+    String? wallUtc,
+    Value<String?> period = const Value.absent(),
+    int? matchClockMs,
+    String? status,
+  }) => SanctionEventData(
+    id: id ?? this.id,
+    assessmentId: assessmentId ?? this.assessmentId,
+    seq: seq ?? this.seq,
+    team: team ?? this.team,
+    kind: kind ?? this.kind,
+    infractionCode: infractionCode.present
+        ? infractionCode.value
+        : this.infractionCode,
+    infractionCustom: infractionCustom.present
+        ? infractionCustom.value
+        : this.infractionCustom,
+    infractionLawRef: infractionLawRef.present
+        ? infractionLawRef.value
+        : this.infractionLawRef,
+    tSessionMs: tSessionMs ?? this.tSessionMs,
+    wallUtc: wallUtc ?? this.wallUtc,
+    period: period.present ? period.value : this.period,
+    matchClockMs: matchClockMs ?? this.matchClockMs,
+    status: status ?? this.status,
+  );
+  SanctionEventData copyWithCompanion(SanctionEventCompanion data) {
+    return SanctionEventData(
+      id: data.id.present ? data.id.value : this.id,
+      assessmentId: data.assessmentId.present
+          ? data.assessmentId.value
+          : this.assessmentId,
+      seq: data.seq.present ? data.seq.value : this.seq,
+      team: data.team.present ? data.team.value : this.team,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      infractionCode: data.infractionCode.present
+          ? data.infractionCode.value
+          : this.infractionCode,
+      infractionCustom: data.infractionCustom.present
+          ? data.infractionCustom.value
+          : this.infractionCustom,
+      infractionLawRef: data.infractionLawRef.present
+          ? data.infractionLawRef.value
+          : this.infractionLawRef,
+      tSessionMs: data.tSessionMs.present
+          ? data.tSessionMs.value
+          : this.tSessionMs,
+      wallUtc: data.wallUtc.present ? data.wallUtc.value : this.wallUtc,
+      period: data.period.present ? data.period.value : this.period,
+      matchClockMs: data.matchClockMs.present
+          ? data.matchClockMs.value
+          : this.matchClockMs,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SanctionEventData(')
+          ..write('id: $id, ')
+          ..write('assessmentId: $assessmentId, ')
+          ..write('seq: $seq, ')
+          ..write('team: $team, ')
+          ..write('kind: $kind, ')
+          ..write('infractionCode: $infractionCode, ')
+          ..write('infractionCustom: $infractionCustom, ')
+          ..write('infractionLawRef: $infractionLawRef, ')
+          ..write('tSessionMs: $tSessionMs, ')
+          ..write('wallUtc: $wallUtc, ')
+          ..write('period: $period, ')
+          ..write('matchClockMs: $matchClockMs, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    assessmentId,
+    seq,
+    team,
+    kind,
+    infractionCode,
+    infractionCustom,
+    infractionLawRef,
+    tSessionMs,
+    wallUtc,
+    period,
+    matchClockMs,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SanctionEventData &&
+          other.id == this.id &&
+          other.assessmentId == this.assessmentId &&
+          other.seq == this.seq &&
+          other.team == this.team &&
+          other.kind == this.kind &&
+          other.infractionCode == this.infractionCode &&
+          other.infractionCustom == this.infractionCustom &&
+          other.infractionLawRef == this.infractionLawRef &&
+          other.tSessionMs == this.tSessionMs &&
+          other.wallUtc == this.wallUtc &&
+          other.period == this.period &&
+          other.matchClockMs == this.matchClockMs &&
+          other.status == this.status);
+}
+
+class SanctionEventCompanion extends UpdateCompanion<SanctionEventData> {
+  final Value<String> id;
+  final Value<String> assessmentId;
+  final Value<int> seq;
+  final Value<String> team;
+  final Value<String> kind;
+  final Value<String?> infractionCode;
+  final Value<String?> infractionCustom;
+  final Value<String?> infractionLawRef;
+  final Value<int> tSessionMs;
+  final Value<String> wallUtc;
+  final Value<String?> period;
+  final Value<int> matchClockMs;
+  final Value<String> status;
+  final Value<int> rowid;
+  const SanctionEventCompanion({
+    this.id = const Value.absent(),
+    this.assessmentId = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.team = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.infractionCode = const Value.absent(),
+    this.infractionCustom = const Value.absent(),
+    this.infractionLawRef = const Value.absent(),
+    this.tSessionMs = const Value.absent(),
+    this.wallUtc = const Value.absent(),
+    this.period = const Value.absent(),
+    this.matchClockMs = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SanctionEventCompanion.insert({
+    required String id,
+    required String assessmentId,
+    required int seq,
+    required String team,
+    required String kind,
+    this.infractionCode = const Value.absent(),
+    this.infractionCustom = const Value.absent(),
+    this.infractionLawRef = const Value.absent(),
+    required int tSessionMs,
+    required String wallUtc,
+    this.period = const Value.absent(),
+    required int matchClockMs,
+    required String status,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       assessmentId = Value(assessmentId),
+       seq = Value(seq),
+       team = Value(team),
+       kind = Value(kind),
+       tSessionMs = Value(tSessionMs),
+       wallUtc = Value(wallUtc),
+       matchClockMs = Value(matchClockMs),
+       status = Value(status);
+  static Insertable<SanctionEventData> custom({
+    Expression<String>? id,
+    Expression<String>? assessmentId,
+    Expression<int>? seq,
+    Expression<String>? team,
+    Expression<String>? kind,
+    Expression<String>? infractionCode,
+    Expression<String>? infractionCustom,
+    Expression<String>? infractionLawRef,
+    Expression<int>? tSessionMs,
+    Expression<String>? wallUtc,
+    Expression<String>? period,
+    Expression<int>? matchClockMs,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (assessmentId != null) 'assessment_id': assessmentId,
+      if (seq != null) 'seq': seq,
+      if (team != null) 'team': team,
+      if (kind != null) 'kind': kind,
+      if (infractionCode != null) 'infraction_code': infractionCode,
+      if (infractionCustom != null) 'infraction_custom': infractionCustom,
+      if (infractionLawRef != null) 'infraction_law_ref': infractionLawRef,
+      if (tSessionMs != null) 't_session_ms': tSessionMs,
+      if (wallUtc != null) 'wall_utc': wallUtc,
+      if (period != null) 'period': period,
+      if (matchClockMs != null) 'match_clock_ms': matchClockMs,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SanctionEventCompanion copyWith({
+    Value<String>? id,
+    Value<String>? assessmentId,
+    Value<int>? seq,
+    Value<String>? team,
+    Value<String>? kind,
+    Value<String?>? infractionCode,
+    Value<String?>? infractionCustom,
+    Value<String?>? infractionLawRef,
+    Value<int>? tSessionMs,
+    Value<String>? wallUtc,
+    Value<String?>? period,
+    Value<int>? matchClockMs,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return SanctionEventCompanion(
+      id: id ?? this.id,
+      assessmentId: assessmentId ?? this.assessmentId,
+      seq: seq ?? this.seq,
+      team: team ?? this.team,
+      kind: kind ?? this.kind,
+      infractionCode: infractionCode ?? this.infractionCode,
+      infractionCustom: infractionCustom ?? this.infractionCustom,
+      infractionLawRef: infractionLawRef ?? this.infractionLawRef,
+      tSessionMs: tSessionMs ?? this.tSessionMs,
+      wallUtc: wallUtc ?? this.wallUtc,
+      period: period ?? this.period,
+      matchClockMs: matchClockMs ?? this.matchClockMs,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (assessmentId.present) {
+      map['assessment_id'] = Variable<String>(assessmentId.value);
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (team.present) {
+      map['team'] = Variable<String>(team.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (infractionCode.present) {
+      map['infraction_code'] = Variable<String>(infractionCode.value);
+    }
+    if (infractionCustom.present) {
+      map['infraction_custom'] = Variable<String>(infractionCustom.value);
+    }
+    if (infractionLawRef.present) {
+      map['infraction_law_ref'] = Variable<String>(infractionLawRef.value);
+    }
+    if (tSessionMs.present) {
+      map['t_session_ms'] = Variable<int>(tSessionMs.value);
+    }
+    if (wallUtc.present) {
+      map['wall_utc'] = Variable<String>(wallUtc.value);
+    }
+    if (period.present) {
+      map['period'] = Variable<String>(period.value);
+    }
+    if (matchClockMs.present) {
+      map['match_clock_ms'] = Variable<int>(matchClockMs.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SanctionEventCompanion(')
+          ..write('id: $id, ')
+          ..write('assessmentId: $assessmentId, ')
+          ..write('seq: $seq, ')
+          ..write('team: $team, ')
+          ..write('kind: $kind, ')
+          ..write('infractionCode: $infractionCode, ')
+          ..write('infractionCustom: $infractionCustom, ')
+          ..write('infractionLawRef: $infractionLawRef, ')
+          ..write('tSessionMs: $tSessionMs, ')
+          ..write('wallUtc: $wallUtc, ')
+          ..write('period: $period, ')
+          ..write('matchClockMs: $matchClockMs, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10073,7 +11726,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final IncidentRevision incidentRevision = IncidentRevision(this);
   late final Trigger incidentAudit = Trigger(
-    'CREATE TRIGGER incident_audit AFTER UPDATE ON incident BEGIN INSERT INTO incident_revision (incident_id, revised_at, previous_json) VALUES (OLD.id, NEW.updated_at, json_object(\'category\', OLD.category, \'criterion_code\', OLD.criterion_code, \'verdict\', OLD.verdict, \'impact\', OLD.impact, \'impact_confirmed\', OLD.impact_confirmed, \'notes\', OLD.notes, \'decision_taken\', json(OLD.decision_taken_json), \'decision_expected\', json(OLD.decision_expected_json), \'match_clock_ms\', OLD.match_clock_ms, \'status\', OLD.status, \'updated_at\', OLD.updated_at));END',
+    'CREATE TRIGGER incident_audit AFTER UPDATE ON incident BEGIN INSERT INTO incident_revision (incident_id, revised_at, previous_json) VALUES (OLD.id, NEW.updated_at, json_object(\'category\', OLD.category, \'criterion_code\', OLD.criterion_code, \'verdict\', OLD.verdict, \'impact\', OLD.impact, \'impact_confirmed\', OLD.impact_confirmed, \'notes\', OLD.notes, \'decision_taken\', json(OLD.decision_taken_json), \'decision_expected\', json(OLD.decision_expected_json), \'match_clock_ms\', OLD.match_clock_ms, \'status\', OLD.status, \'updated_at\', OLD.updated_at, \'infraction_code\', OLD.infraction_code, \'infraction_custom\', OLD.infraction_custom));END',
     'incident_audit',
   );
   late final Trigger incidentLockedAfterFinalize = Trigger(
@@ -10081,6 +11734,40 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'incident_locked_after_finalize',
   );
   late final Attachment attachment = Attachment(this);
+  late final ScoreEvent scoreEvent = ScoreEvent(this);
+  late final SanctionEvent sanctionEvent = SanctionEvent(this);
+  late final Trigger scoreEventVoidOnly = Trigger(
+    'CREATE TRIGGER score_event_void_only BEFORE UPDATE ON score_event WHEN NOT(OLD.status = \'ACTIVE\' AND NEW.status = \'VOID\' AND NEW.team = OLD.team AND NEW.kind = OLD.kind AND NEW.points = OLD.points AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms)BEGIN SELECT RAISE (ABORT, \'MATCH_FACTS_APPEND_ONLY\');END',
+    'score_event_void_only',
+  );
+  late final Trigger sanctionEventVoidOrReason = Trigger(
+    'CREATE TRIGGER sanction_event_void_or_reason BEFORE UPDATE ON sanction_event WHEN NOT(NEW.team = OLD.team AND NEW.kind = OLD.kind AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms AND(NEW.status = OLD.status OR(OLD.status = \'ACTIVE\' AND NEW.status = \'VOID\')))BEGIN SELECT RAISE (ABORT, \'MATCH_FACTS_APPEND_ONLY\');END',
+    'sanction_event_void_or_reason',
+  );
+  late final Trigger scoreEventNoDelete = Trigger(
+    'CREATE TRIGGER score_event_no_delete BEFORE DELETE ON score_event WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL BEGIN SELECT RAISE (ABORT, \'MATCH_FACTS_APPEND_ONLY\');END',
+    'score_event_no_delete',
+  );
+  late final Trigger sanctionEventNoDelete = Trigger(
+    'CREATE TRIGGER sanction_event_no_delete BEFORE DELETE ON sanction_event WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL BEGIN SELECT RAISE (ABORT, \'MATCH_FACTS_APPEND_ONLY\');END',
+    'sanction_event_no_delete',
+  );
+  late final Trigger scoreEventLockedInsert = Trigger(
+    'CREATE TRIGGER score_event_locked_insert BEFORE INSERT ON score_event WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN (\'FINALIZED\', \'ARCHIVED\') BEGIN SELECT RAISE (ABORT, \'ASSESSMENT_LOCKED\');END',
+    'score_event_locked_insert',
+  );
+  late final Trigger scoreEventLockedUpdate = Trigger(
+    'CREATE TRIGGER score_event_locked_update BEFORE UPDATE ON score_event WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN (\'FINALIZED\', \'ARCHIVED\') BEGIN SELECT RAISE (ABORT, \'ASSESSMENT_LOCKED\');END',
+    'score_event_locked_update',
+  );
+  late final Trigger sanctionEventLockedInsert = Trigger(
+    'CREATE TRIGGER sanction_event_locked_insert BEFORE INSERT ON sanction_event WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN (\'FINALIZED\', \'ARCHIVED\') BEGIN SELECT RAISE (ABORT, \'ASSESSMENT_LOCKED\');END',
+    'sanction_event_locked_insert',
+  );
+  late final Trigger sanctionEventLockedUpdate = Trigger(
+    'CREATE TRIGGER sanction_event_locked_update BEFORE UPDATE ON sanction_event WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN (\'FINALIZED\', \'ARCHIVED\') BEGIN SELECT RAISE (ABORT, \'ASSESSMENT_LOCKED\');END',
+    'sanction_event_locked_update',
+  );
   late final Report report = Report(this);
   late final Trigger reportFinalizedImmutable = Trigger(
     'CREATE TRIGGER report_finalized_immutable BEFORE UPDATE ON report WHEN OLD.status = \'FINALIZED\' AND NOT(NEW.status = \'SUPERSEDED\' AND NEW.content_hash IS OLD.content_hash AND NEW.canonical_json IS OLD.canonical_json AND NEW.overall_score IS OLD.overall_score AND NEW.band IS OLD.band AND NEW.summary IS OLD.summary)BEGIN SELECT RAISE (ABORT, \'REPORT_LOCKED\');END',
@@ -10123,6 +11810,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     incidentAudit,
     incidentLockedAfterFinalize,
     attachment,
+    scoreEvent,
+    sanctionEvent,
+    scoreEventVoidOnly,
+    sanctionEventVoidOrReason,
+    scoreEventNoDelete,
+    sanctionEventNoDelete,
+    scoreEventLockedInsert,
+    scoreEventLockedUpdate,
+    sanctionEventLockedInsert,
+    sanctionEventLockedUpdate,
     report,
     reportFinalizedImmutable,
     reportSupersededImmutable,
@@ -10205,6 +11902,76 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('attachment', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'assessment',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('score_event', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'assessment',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sanction_event', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'score_event',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sanction_event',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'score_event',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sanction_event',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'score_event',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'score_event',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sanction_event',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sanction_event',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -11623,6 +13390,42 @@ final class $AssessmentReferences
     );
   }
 
+  static MultiTypedResultKey<ScoreEvent, List<ScoreEventData>>
+  _scoreEventRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.scoreEvent,
+    aliasName: 'assessment__id__score_event__assessment_id',
+  );
+
+  $ScoreEventProcessedTableManager get scoreEventRefs {
+    final manager = $ScoreEventTableManager(
+      $_db,
+      $_db.scoreEvent,
+    ).filter((f) => f.assessmentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_scoreEventRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<SanctionEvent, List<SanctionEventData>>
+  _sanctionEventRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sanctionEvent,
+    aliasName: 'assessment__id__sanction_event__assessment_id',
+  );
+
+  $SanctionEventProcessedTableManager get sanctionEventRefs {
+    final manager = $SanctionEventTableManager(
+      $_db,
+      $_db.sanctionEvent,
+    ).filter((f) => f.assessmentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_sanctionEventRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<Report, List<ReportData>> _reportRefsTable(
     _$AppDatabase db,
   ) => MultiTypedResultKey.fromTable(
@@ -11909,6 +13712,56 @@ class $AssessmentFilterComposer extends Composer<_$AppDatabase, Assessment> {
           }) => $IncidentFilterComposer(
             $db: $db,
             $table: $db.incident,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> scoreEventRefs(
+    Expression<bool> Function($ScoreEventFilterComposer f) f,
+  ) {
+    final $ScoreEventFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.scoreEvent,
+      getReferencedColumn: (t) => t.assessmentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $ScoreEventFilterComposer(
+            $db: $db,
+            $table: $db.scoreEvent,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sanctionEventRefs(
+    Expression<bool> Function($SanctionEventFilterComposer f) f,
+  ) {
+    final $SanctionEventFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sanctionEvent,
+      getReferencedColumn: (t) => t.assessmentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SanctionEventFilterComposer(
+            $db: $db,
+            $table: $db.sanctionEvent,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12388,6 +14241,56 @@ class $AssessmentAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> scoreEventRefs<T extends Object>(
+    Expression<T> Function($ScoreEventAnnotationComposer a) f,
+  ) {
+    final $ScoreEventAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.scoreEvent,
+      getReferencedColumn: (t) => t.assessmentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $ScoreEventAnnotationComposer(
+            $db: $db,
+            $table: $db.scoreEvent,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> sanctionEventRefs<T extends Object>(
+    Expression<T> Function($SanctionEventAnnotationComposer a) f,
+  ) {
+    final $SanctionEventAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sanctionEvent,
+      getReferencedColumn: (t) => t.assessmentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SanctionEventAnnotationComposer(
+            $db: $db,
+            $table: $db.sanctionEvent,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> reportRefs<T extends Object>(
     Expression<T> Function($ReportAnnotationComposer a) f,
   ) {
@@ -12459,6 +14362,8 @@ class $AssessmentTableManager
             bool clockEventRefs,
             bool sessionTimeAnchorRefs,
             bool incidentRefs,
+            bool scoreEventRefs,
+            bool sanctionEventRefs,
             bool reportRefs,
             bool exportLogRefs,
           })
@@ -12598,6 +14503,8 @@ class $AssessmentTableManager
                 clockEventRefs = false,
                 sessionTimeAnchorRefs = false,
                 incidentRefs = false,
+                scoreEventRefs = false,
+                sanctionEventRefs = false,
                 reportRefs = false,
                 exportLogRefs = false,
               }) {
@@ -12607,6 +14514,8 @@ class $AssessmentTableManager
                     if (clockEventRefs) db.clockEvent,
                     if (sessionTimeAnchorRefs) db.sessionTimeAnchor,
                     if (incidentRefs) db.incident,
+                    if (scoreEventRefs) db.scoreEvent,
+                    if (sanctionEventRefs) db.sanctionEvent,
                     if (reportRefs) db.report,
                     if (exportLogRefs) db.exportLog,
                   ],
@@ -12721,6 +14630,46 @@ class $AssessmentTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (scoreEventRefs)
+                        await $_getPrefetchedData<
+                          AssessmentData,
+                          Assessment,
+                          ScoreEventData
+                        >(
+                          currentTable: table,
+                          referencedTable: $AssessmentReferences
+                              ._scoreEventRefsTable(db),
+                          managerFromTypedResult: (p0) => $AssessmentReferences(
+                            db,
+                            table,
+                            p0,
+                          ).scoreEventRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.assessmentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (sanctionEventRefs)
+                        await $_getPrefetchedData<
+                          AssessmentData,
+                          Assessment,
+                          SanctionEventData
+                        >(
+                          currentTable: table,
+                          referencedTable: $AssessmentReferences
+                              ._sanctionEventRefsTable(db),
+                          managerFromTypedResult: (p0) => $AssessmentReferences(
+                            db,
+                            table,
+                            p0,
+                          ).sanctionEventRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.assessmentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (reportRefs)
                         await $_getPrefetchedData<
                           AssessmentData,
@@ -12785,6 +14734,8 @@ typedef $AssessmentProcessedTableManager =
         bool clockEventRefs,
         bool sessionTimeAnchorRefs,
         bool incidentRefs,
+        bool scoreEventRefs,
+        bool sanctionEventRefs,
         bool reportRefs,
         bool exportLogRefs,
       })
@@ -13534,6 +15485,9 @@ typedef $IncidentCreateCompanionBuilder = IncidentCompanion Function({
   required String status,
   Value<String?> voidReason,
   required String updatedAt,
+  Value<String?> infractionCode,
+  Value<String?> infractionCustom,
+  Value<String?> infractionLawRef,
   Value<int> rowid,
 });
 typedef $IncidentUpdateCompanionBuilder = IncidentCompanion Function({
@@ -13564,6 +15518,9 @@ typedef $IncidentUpdateCompanionBuilder = IncidentCompanion Function({
   Value<String> status,
   Value<String?> voidReason,
   Value<String> updatedAt,
+  Value<String?> infractionCode,
+  Value<String?> infractionCustom,
+  Value<String?> infractionLawRef,
   Value<int> rowid,
 });
 
@@ -13762,6 +15719,21 @@ class $IncidentFilterComposer extends Composer<_$AppDatabase, Incident> {
 
   ColumnFilters<String> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13977,6 +15949,21 @@ class $IncidentOrderingComposer extends Composer<_$AppDatabase, Incident> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $AssessmentOrderingComposer get assessmentId {
     final $AssessmentOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -14111,6 +16098,21 @@ class $IncidentAnnotationComposer extends Composer<_$AppDatabase, Incident> {
   GeneratedColumn<String> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
+    builder: (column) => column,
+  );
+
   $AssessmentAnnotationComposer get assessmentId {
     final $AssessmentAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -14244,6 +16246,9 @@ class $IncidentTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> voidReason = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
+                Value<String?> infractionCode = const Value.absent(),
+                Value<String?> infractionCustom = const Value.absent(),
+                Value<String?> infractionLawRef = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => IncidentCompanion(
                 id: id,
@@ -14273,6 +16278,9 @@ class $IncidentTableManager
                 status: status,
                 voidReason: voidReason,
                 updatedAt: updatedAt,
+                infractionCode: infractionCode,
+                infractionCustom: infractionCustom,
+                infractionLawRef: infractionLawRef,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -14304,6 +16312,9 @@ class $IncidentTableManager
                 required String status,
                 Value<String?> voidReason = const Value.absent(),
                 required String updatedAt,
+                Value<String?> infractionCode = const Value.absent(),
+                Value<String?> infractionCustom = const Value.absent(),
+                Value<String?> infractionLawRef = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => IncidentCompanion.insert(
                 id: id,
@@ -14333,6 +16344,9 @@ class $IncidentTableManager
                 status: status,
                 voidReason: voidReason,
                 updatedAt: updatedAt,
+                infractionCode: infractionCode,
+                infractionCustom: infractionCustom,
+                infractionLawRef: infractionLawRef,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -15163,6 +17177,910 @@ typedef $AttachmentProcessedTableManager =
       (AttachmentData, $AttachmentReferences),
       AttachmentData,
       PrefetchHooks Function({bool incidentId})
+    >;
+typedef $ScoreEventCreateCompanionBuilder = ScoreEventCompanion Function({
+  required String id,
+  required String assessmentId,
+  required int seq,
+  required String team,
+  required String kind,
+  required int points,
+  required int tSessionMs,
+  required String wallUtc,
+  Value<String?> period,
+  required int matchClockMs,
+  required String status,
+  Value<int> rowid,
+});
+typedef $ScoreEventUpdateCompanionBuilder = ScoreEventCompanion Function({
+  Value<String> id,
+  Value<String> assessmentId,
+  Value<int> seq,
+  Value<String> team,
+  Value<String> kind,
+  Value<int> points,
+  Value<int> tSessionMs,
+  Value<String> wallUtc,
+  Value<String?> period,
+  Value<int> matchClockMs,
+  Value<String> status,
+  Value<int> rowid,
+});
+
+final class $ScoreEventReferences
+    extends BaseReferences<_$AppDatabase, ScoreEvent, ScoreEventData> {
+  $ScoreEventReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static Assessment _assessmentIdTable(_$AppDatabase db) =>
+      db.assessment.createAlias('score_event__assessment_id__assessment__id');
+
+  $AssessmentProcessedTableManager get assessmentId {
+    final $_column = $_itemColumn<String>('assessment_id')!;
+
+    final manager = $AssessmentTableManager(
+      $_db,
+      $_db.assessment,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assessmentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $ScoreEventFilterComposer extends Composer<_$AppDatabase, ScoreEvent> {
+  $ScoreEventFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get team => $composableBuilder(
+    column: $table.team,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get points => $composableBuilder(
+    column: $table.points,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wallUtc => $composableBuilder(
+    column: $table.wallUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $AssessmentFilterComposer get assessmentId {
+    final $AssessmentFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentFilterComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $ScoreEventOrderingComposer extends Composer<_$AppDatabase, ScoreEvent> {
+  $ScoreEventOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get team => $composableBuilder(
+    column: $table.team,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get points => $composableBuilder(
+    column: $table.points,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wallUtc => $composableBuilder(
+    column: $table.wallUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $AssessmentOrderingComposer get assessmentId {
+    final $AssessmentOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentOrderingComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $ScoreEventAnnotationComposer
+    extends Composer<_$AppDatabase, ScoreEvent> {
+  $ScoreEventAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get team =>
+      $composableBuilder(column: $table.team, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get points =>
+      $composableBuilder(column: $table.points, builder: (column) => column);
+
+  GeneratedColumn<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get wallUtc =>
+      $composableBuilder(column: $table.wallUtc, builder: (column) => column);
+
+  GeneratedColumn<String> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
+
+  GeneratedColumn<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  $AssessmentAnnotationComposer get assessmentId {
+    final $AssessmentAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentAnnotationComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $ScoreEventTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          ScoreEvent,
+          ScoreEventData,
+          $ScoreEventFilterComposer,
+          $ScoreEventOrderingComposer,
+          $ScoreEventAnnotationComposer,
+          $ScoreEventCreateCompanionBuilder,
+          $ScoreEventUpdateCompanionBuilder,
+          (ScoreEventData, $ScoreEventReferences),
+          ScoreEventData,
+          PrefetchHooks Function({bool assessmentId})
+        > {
+  $ScoreEventTableManager(_$AppDatabase db, ScoreEvent table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $ScoreEventFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $ScoreEventOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $ScoreEventAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> assessmentId = const Value.absent(),
+                Value<int> seq = const Value.absent(),
+                Value<String> team = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> points = const Value.absent(),
+                Value<int> tSessionMs = const Value.absent(),
+                Value<String> wallUtc = const Value.absent(),
+                Value<String?> period = const Value.absent(),
+                Value<int> matchClockMs = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ScoreEventCompanion(
+                id: id,
+                assessmentId: assessmentId,
+                seq: seq,
+                team: team,
+                kind: kind,
+                points: points,
+                tSessionMs: tSessionMs,
+                wallUtc: wallUtc,
+                period: period,
+                matchClockMs: matchClockMs,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String assessmentId,
+                required int seq,
+                required String team,
+                required String kind,
+                required int points,
+                required int tSessionMs,
+                required String wallUtc,
+                Value<String?> period = const Value.absent(),
+                required int matchClockMs,
+                required String status,
+                Value<int> rowid = const Value.absent(),
+              }) => ScoreEventCompanion.insert(
+                id: id,
+                assessmentId: assessmentId,
+                seq: seq,
+                team: team,
+                kind: kind,
+                points: points,
+                tSessionMs: tSessionMs,
+                wallUtc: wallUtc,
+                period: period,
+                matchClockMs: matchClockMs,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<ScoreEvent, ScoreEventData>(table),
+                  $ScoreEventReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({assessmentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (assessmentId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.assessmentId,
+                        referencedTable: $ScoreEventReferences
+                            ._assessmentIdTable(db),
+                        referencedColumn: $ScoreEventReferences
+                            ._assessmentIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $ScoreEventProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      ScoreEvent,
+      ScoreEventData,
+      $ScoreEventFilterComposer,
+      $ScoreEventOrderingComposer,
+      $ScoreEventAnnotationComposer,
+      $ScoreEventCreateCompanionBuilder,
+      $ScoreEventUpdateCompanionBuilder,
+      (ScoreEventData, $ScoreEventReferences),
+      ScoreEventData,
+      PrefetchHooks Function({bool assessmentId})
+    >;
+typedef $SanctionEventCreateCompanionBuilder = SanctionEventCompanion Function({
+  required String id,
+  required String assessmentId,
+  required int seq,
+  required String team,
+  required String kind,
+  Value<String?> infractionCode,
+  Value<String?> infractionCustom,
+  Value<String?> infractionLawRef,
+  required int tSessionMs,
+  required String wallUtc,
+  Value<String?> period,
+  required int matchClockMs,
+  required String status,
+  Value<int> rowid,
+});
+typedef $SanctionEventUpdateCompanionBuilder = SanctionEventCompanion Function({
+  Value<String> id,
+  Value<String> assessmentId,
+  Value<int> seq,
+  Value<String> team,
+  Value<String> kind,
+  Value<String?> infractionCode,
+  Value<String?> infractionCustom,
+  Value<String?> infractionLawRef,
+  Value<int> tSessionMs,
+  Value<String> wallUtc,
+  Value<String?> period,
+  Value<int> matchClockMs,
+  Value<String> status,
+  Value<int> rowid,
+});
+
+final class $SanctionEventReferences
+    extends BaseReferences<_$AppDatabase, SanctionEvent, SanctionEventData> {
+  $SanctionEventReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static Assessment _assessmentIdTable(_$AppDatabase db) => db.assessment
+      .createAlias('sanction_event__assessment_id__assessment__id');
+
+  $AssessmentProcessedTableManager get assessmentId {
+    final $_column = $_itemColumn<String>('assessment_id')!;
+
+    final manager = $AssessmentTableManager(
+      $_db,
+      $_db.assessment,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assessmentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $SanctionEventFilterComposer
+    extends Composer<_$AppDatabase, SanctionEvent> {
+  $SanctionEventFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get team => $composableBuilder(
+    column: $table.team,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wallUtc => $composableBuilder(
+    column: $table.wallUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $AssessmentFilterComposer get assessmentId {
+    final $AssessmentFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentFilterComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SanctionEventOrderingComposer
+    extends Composer<_$AppDatabase, SanctionEvent> {
+  $SanctionEventOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get team => $composableBuilder(
+    column: $table.team,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wallUtc => $composableBuilder(
+    column: $table.wallUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $AssessmentOrderingComposer get assessmentId {
+    final $AssessmentOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentOrderingComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SanctionEventAnnotationComposer
+    extends Composer<_$AppDatabase, SanctionEvent> {
+  $SanctionEventAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get team =>
+      $composableBuilder(column: $table.team, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get infractionCode => $composableBuilder(
+    column: $table.infractionCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get infractionCustom => $composableBuilder(
+    column: $table.infractionCustom,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get infractionLawRef => $composableBuilder(
+    column: $table.infractionLawRef,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get tSessionMs => $composableBuilder(
+    column: $table.tSessionMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get wallUtc =>
+      $composableBuilder(column: $table.wallUtc, builder: (column) => column);
+
+  GeneratedColumn<String> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
+
+  GeneratedColumn<int> get matchClockMs => $composableBuilder(
+    column: $table.matchClockMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  $AssessmentAnnotationComposer get assessmentId {
+    final $AssessmentAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assessmentId,
+      referencedTable: $db.assessment,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $AssessmentAnnotationComposer(
+            $db: $db,
+            $table: $db.assessment,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SanctionEventTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          SanctionEvent,
+          SanctionEventData,
+          $SanctionEventFilterComposer,
+          $SanctionEventOrderingComposer,
+          $SanctionEventAnnotationComposer,
+          $SanctionEventCreateCompanionBuilder,
+          $SanctionEventUpdateCompanionBuilder,
+          (SanctionEventData, $SanctionEventReferences),
+          SanctionEventData,
+          PrefetchHooks Function({bool assessmentId})
+        > {
+  $SanctionEventTableManager(_$AppDatabase db, SanctionEvent table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SanctionEventFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SanctionEventOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SanctionEventAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> assessmentId = const Value.absent(),
+                Value<int> seq = const Value.absent(),
+                Value<String> team = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> infractionCode = const Value.absent(),
+                Value<String?> infractionCustom = const Value.absent(),
+                Value<String?> infractionLawRef = const Value.absent(),
+                Value<int> tSessionMs = const Value.absent(),
+                Value<String> wallUtc = const Value.absent(),
+                Value<String?> period = const Value.absent(),
+                Value<int> matchClockMs = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SanctionEventCompanion(
+                id: id,
+                assessmentId: assessmentId,
+                seq: seq,
+                team: team,
+                kind: kind,
+                infractionCode: infractionCode,
+                infractionCustom: infractionCustom,
+                infractionLawRef: infractionLawRef,
+                tSessionMs: tSessionMs,
+                wallUtc: wallUtc,
+                period: period,
+                matchClockMs: matchClockMs,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String assessmentId,
+                required int seq,
+                required String team,
+                required String kind,
+                Value<String?> infractionCode = const Value.absent(),
+                Value<String?> infractionCustom = const Value.absent(),
+                Value<String?> infractionLawRef = const Value.absent(),
+                required int tSessionMs,
+                required String wallUtc,
+                Value<String?> period = const Value.absent(),
+                required int matchClockMs,
+                required String status,
+                Value<int> rowid = const Value.absent(),
+              }) => SanctionEventCompanion.insert(
+                id: id,
+                assessmentId: assessmentId,
+                seq: seq,
+                team: team,
+                kind: kind,
+                infractionCode: infractionCode,
+                infractionCustom: infractionCustom,
+                infractionLawRef: infractionLawRef,
+                tSessionMs: tSessionMs,
+                wallUtc: wallUtc,
+                period: period,
+                matchClockMs: matchClockMs,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<SanctionEvent, SanctionEventData>(table),
+                  $SanctionEventReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({assessmentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (assessmentId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.assessmentId,
+                        referencedTable: $SanctionEventReferences
+                            ._assessmentIdTable(db),
+                        referencedColumn: $SanctionEventReferences
+                            ._assessmentIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $SanctionEventProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      SanctionEvent,
+      SanctionEventData,
+      $SanctionEventFilterComposer,
+      $SanctionEventOrderingComposer,
+      $SanctionEventAnnotationComposer,
+      $SanctionEventCreateCompanionBuilder,
+      $SanctionEventUpdateCompanionBuilder,
+      (SanctionEventData, $SanctionEventReferences),
+      SanctionEventData,
+      PrefetchHooks Function({bool assessmentId})
     >;
 typedef $ReportCreateCompanionBuilder = ReportCompanion Function({
   required String assessmentId,
@@ -18033,6 +20951,10 @@ class $AppDatabaseManager {
       $IncidentRevisionTableManager(_db, _db.incidentRevision);
   $AttachmentTableManager get attachment =>
       $AttachmentTableManager(_db, _db.attachment);
+  $ScoreEventTableManager get scoreEvent =>
+      $ScoreEventTableManager(_db, _db.scoreEvent);
+  $SanctionEventTableManager get sanctionEvent =>
+      $SanctionEventTableManager(_db, _db.sanctionEvent);
   $ReportTableManager get report => $ReportTableManager(_db, _db.report);
   $CriterionScoreTableManager get criterionScore =>
       $CriterionScoreTableManager(_db, _db.criterionScore);

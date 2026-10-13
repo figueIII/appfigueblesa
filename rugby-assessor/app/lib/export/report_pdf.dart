@@ -461,7 +461,8 @@ Future<Uint8List> buildReportPdf(
                 pw.Padding(
                   padding: const pw.EdgeInsets.all(3),
                   child: pw.Text(
-                    '${kCategoryLabel[decodeCategory(i['category'] as String)]}\n${criterionName(i['criterionCode'] as String)}',
+                    '${kCategoryLabel[decodeCategory(i['category'] as String)]}\n${criterionName(i['criterionCode'] as String)}'
+                    '${i['infraction'] == null ? '' : '\n${(i['infraction'] as Map)['label']}${(i['infraction'] as Map)['lawRef'] == null ? '' : ' (${(i['infraction'] as Map)['lawRef']})'}'}',
                     style: st(8),
                   ),
                 ),
@@ -478,6 +479,92 @@ Future<Uint8List> buildReportPdf(
               ]),
           ],
         ),
+    ],
+  ];
+
+  // Marcador y disciplina (datos del partido registrados en directo; no forman parte del informe firmado)
+  final stats = doc['matchStats'] as Map?;
+  final statScore = stats?['score'] as Map?;
+  final statSanctions = stats?['sanctions'] as Map?;
+  pw.Widget statTable(List<String> rowLabels, List<int> Function(String side) values) => pw.Table(
+        border: const pw.TableBorder(horizontalInside: pw.BorderSide(color: _rule, width: 0.5), bottom: pw.BorderSide(color: _rule, width: 0.5)),
+        columnWidths: const {0: pw.FlexColumnWidth(2.4), 1: pw.FlexColumnWidth(1), 2: pw.FlexColumnWidth(1)},
+        children: [
+          pw.TableRow(decoration: const pw.BoxDecoration(color: _panel), children: [
+            for (final h in ['', home, away])
+              pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(h, style: st(8, font: fonts.bold, color: _muted))),
+          ]),
+          for (final (i, label) in rowLabels.indexed)
+            pw.TableRow(children: [
+              pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(label, style: st(8.5, font: fonts.medium))),
+              for (final side in ['home', 'away'])
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('${values(side)[i]}', style: st(8.5, font: fonts.bold))),
+            ]),
+        ],
+      );
+  int scoreCount(String side, String kind) =>
+      (statScore!['events'] as List).where((e) => (e as Map)['team'] == side.toUpperCase() && e['kind'] == kind).length;
+  final statsBlock = <pw.Widget>[
+    if (stats != null) ...[
+      sectionTitle('Marcador y disciplina'),
+      pw.Text('Datos del partido registrados en directo por el evaluador. Son contexto: no modifican la evaluación.', style: st(8.5, color: _muted)),
+      pw.SizedBox(height: 6),
+      // Título + tabla en un bloque que no se parte: nunca queda una cabecera huérfana.
+      if (statScore != null)
+        pw.Inseparable(
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+            pw.Text('Marcador: $home ${statScore['home']} – ${statScore['away']} $away', style: st(10, font: fonts.bold)),
+            pw.SizedBox(height: 4),
+            statTable(
+              const ['Ensayos', 'Transformaciones', 'Golpes a palos', 'Drops', 'Puntos'],
+              (side) => [
+                for (final k in const ['TRY', 'CONVERSION', 'PENALTY_GOAL', 'DROP_GOAL']) scoreCount(side, k),
+                statScore[side] as int,
+              ],
+            ),
+            pw.SizedBox(height: 8),
+          ]),
+        ),
+      if (statSanctions != null) ...[
+        pw.Inseparable(
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+            pw.Text('Sanciones del árbitro (contra el equipo infractor)', style: st(10, font: fonts.bold)),
+            pw.SizedBox(height: 4),
+            statTable(
+              const ['Golpes de castigo', 'Golpes francos', 'Tarjetas amarillas', 'Tarjetas rojas'],
+              (side) => [
+                for (final k in const ['PENALTY', 'FREE_KICK', 'YELLOW_CARD', 'RED_CARD'])
+                  ((statSanctions['totals'] as Map)[side] as Map)[k] as int,
+              ],
+            ),
+          ]),
+        ),
+        pw.SizedBox(height: 6),
+        for (final side in const ['home', 'away'])
+          if (((statSanctions['breakdown'] as Map)[side] as List).isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 4),
+              child: pw.RichText(
+                text: pw.TextSpan(children: [
+                  pw.TextSpan(text: 'Golpes de ${side == 'home' ? home : away}: ', style: st(8.5, font: fonts.bold)),
+                  pw.TextSpan(
+                    text: [
+                      for (final r in (statSanctions['breakdown'] as Map)[side] as List)
+                        '${(r as Map)['penalties'] + r['freeKicks']}× ${r['label']}${r['lawRef'] == null ? '' : ' (${r['lawRef']})'}',
+                    ].join(' · '),
+                    style: st(8.5),
+                  ),
+                ]),
+              ),
+            ),
+        for (final e in statSanctions['events'] as List)
+          if ((e as Map)['kind'] == 'YELLOW_CARD' || e['kind'] == 'RED_CARD')
+            pw.Text(
+              '${e['kind'] == 'YELLOW_CARD' ? 'Amarilla' : 'Roja'} · ${e['matchClock']} · ${e['team'] == 'HOME' ? home : away}'
+              ' · ${(e['infraction'] as Map?)?['label'] ?? 'Sin especificar'}',
+              style: st(8.5),
+            ),
+      ],
     ],
   ];
 
@@ -520,7 +607,7 @@ Future<Uint8List> buildReportPdf(
         pw.Text('Página ${ctx.pageNumber} de ${ctx.pagesCount}', style: st(7.5, font: fonts.medium, color: _muted)),
       ]),
     ),
-    build: (ctx) => [...header, ...summary, ...breakdown, ...findings, ...integrityBlock, ...annex],
+    build: (ctx) => [...header, ...summary, ...breakdown, ...findings, ...statsBlock, ...integrityBlock, ...annex],
   ));
   return pdf.save();
 }

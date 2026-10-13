@@ -1,5 +1,7 @@
 // Subconjunto del modelo de dominio (domain/model.ts) que necesita la captura en directo.
 
+import 'laws.dart' show InfractionRef;
+
 enum GameFormat { xv, sevens, tens }
 
 enum PeriodId { h1, h2, et1, et2, sd }
@@ -177,6 +179,7 @@ class Incident {
     this.decisionTaken,
     this.decisionExpected,
     this.notes,
+    this.infraction,
   });
 
   final String id;
@@ -198,6 +201,9 @@ class Incident {
   final Decision? decisionExpected;
   final String? notes;
 
+  /// Ley o infracción concreta de la acción (catálogo o personalizada), sea acierto o error.
+  final InfractionRef? infraction;
+
   bool get needsReview => status != IncidentStatus.voided && verdict == Verdict.pending;
   bool get isVoid => status == IncidentStatus.voided;
 
@@ -214,6 +220,7 @@ class Incident {
     Object? decisionTaken = _keep,
     Object? decisionExpected = _keep,
     Object? notes = _keep,
+    Object? infraction = _keep,
   }) =>
       Incident(
         id: id,
@@ -234,6 +241,7 @@ class Incident {
         decisionTaken: identical(decisionTaken, _keep) ? this.decisionTaken : decisionTaken as Decision?,
         decisionExpected: identical(decisionExpected, _keep) ? this.decisionExpected : decisionExpected as Decision?,
         notes: identical(notes, _keep) ? this.notes : notes as String?,
+        infraction: identical(infraction, _keep) ? this.infraction : infraction as InfractionRef?,
       );
 
   /// Igualdad de contenido editable (para saber si hay cambios sin guardar).
@@ -249,7 +257,8 @@ class Incident {
       o.fieldZone == fieldZone &&
       o.decisionTaken == decisionTaken &&
       o.decisionExpected == decisionExpected &&
-      (o.notes ?? '') == (notes ?? '');
+      (o.notes ?? '') == (notes ?? '') &&
+      o.infraction == infraction;
 }
 
 /// Valores iniciales de un tap (usecases.ts, quickTagDefaults).

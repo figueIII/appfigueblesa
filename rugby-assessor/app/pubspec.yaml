@@ -1,7 +1,7 @@
 name: ref_assess
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.13.5
@@ -26,6 +26,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.1
   build_runner: ^2.16.2
+  sqlite3: ^3.5.2 # tests de migración: base de datos v2 creada sin Drift
 
 flutter:
   uses-material-design: true

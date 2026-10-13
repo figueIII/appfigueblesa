@@ -7,8 +7,11 @@ import '../../../core/design_system/tokens.dart';
 import '../../../domain/clock.dart';
 import '../../../domain/model.dart';
 import '../live_controller.dart';
+import 'discipline.dart';
+import 'scoreboard.dart';
 
-/// Cabecera: reloj grande, estado del periodo, aviso contextual y acción principal del reloj.
+/// Cabecera: marcador, reloj grande, estado del periodo, aviso contextual, acción principal del
+/// reloj y contador de sanciones (GC · GF · tarjetas por equipo).
 /// Lo que cambia cada segundo vive en [LiveClockText], aislado en su propio RepaintBoundary.
 class MatchClockHeader extends StatelessWidget {
   const MatchClockHeader({
@@ -35,12 +38,7 @@ class MatchClockHeader extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                '${controller.homeTeam} – ${controller.awayTeam}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: RefType.caption.copyWith(color: c.onSurfaceMuted),
-              ),
+              child: ScoreboardBar(controller: controller, onOpen: () => showScoreSheet(context, controller)),
             ),
             _IconControl(
               key: const ValueKey('clock-menu'),
@@ -80,6 +78,8 @@ class MatchClockHeader extends StatelessWidget {
         ),
         const SizedBox(height: RefSpace.s),
         _StatusBand(controller: controller, onFixClock: onOpenClockMenu),
+        const SizedBox(height: RefSpace.s),
+        DisciplineBar(controller: controller, onOpen: () => showSanctionsSheet(context, controller)),
         const SizedBox(height: RefSpace.s),
         Semantics(
           liveRegion: true,

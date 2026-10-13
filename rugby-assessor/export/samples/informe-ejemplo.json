@@ -1,10 +1,10 @@
 {
   "format": "rugby-referee-assessment",
-  "formatVersion": "2.0",
+  "formatVersion": "2.1",
   "exportedAt": "2026-10-18T09:30:00.000Z",
   "generator": {
     "app": "RefAssess",
-    "appVersion": "1.0.0",
+    "appVersion": "1.1.0",
     "rubricEngineVersion": "2.0.0"
   },
   "match": {
@@ -396,6 +396,11 @@
       "criterionCode": "A3_TACKLE_RUCK",
       "verdict": "CORRECT",
       "impact": "MEDIUM",
+      "infraction": {
+        "code": "HIGH_TACKLE",
+        "label": "Placaje alto / contacto con la cabeza",
+        "lawRef": "Ley 9.13"
+      },
       "attachments": []
     },
     {
@@ -422,6 +427,11 @@
       },
       "verdict": "MISSED",
       "impact": "MATCH_DEFINING",
+      "infraction": {
+        "code": "SCRUM_COLLAPSING",
+        "label": "Derrumbar la melé",
+        "lawRef": "Ley 19"
+      },
       "notes": "Colapso intencionado del pilar visitante a 5 m de su línea; no sancionado.",
       "attachments": []
     },
@@ -458,6 +468,289 @@
       "attachments": []
     }
   ],
+  "matchStats": {
+    "score": {
+      "home": 24,
+      "away": 19,
+      "events": [
+        {
+          "seq": 1,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "08:00",
+          "period": "H1"
+        },
+        {
+          "seq": 2,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "09:00",
+          "period": "H1"
+        },
+        {
+          "seq": 3,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "15:00",
+          "period": "H1"
+        },
+        {
+          "seq": 4,
+          "team": "AWAY",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "16:00",
+          "period": "H1"
+        },
+        {
+          "seq": 5,
+          "team": "HOME",
+          "kind": "PENALTY_GOAL",
+          "points": 3,
+          "matchClock": "22:00",
+          "period": "H1"
+        },
+        {
+          "seq": 7,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "44:00",
+          "period": "H2"
+        },
+        {
+          "seq": 8,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "51:00",
+          "period": "H2"
+        },
+        {
+          "seq": 9,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "52:00",
+          "period": "H2"
+        },
+        {
+          "seq": 10,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "60:00",
+          "period": "H2"
+        },
+        {
+          "seq": 11,
+          "team": "AWAY",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "61:00",
+          "period": "H2"
+        },
+        {
+          "seq": 12,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "72:00",
+          "period": "H2"
+        },
+        {
+          "seq": 13,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "73:00",
+          "period": "H2"
+        }
+      ]
+    },
+    "sanctions": {
+      "totals": {
+        "home": {
+          "PENALTY": 5,
+          "FREE_KICK": 1,
+          "YELLOW_CARD": 0,
+          "RED_CARD": 0
+        },
+        "away": {
+          "PENALTY": 2,
+          "FREE_KICK": 1,
+          "YELLOW_CARD": 1,
+          "RED_CARD": 0
+        }
+      },
+      "breakdown": {
+        "home": [
+          {
+            "label": "Fuera de juego en ruck / maul",
+            "code": "OFFSIDE_RUCK_MAUL",
+            "lawRef": "Leyes 15 y 16",
+            "penalties": 2,
+            "freeKicks": 1
+          },
+          {
+            "label": "Entrada lateral",
+            "code": "SIDE_ENTRY",
+            "lawRef": "Ley 15",
+            "penalties": 2,
+            "freeKicks": 0
+          },
+          {
+            "label": "Sin especificar",
+            "penalties": 1,
+            "freeKicks": 0
+          }
+        ],
+        "away": [
+          {
+            "label": "Placaje alto / contacto con la cabeza",
+            "code": "HIGH_TACKLE",
+            "lawRef": "Ley 9.13",
+            "penalties": 1,
+            "freeKicks": 0
+          },
+          {
+            "label": "Entrada antes de tiempo",
+            "code": "SCRUM_EARLY_ENGAGEMENT",
+            "lawRef": "Ley 19",
+            "penalties": 0,
+            "freeKicks": 1
+          },
+          {
+            "label": "Avance intencionado",
+            "code": "CUSTOM",
+            "lawRef": "Ley 11",
+            "penalties": 1,
+            "freeKicks": 0
+          }
+        ]
+      },
+      "events": [
+        {
+          "seq": 1,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "05:00",
+          "period": "H1",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 2,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "11:00",
+          "period": "H1",
+          "infraction": {
+            "code": "SIDE_ENTRY",
+            "label": "Entrada lateral",
+            "lawRef": "Ley 15"
+          }
+        },
+        {
+          "seq": 3,
+          "team": "AWAY",
+          "kind": "PENALTY",
+          "matchClock": "12:00",
+          "period": "H1",
+          "infraction": {
+            "code": "HIGH_TACKLE",
+            "label": "Placaje alto / contacto con la cabeza",
+            "lawRef": "Ley 9.13"
+          }
+        },
+        {
+          "seq": 4,
+          "team": "AWAY",
+          "kind": "YELLOW_CARD",
+          "matchClock": "12:00",
+          "period": "H1",
+          "infraction": {
+            "code": "HIGH_TACKLE",
+            "label": "Placaje alto / contacto con la cabeza",
+            "lawRef": "Ley 9.13"
+          }
+        },
+        {
+          "seq": 5,
+          "team": "HOME",
+          "kind": "FREE_KICK",
+          "matchClock": "25:00",
+          "period": "H1",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 6,
+          "team": "AWAY",
+          "kind": "FREE_KICK",
+          "matchClock": "33:00",
+          "period": "H1",
+          "infraction": {
+            "code": "SCRUM_EARLY_ENGAGEMENT",
+            "label": "Entrada antes de tiempo",
+            "lawRef": "Ley 19"
+          }
+        },
+        {
+          "seq": 7,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "47:00",
+          "period": "H2",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 8,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "58:00",
+          "period": "H2",
+          "infraction": {
+            "code": "SIDE_ENTRY",
+            "label": "Entrada lateral",
+            "lawRef": "Ley 15"
+          }
+        },
+        {
+          "seq": 9,
+          "team": "AWAY",
+          "kind": "PENALTY",
+          "matchClock": "66:00",
+          "period": "H2",
+          "infraction": {
+            "code": "CUSTOM",
+            "label": "Avance intencionado",
+            "lawRef": "Ley 11"
+          }
+        },
+        {
+          "seq": 10,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "70:00",
+          "period": "H2"
+        }
+      ]
+    }
+  },
   "integrity": {
     "algorithm": "SHA-256",
     "canonicalization": "sorted-keys-no-whitespace-v1",

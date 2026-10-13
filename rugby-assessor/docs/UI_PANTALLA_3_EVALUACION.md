@@ -79,5 +79,5 @@ Lo único numérico en pantalla son **recuentos y referencias**, no valoraciones
 
 - ~~Exportación a JSON y PDF.~~ Hecha: ver [EXPORTACION.md](EXPORTACION.md).
 - ~~Preparación del partido.~~ Hecha: ver [UI_SETUP_E_INICIO.md](UI_SETUP_E_INICIO.md).
-- **Enmiendas** (versión 2 o posterior, con motivo): backlog v1.1, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v11).
+- **Enmiendas** (versión 2 o posterior, con motivo): backlog v1.2, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v12).
 - Historial por árbitro: sin prioridad asignada.

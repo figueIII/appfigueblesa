@@ -125,7 +125,18 @@ class _ReadyLayout extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 2, child: SingleChildScrollView(child: Column(children: [header, banner, strip]))),
+                // La tira de valoración va fija abajo (es lo que corre prisa: 10 s); si la cabecera
+                // no cabe entera, es ella la que se desplaza.
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(child: SingleChildScrollView(child: Column(children: [header, banner]))),
+                      const SizedBox(height: RefSpace.s),
+                      strip,
+                    ],
+                  ),
+                ),
                 const SizedBox(width: RefSpace.l),
                 Expanded(flex: 3, child: grid),
               ],

@@ -23,7 +23,11 @@
       "const": "rugby-referee-assessment"
     },
     "formatVersion": {
-      "const": "2.0"
+      "enum": [
+        "2.0",
+        "2.1"
+      ],
+      "description": "2.1 añade matchStats (marcador y sanciones) e infraction en las incidencias; un documento 2.0 sigue siendo válido."
     },
     "exportedAt": {
       "type": "string",
@@ -651,6 +655,9 @@
                 }
               }
             }
+          },
+          "infraction": {
+            "$ref": "#/$defs/infraction"
           }
         },
         "allOf": [
@@ -672,6 +679,342 @@
             }
           }
         ]
+      }
+    },
+    "matchStats": {
+      "description": "Datos del partido registrados por el evaluador (no forman parte del informe firmado). Cada bloque solo aparece si se registró algo.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "score": {
+          "type": "object",
+          "required": [
+            "home",
+            "away",
+            "events"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "home": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "away": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "seq",
+                  "team",
+                  "kind",
+                  "points",
+                  "matchClock",
+                  "period"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "team": {
+                    "enum": [
+                      "HOME",
+                      "AWAY"
+                    ]
+                  },
+                  "kind": {
+                    "enum": [
+                      "TRY",
+                      "CONVERSION",
+                      "PENALTY_GOAL",
+                      "DROP_GOAL"
+                    ]
+                  },
+                  "points": {
+                    "enum": [
+                      2,
+                      3,
+                      5
+                    ]
+                  },
+                  "matchClock": {
+                    "type": "string",
+                    "pattern": "^\\d{2,3}:\\d{2}$"
+                  },
+                  "period": {
+                    "enum": [
+                      "H1",
+                      "H2",
+                      "ET1",
+                      "ET2",
+                      "SD",
+                      null
+                    ]
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "TRY"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 5
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "CONVERSION"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 2
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "PENALTY_GOAL",
+                            "DROP_GOAL"
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 3
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "sanctions": {
+          "type": "object",
+          "required": [
+            "totals",
+            "breakdown",
+            "events"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "totals": {
+              "type": "object",
+              "required": [
+                "home",
+                "away"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "home": {
+                  "type": "object",
+                  "required": [
+                    "PENALTY",
+                    "FREE_KICK",
+                    "YELLOW_CARD",
+                    "RED_CARD"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "PENALTY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "FREE_KICK": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "YELLOW_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "RED_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "away": {
+                  "type": "object",
+                  "required": [
+                    "PENALTY",
+                    "FREE_KICK",
+                    "YELLOW_CARD",
+                    "RED_CARD"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "PENALTY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "FREE_KICK": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "YELLOW_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "RED_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "breakdown": {
+              "type": "object",
+              "required": [
+                "home",
+                "away"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "home": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "penalties",
+                      "freeKicks"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "lawRef": {
+                        "type": "string"
+                      },
+                      "penalties": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "freeKicks": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "away": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "penalties",
+                      "freeKicks"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "lawRef": {
+                        "type": "string"
+                      },
+                      "penalties": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "freeKicks": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "seq",
+                  "team",
+                  "kind",
+                  "matchClock",
+                  "period"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "team": {
+                    "enum": [
+                      "HOME",
+                      "AWAY"
+                    ]
+                  },
+                  "kind": {
+                    "enum": [
+                      "PENALTY",
+                      "FREE_KICK",
+                      "YELLOW_CARD",
+                      "RED_CARD"
+                    ]
+                  },
+                  "matchClock": {
+                    "type": "string",
+                    "pattern": "^\\d{2,3}:\\d{2}$"
+                  },
+                  "period": {
+                    "enum": [
+                      "H1",
+                      "H2",
+                      "ET1",
+                      "ET2",
+                      "SD",
+                      null
+                    ]
+                  },
+                  "infraction": {
+                    "$ref": "#/$defs/infraction"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "integrity": {
@@ -813,6 +1156,27 @@
         "ABOVE",
         null
       ]
+    },
+    "infraction": {
+      "type": "object",
+      "required": [
+        "code",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Código del catálogo de la app, o CUSTOM si es texto libre del evaluador."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lawRef": {
+          "type": "string"
+        }
+      }
     }
   }
 }

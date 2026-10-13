@@ -5,11 +5,13 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:json_schema/json_schema.dart';
 import 'package:ref_assess/core/platform_ports.dart';
-import 'package:ref_assess/data/db/app_database.dart' hide Incident, Finding, ActionPoint, ActionPointReview;
+import 'package:ref_assess/data/db/app_database.dart' hide Incident, Finding, ActionPoint, ActionPointReview, ScoreEvent, SanctionEvent;
 import 'package:ref_assess/data/drift_evaluation_repository.dart';
 import 'package:ref_assess/data/drift_export_repository.dart';
 import 'package:ref_assess/data/drift_live_session_repository.dart';
 import 'package:ref_assess/domain/category_presets.dart';
+import 'package:ref_assess/domain/laws.dart';
+import 'package:ref_assess/domain/match_facts.dart';
 import 'package:ref_assess/domain/model.dart';
 import 'package:ref_assess/domain/report.dart';
 import 'package:ref_assess/domain/rubric.dart';
@@ -26,7 +28,9 @@ class SeqIds implements IdGenerator {
   String next() => '$p-${++n}';
 }
 
-Incident _inc(String a, int minute, IncidentCategory c, Verdict v, ImpactLevel impact, {String? notes, Decision? taken, Decision? expected}) => Incident(
+Incident _inc(String a, int minute, IncidentCategory c, Verdict v, ImpactLevel impact,
+        {String? notes, Decision? taken, Decision? expected, InfractionRef? infraction}) =>
+    Incident(
       id: '$a-inc-$minute',
       assessmentId: a,
       seq: minute,
@@ -50,7 +54,67 @@ Incident _inc(String a, int minute, IncidentCategory c, Verdict v, ImpactLevel i
       notes: notes,
       decisionTaken: taken,
       decisionExpected: expected,
+      infraction: infraction,
     );
+
+/// Marcador 24–19 registrado en directo: local 3 ensayos + 3 transformaciones + 1 golpe a palos;
+/// visitante 3 ensayos + 2 transformaciones (y un drop anulado).
+List<ScoreEvent> _scores(String a) {
+  var seq = 0;
+  ScoreEvent e(TeamSide t, ScoreKind k, int minute, {bool voided = false}) => ScoreEvent(
+        id: '$a-score-${++seq}',
+        assessmentId: a,
+        seq: seq,
+        team: t,
+        kind: k,
+        sessionMs: minute * 60000,
+        wallUtc: DateTime.utc(2026, 10, 17, 15, minute % 60),
+        period: minute < 40 ? PeriodId.h1 : PeriodId.h2,
+        matchClockMs: minute * 60000,
+        voided: voided,
+      );
+  const h = TeamSide.home, w = TeamSide.away;
+  return [
+    e(h, ScoreKind.tryScored, 8), e(h, ScoreKind.conversion, 9),
+    e(w, ScoreKind.tryScored, 15), e(w, ScoreKind.conversion, 16),
+    e(h, ScoreKind.penaltyGoal, 22),
+    e(w, ScoreKind.dropGoal, 30, voided: true),
+    e(w, ScoreKind.tryScored, 44),
+    e(h, ScoreKind.tryScored, 51), e(h, ScoreKind.conversion, 52),
+    e(w, ScoreKind.tryScored, 60), e(w, ScoreKind.conversion, 61),
+    e(h, ScoreKind.tryScored, 72), e(h, ScoreKind.conversion, 73),
+  ];
+}
+
+List<SanctionEvent> _sanctions(String a) {
+  var seq = 0;
+  SanctionEvent e(TeamSide t, SanctionKind k, int minute, [InfractionRef? why]) => SanctionEvent(
+        id: '$a-sanction-${++seq}',
+        assessmentId: a,
+        seq: seq,
+        team: t,
+        kind: k,
+        sessionMs: minute * 60000,
+        wallUtc: DateTime.utc(2026, 10, 17, 15, minute % 60),
+        period: minute < 40 ? PeriodId.h1 : PeriodId.h2,
+        matchClockMs: minute * 60000,
+        infraction: why,
+      );
+  const h = TeamSide.home, w = TeamSide.away;
+  final offside = InfractionRef.catalog('OFFSIDE_RUCK_MAUL');
+  return [
+    e(h, SanctionKind.penalty, 5, offside),
+    e(h, SanctionKind.penalty, 11, InfractionRef.catalog('SIDE_ENTRY')),
+    e(w, SanctionKind.penalty, 12, InfractionRef.catalog('HIGH_TACKLE')),
+    e(w, SanctionKind.yellowCard, 12, InfractionRef.catalog('HIGH_TACKLE')),
+    e(h, SanctionKind.freeKick, 25, offside),
+    e(w, SanctionKind.freeKick, 33, InfractionRef.catalog('SCRUM_EARLY_ENGAGEMENT')),
+    e(h, SanctionKind.penalty, 47, offside),
+    e(h, SanctionKind.penalty, 58, InfractionRef.catalog('SIDE_ENTRY')),
+    e(w, SanctionKind.penalty, 66, InfractionRef.custom('Avance intencionado', lawRef: 'Ley 11')),
+    e(h, SanctionKind.penalty, 70),
+  ];
+}
 
 Future<PdfFonts> testFonts() async {
   ByteData f(String n) => ByteData.sublistView(File('assets/fonts/Roboto-$n.ttf').readAsBytesSync());
@@ -114,9 +178,16 @@ class ExportFixture {
     }
     final live = DriftLiveSessionRepository(db);
     const penaltyAway = Decision(outcomes: [DecisionOutcome.penalty, DecisionOutcome.yellowCard], againstTeam: TeamSide.away, lawRef: '19.10');
+    for (final e in _scores(id)) {
+      await live.insertScoreEvent(e);
+    }
+    for (final e in _sanctions(id)) {
+      await live.insertSanction(e);
+    }
     await live.insertIncident(_inc(id, 30, IncidentCategory.scrum, Verdict.missed, ImpactLevel.matchDefining,
+        infraction: InfractionRef.catalog('SCRUM_COLLAPSING'),
         notes: 'Colapso intencionado del pilar visitante a 5 m de su línea; no sancionado.', taken: const Decision(outcomes: [DecisionOutcome.playOn]), expected: penaltyAway));
-    await live.insertIncident(_inc(id, 12, IncidentCategory.tackle, Verdict.correct, ImpactLevel.medium));
+    await live.insertIncident(_inc(id, 12, IncidentCategory.tackle, Verdict.correct, ImpactLevel.medium, infraction: InfractionRef.catalog('HIGH_TACKLE')));
     await live.insertIncident(_inc(id, 52, IncidentCategory.tryGrounding, Verdict.correct, ImpactLevel.high,
         notes: 'Ensayo bien concedido: buena posición en la zona de ensayo.', taken: const Decision(outcomes: [DecisionOutcome.tryAwarded])));
     await live.insertIncident(_inc(id, 65, IncidentCategory.advantage, Verdict.correct, ImpactLevel.low));

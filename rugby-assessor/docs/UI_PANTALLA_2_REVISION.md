@@ -106,6 +106,6 @@ El botón "Ir a revisión" del directo (tras el final) **vacía primero la cola 
 
 ## 7. Pendiente
 
-- **Corregir el minuto** de una marca (`matchClockOverrideMs`, spec §2.1): backlog v1.1, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v11).
-- **Adjuntos** (nota de voz) en el editor, junto con la nota de voz del directo: backlog v1.1.
+- **Corregir el minuto** de una marca (`matchClockOverrideMs`, spec §2.1): backlog v1.2, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v12).
+- **Adjuntos** (nota de voz) en el editor, junto con la nota de voz del directo: backlog v1.2.
 - ~~Pantalla 3.~~ Hecha: ver [UI_PANTALLA_3_EVALUACION.md](UI_PANTALLA_3_EVALUACION.md).

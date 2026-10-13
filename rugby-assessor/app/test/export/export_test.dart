@@ -65,6 +65,65 @@ void main() {
       expect(r.stdout.toString().trim(), 'OK', reason: '${r.stderr}');
     }, skip: Process.runSync('python3', ['-I', '-c', 'import jsonschema']).exitCode != 0 ? 'sin jsonschema en Python' : false);
 
+    test('formato 2.1: marcador, sanciones con desglose e infracción de cada incidencia', () async {
+      final out = await f.exporter().export(f.firstId, ExportFormat.json);
+      final doc = jsonDecode(out.file.readAsStringSync()) as Map<String, dynamic>;
+      expect(doc['formatVersion'], '2.1');
+      final stats = doc['matchStats'] as Map;
+      final score = stats['score'] as Map;
+      expect([score['home'], score['away']], [24, 19]);
+      expect(doc['match']['finalScore'], {'home': 24, 'away': 19}, reason: 'el resultado del partido es el del marcador en directo');
+      expect((score['events'] as List).length, 12, reason: 'el drop anulado no se exporta');
+      expect((score['events'] as List).first, {'seq': 1, 'team': 'HOME', 'kind': 'TRY', 'points': 5, 'matchClock': '08:00', 'period': 'H1'});
+
+      final sanctions = stats['sanctions'] as Map;
+      expect(sanctions['totals'], {
+        'home': {'PENALTY': 5, 'FREE_KICK': 1, 'YELLOW_CARD': 0, 'RED_CARD': 0},
+        'away': {'PENALTY': 2, 'FREE_KICK': 1, 'YELLOW_CARD': 1, 'RED_CARD': 0},
+      });
+      final home = (sanctions['breakdown'] as Map)['home'] as List;
+      expect([for (final r in home) '${r['penalties'] + r['freeKicks']}× ${r['label']}'],
+          ['3× Fuera de juego en ruck / maul', '2× Entrada lateral', '1× Sin especificar']);
+      expect(home.first, {'label': 'Fuera de juego en ruck / maul', 'code': 'OFFSIDE_RUCK_MAUL', 'lawRef': 'Leyes 15 y 16', 'penalties': 2, 'freeKicks': 1});
+      final away = (sanctions['breakdown'] as Map)['away'] as List;
+      expect(away.last, {'label': 'Avance intencionado', 'code': 'CUSTOM', 'lawRef': 'Ley 11', 'penalties': 1, 'freeKicks': 0});
+      expect(((sanctions['events'] as List).firstWhere((e) => e['kind'] == 'YELLOW_CARD') as Map)['infraction']['code'], 'HIGH_TACKLE');
+
+      final byClock = {for (final i in doc['incidents'] as List) i['matchClock']: i};
+      expect(byClock['30:00']['infraction'], {'code': 'SCRUM_COLLAPSING', 'label': 'Derrumbar la melé', 'lawRef': 'Ley 19'});
+      expect(byClock['12:00']['infraction']['code'], 'HIGH_TACKLE', reason: 'también en las acciones correctas');
+      expect(byClock['52:00'].containsKey('infraction'), isFalse);
+      expect(exportSchema().validate(doc).isValid, isTrue);
+    });
+
+    test('sin registros de marcador ni sanciones, no se exporta matchStats (un 0 afirmaría algo no anotado)', () async {
+      final src = await DriftExportRepository(f.db).loadExportSource(f.firstId);
+      final bare = ExportSource(
+        assessmentId: src.assessmentId, competition: src.competition, category: src.category, kickoffLocal: src.kickoffLocal,
+        kickoffTz: src.kickoffTz, venue: src.venue, homeTeam: src.homeTeam, awayTeam: src.awayTeam, observationMode: src.observationMode,
+        refereeId: src.refereeId, refereeName: src.refereeName, assessorId: src.assessorId, assessorName: src.assessorName,
+        reportVersion: src.reportVersion, reportStatus: src.reportStatus, canonicalJson: src.canonicalJson, contentHash: src.contentHash,
+        incidents: src.incidents,
+      );
+      final doc = buildExportDocument(bare, kDefaultRubric, exportedAt: DateTime.utc(2026), appVersion: 't');
+      expect(doc.containsKey('matchStats'), isFalse);
+      final onlySanctions = buildMatchStats(ExportSource(
+        assessmentId: src.assessmentId, competition: src.competition, category: src.category, kickoffLocal: src.kickoffLocal,
+        kickoffTz: src.kickoffTz, venue: src.venue, homeTeam: src.homeTeam, awayTeam: src.awayTeam, observationMode: src.observationMode,
+        refereeId: src.refereeId, refereeName: src.refereeName, assessorId: src.assessorId, assessorName: src.assessorName,
+        reportVersion: 1, reportStatus: 'FINALIZED', canonicalJson: src.canonicalJson, contentHash: src.contentHash,
+        incidents: const [], sanctions: src.sanctions,
+      ))!;
+      expect(onlySanctions.keys, ['sanctions']);
+      expect(exportSchema().validate(jsonDecode(jsonEncode(doc))).isValid, isTrue);
+    });
+
+    test('un documento 2.0 (sin marcador ni infracciones) sigue siendo válido', () {
+      final doc = jsonDecode(File('../export/example-export.json').readAsStringSync()) as Map<String, dynamic>;
+      expect(doc['formatVersion'], '2.0');
+      expect(exportSchema().validate(doc).isValid, isTrue);
+    });
+
     test('un documento que no cumple el esquema no se exporta', () async {
       final (source, doc) = await f.exporter().buildValidatedDocument(f.firstId);
       (doc['report'] as Map)['band'] = 'STANDARD';
@@ -132,6 +191,11 @@ void main() {
         // Anexo e integridad
         'ANEXO · CRONOLOGÍA DE INCIDENCIAS CLAVE', 'Golpe de castigo +', 'Amarilla (contra', 'ley 19.10', 'No pitada',
         'INTEGRIDAD DEL INFORME', out.reportHash,
+        // Marcador y disciplina
+        'MARCADOR Y DISCIPLINA', 'Marcador: Club Local RC 24 – 19 Visitante RT', 'Transformaciones', 'Golpes de castigo',
+        'Golpes de Club Local RC: 3× Fuera de juego en ruck / maul (Leyes 15 y 16) · 2× Entrada lateral (Ley 15) · 1× Sin especificar',
+        'Amarilla · 12:00 · Visitante RT · Placaje alto / contacto con la cabeza',
+        'Derrumbar la melé', // ley de la incidencia en el anexo (la columna estrecha parte la línea)
         // Pie
         'Informe v1 · Rúbrica RUGBY-XV-BASE 2.0.0 · SHA-256 ${out.reportHash.substring(0, 8)}…${out.reportHash.substring(56)}',
         'Página 1 de $pages', 'Página $pages de $pages',
@@ -156,7 +220,7 @@ void main() {
       for (final v in internal) {
         expect(text, isNot(contains(v)), reason: 'valor interno visible: $v');
       }
-      expect(RegExp(r'\d+[.,]\d+').hasMatch(text.replaceAll(RegExp(r'ley \d+\.\d+'), '')), isFalse, reason: 'ninguna cifra decimal');
+      expect(RegExp(r'\d+[.,]\d+').hasMatch(text.replaceAll(RegExp(r'ley \d+\.\d+', caseSensitive: false), '')), isFalse, reason: 'ninguna cifra decimal');
       expect(text, isNot(contains('%')));
     }, skip: !_hasPdftotext);
 

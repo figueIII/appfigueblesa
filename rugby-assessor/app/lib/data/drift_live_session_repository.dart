@@ -6,6 +6,8 @@ import 'package:drift/drift.dart';
 
 import '../core/platform_ports.dart';
 import '../domain/clock.dart' as d;
+import '../domain/laws.dart' as d;
+import '../domain/match_facts.dart' as d;
 import '../domain/model.dart' as d;
 import 'codecs.dart';
 import 'db/app_database.dart';
@@ -34,6 +36,14 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
           ..where((t) => t.assessmentId.equals(assessmentId))
           ..orderBy([(t) => OrderingTerm.asc(t.seq)]))
         .get();
+    final scores = await (db.select(db.scoreEvent)
+          ..where((t) => t.assessmentId.equals(assessmentId))
+          ..orderBy([(t) => OrderingTerm.asc(t.seq)]))
+        .get();
+    final sanctions = await (db.select(db.sanctionEvent)
+          ..where((t) => t.assessmentId.equals(assessmentId))
+          ..orderBy([(t) => OrderingTerm.asc(t.seq)]))
+        .get();
 
     return LiveSessionSnapshot(
       assessmentId: a.id,
@@ -44,6 +54,37 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
         for (final e in events) d.ClockEvent(seq: e.seq, t: e.tSessionMs, body: decodeClockBody(e.type, e.payloadJson)),
       ],
       incidents: [for (final i in incidents) _toIncident(i)],
+      scores: [
+        for (final e in scores)
+          d.ScoreEvent(
+            id: e.id,
+            assessmentId: e.assessmentId,
+            seq: e.seq,
+            team: decodeTeam(e.team),
+            kind: decodeScoreKind(e.kind),
+            sessionMs: e.tSessionMs,
+            wallUtc: DateTime.parse(e.wallUtc),
+            period: e.period == null ? null : decodePeriod(e.period!),
+            matchClockMs: e.matchClockMs,
+            voided: e.status == 'VOID',
+          ),
+      ],
+      sanctions: [
+        for (final e in sanctions)
+          d.SanctionEvent(
+            id: e.id,
+            assessmentId: e.assessmentId,
+            seq: e.seq,
+            team: decodeTeam(e.team),
+            kind: decodeSanctionKind(e.kind),
+            sessionMs: e.tSessionMs,
+            wallUtc: DateTime.parse(e.wallUtc),
+            period: e.period == null ? null : decodePeriod(e.period!),
+            matchClockMs: e.matchClockMs,
+            infraction: d.InfractionRef.decode(e.infractionCode, e.infractionCustom, e.infractionLawRef),
+            voided: e.status == 'VOID',
+          ),
+      ],
     );
   }
 
@@ -73,6 +114,7 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
         decisionTaken: decodeDecision(i.decisionTakenJson),
         decisionExpected: decodeDecision(i.decisionExpectedJson),
         notes: i.notes,
+        infraction: d.InfractionRef.decode(i.infractionCode, i.infractionCustom, i.infractionLawRef),
       );
 
   // ───────────── Escritura ─────────────
@@ -129,6 +171,9 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
         decisionExpectedJson: Value(encodeDecision(i.decisionExpected)),
         notes: Value(i.notes),
         updatedAt: _iso(i.wallUtc),
+        infractionCode: Value(i.infraction?.code),
+        infractionCustom: Value(i.infraction?.customText),
+        infractionLawRef: Value(i.infraction?.customLawRef),
       ));
 
   @override
@@ -141,9 +186,77 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
       impactConfirmed: Value(i.impactConfirmed ? 1 : 0),
       status: Value(encodeIncidentStatus(i.status)),
       voidReason: Value(i.status == d.IncidentStatus.voided ? 'UNDO' : null),
+      infractionCode: Value(i.infraction?.code),
+      infractionCustom: Value(i.infraction?.customText),
+      infractionLawRef: Value(i.infraction?.customLawRef),
       updatedAt: Value(_nowIso()),
     ));
     if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');
+  }
+
+  // ───────────── Marcador y sanciones ─────────────
+
+  /// Recalcula el resultado del partido a partir de los tantos activos (misma transacción).
+  Future<void> _refreshFinalScore(String assessmentId) => db.customStatement(
+        'UPDATE assessment SET '
+        "final_score_home = (SELECT COALESCE(SUM(points), 0) FROM score_event WHERE assessment_id = ?1 AND team = 'HOME' AND status = 'ACTIVE'), "
+        "final_score_away = (SELECT COALESCE(SUM(points), 0) FROM score_event WHERE assessment_id = ?1 AND team = 'AWAY' AND status = 'ACTIVE'), "
+        'updated_at = ?2 WHERE id = ?1',
+        [assessmentId, _nowIso()],
+      );
+
+  @override
+  Future<void> insertScoreEvent(d.ScoreEvent e) => db.transaction(() async {
+        await db.into(db.scoreEvent).insert(ScoreEventCompanion.insert(
+              id: e.id,
+              assessmentId: e.assessmentId,
+              seq: e.seq,
+              team: encodeTeam(e.team),
+              kind: encodeScoreKind(e.kind),
+              points: e.points,
+              tSessionMs: e.sessionMs,
+              wallUtc: _iso(e.wallUtc),
+              period: Value(e.period == null ? null : encodePeriod(e.period!)),
+              matchClockMs: e.matchClockMs,
+              status: e.voided ? 'VOID' : 'ACTIVE',
+            ));
+        await _refreshFinalScore(e.assessmentId);
+      });
+
+  @override
+  Future<void> voidScoreEvent(d.ScoreEvent e) => db.transaction(() async {
+        final n = await (db.update(db.scoreEvent)..where((t) => t.id.equals(e.id)))
+            .write(const ScoreEventCompanion(status: Value('VOID')));
+        if (n != 1) throw StateError('SCORE_EVENT_NOT_FOUND: ${e.id}');
+        await _refreshFinalScore(e.assessmentId);
+      });
+
+  @override
+  Future<void> insertSanction(d.SanctionEvent e) => db.into(db.sanctionEvent).insert(SanctionEventCompanion.insert(
+        id: e.id,
+        assessmentId: e.assessmentId,
+        seq: e.seq,
+        team: encodeTeam(e.team),
+        kind: encodeSanctionKind(e.kind),
+        infractionCode: Value(e.infraction?.code),
+        infractionCustom: Value(e.infraction?.customText),
+        infractionLawRef: Value(e.infraction?.customLawRef),
+        tSessionMs: e.sessionMs,
+        wallUtc: _iso(e.wallUtc),
+        period: Value(e.period == null ? null : encodePeriod(e.period!)),
+        matchClockMs: e.matchClockMs,
+        status: e.voided ? 'VOID' : 'ACTIVE',
+      ));
+
+  @override
+  Future<void> updateSanction(d.SanctionEvent e) async {
+    final n = await (db.update(db.sanctionEvent)..where((t) => t.id.equals(e.id))).write(SanctionEventCompanion(
+      status: Value(e.voided ? 'VOID' : 'ACTIVE'),
+      infractionCode: Value(e.infraction?.code),
+      infractionCustom: Value(e.infraction?.customText),
+      infractionLawRef: Value(e.infraction?.customLawRef),
+    ));
+    if (n != 1) throw StateError('SANCTION_NOT_FOUND: ${e.id}');
   }
 
   // ───────────── Revisión post-partido ─────────────
@@ -170,6 +283,9 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
       decisionExpectedJson: Value(encodeDecision(i.decisionExpected)),
       notes: Value(notes == null || notes.isEmpty ? null : notes),
       status: Value(encodeIncidentStatus(i.status)),
+      infractionCode: Value(i.infraction?.code),
+      infractionCustom: Value(i.infraction?.customText),
+      infractionLawRef: Value(i.infraction?.customLawRef),
       updatedAt: Value(_nowIso()),
     ));
     if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');
@@ -209,9 +325,13 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
       ' SELECT t_session_ms AS t, wall_utc AS w FROM clock_event WHERE assessment_id = ?1'
       ' UNION ALL'
       ' SELECT t_session_ms AS t, wall_utc AS w FROM incident WHERE assessment_id = ?1'
+      ' UNION ALL'
+      ' SELECT t_session_ms AS t, wall_utc AS w FROM score_event WHERE assessment_id = ?1'
+      ' UNION ALL'
+      ' SELECT t_session_ms AS t, wall_utc AS w FROM sanction_event WHERE assessment_id = ?1'
       ') ORDER BY t DESC LIMIT 1',
       variables: [Variable.withString(assessmentId)],
-      readsFrom: {db.clockEvent, db.incident},
+      readsFrom: {db.clockEvent, db.incident, db.scoreEvent, db.sanctionEvent},
     ).getSingleOrNull();
     return row == null ? null : TimePoint(row.read<int>('t'), DateTime.parse(row.read<String>('w')));
   }

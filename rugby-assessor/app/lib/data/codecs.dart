@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import '../domain/clock.dart';
+import '../domain/match_facts.dart';
 import '../domain/model.dart';
 
 String _snake(String camel) => camel.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]}').toUpperCase();
@@ -159,3 +160,23 @@ Decision? decodeDecision(String? json) {
     description: m['description'] as String?,
   );
 }
+
+// ───────────── Hechos del partido (schema v3) ─────────────
+
+const _scoreKindCodes = {
+  ScoreKind.tryScored: 'TRY',
+  ScoreKind.conversion: 'CONVERSION',
+  ScoreKind.penaltyGoal: 'PENALTY_GOAL',
+  ScoreKind.dropGoal: 'DROP_GOAL',
+};
+String encodeScoreKind(ScoreKind k) => _scoreKindCodes[k]!;
+ScoreKind decodeScoreKind(String s) => _byCode(ScoreKind.values, s, encodeScoreKind);
+
+const _sanctionKindCodes = {
+  SanctionKind.penalty: 'PENALTY',
+  SanctionKind.freeKick: 'FREE_KICK',
+  SanctionKind.yellowCard: 'YELLOW_CARD',
+  SanctionKind.redCard: 'RED_CARD',
+};
+String encodeSanctionKind(SanctionKind k) => _sanctionKindCodes[k]!;
+SanctionKind decodeSanctionKind(String s) => _byCode(SanctionKind.values, s, encodeSanctionKind);

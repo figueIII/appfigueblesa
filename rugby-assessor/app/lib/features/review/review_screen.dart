@@ -209,6 +209,7 @@ class _IncidentCard extends StatelessWidget {
       label: [
         if (position != null) 'Pendiente $position',
         '$minute, ${kCategoryLabel[i.category]}',
+        if (i.infraction != null) i.infraction!.label,
         verdictLabel(i.verdict),
         'impacto ${impactLabel(i.impact).toLowerCase()}${i.impactConfirmed ? '' : ' sin confirmar'}',
         ...issues.map(issueLabel),
@@ -248,6 +249,13 @@ class _IncidentCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(kCategoryLabel[i.category]!, style: RefType.control.copyWith(color: c.onSurface)),
+                      if (i.infraction != null)
+                        Text(
+                          '${i.infraction!.label}${i.infraction!.lawRef == null ? '' : ' · ${i.infraction!.lawRef}'}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RefType.caption.copyWith(color: c.onSurface),
+                        ),
                       const SizedBox(height: RefSpace.xs),
                       Wrap(
                         spacing: RefSpace.xs,

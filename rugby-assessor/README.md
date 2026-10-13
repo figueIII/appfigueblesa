@@ -1,12 +1,12 @@
 # RefAssess · Evaluación de árbitros de rugby
 
 App móvil, sin conexión, para que un evaluador valore al **árbitro principal** de un partido de rugby (XV y 7s):
-- **Captura en directo** de un toque por incidencia.
+- **Captura en directo** de un toque por incidencia, con **marcador**, **contador de sanciones** (GC, GF y tarjetas por equipo) y la **ley** de cada acción.
 - **Revisión** después del partido.
 - **Evaluación por bandas cualitativas**: Por debajo, En el nivel o Por encima del nivel, sin notas numéricas visibles.
 - **Informe firmado** (SHA-256) que se exporta en PDF y JSON.
 
-**Estado:** MVP **1.0** congelado para pruebas de campo. Ver [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
+**Estado:** versión **1.1** (marcador, sanciones y leyes sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
 
 ## Estructura
 
@@ -18,8 +18,8 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 | `app/scripts/build_apk.sh` | **Compilar el APK** (debug o release, con instalación opcional por adb). |
 | `docs/` | Especificación, una guía por pantalla, exportación y prueba de campo. |
 | `domain/`, `test/` | Especificación ejecutable en TypeScript (modelo, reloj, puntuación, rúbrica) y sus tests. |
-| `persistence/schema.sql` | Esquema SQLite de referencia (v2), del que se copia `app/lib/data/db/schema.drift`. |
-| `export/` | Esquema JSON del informe (2.0), ejemplo y muestras reales en `export/samples/`. |
+| `persistence/schema.sql` | Esquema SQLite de referencia (v3), del que se copia `app/lib/data/db/schema.drift`. |
+| `export/` | Esquema JSON del informe (2.1), ejemplo y muestras reales en `export/samples/`. |
 | `scripts/` | Generación de `rubric_default.dart` a partir de la rúbrica TypeScript. |
 
 ## Documentación
@@ -30,7 +30,8 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 4. [Pantalla 2 · Revisión](docs/UI_PANTALLA_2_REVISION.md)
 5. [Pantalla 3 · Evaluación](docs/UI_PANTALLA_3_EVALUACION.md)
 6. [Exportación JSON/PDF](docs/EXPORTACION.md)
-7. [Prueba de campo y backlog v1.1](docs/PRUEBAS_DE_CAMPO.md)
+7. [Marcador, sanciones y leyes](docs/MARCADOR_SANCIONES_LEYES.md)
+8. [Prueba de campo y backlog v1.2](docs/PRUEBAS_DE_CAMPO.md)
 
 ## Comandos
 

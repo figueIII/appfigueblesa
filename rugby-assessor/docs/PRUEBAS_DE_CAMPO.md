@@ -1,6 +1,6 @@
-# Prueba de campo del MVP 1.0 y backlog v1.1
+# Prueba de campo y backlog v1.2
 
-> **Estado:** MVP 1.0 **congelado** para pruebas de campo. A partir de aquí solo se corrigen fallos que aparezcan en la prueba; las funciones nuevas van al backlog.
+> **Estado:** versión **1.1** para pruebas de campo: el MVP 1.0 más marcador, sanciones y leyes ([MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md)). El APK 1.1 se instala encima del 1.0 y conserva los partidos guardados.
 
 ## 1. Antes del partido
 
@@ -25,10 +25,15 @@
 | 7 | Pantalla encendida | Dejar el directo abierto sin tocar 5 min. | La pantalla no se apaga en el directo y sí fuera de él. |
 | 8 | Exportación | En el informe cerrado: Compartir PDF, luego PDF + JSON por WhatsApp, Telegram o correo. | Llegan los archivos. El PDF abre en el móvil del receptor y el texto incluye la huella SHA-256. |
 | 9 | Seguimiento | Segundo partido del mismo árbitro (escrito con otra mayúscula o sin tilde). | La evaluación muestra la recomendación del informe anterior. |
+| 10 | Marcador | Anotar ensayo + transformación, golpe a palos y drop de ambos equipos; deshacer uno. | El marcador de la cabecera coincide con el real y el resultado aparece en el PDF sin teclearlo. |
+| 11 | Sanciones | Registrar cada GC/GF con su motivo durante una parte; probar "Sin especificar" y completarlo en el descanso. | El contador por equipo cuadra con lo pitado y el desglose ("3× Fuera de juego…") es legible a pleno sol. |
+| 12 | Ley de una marca | Tras marcar un ruck, pulsar **Ley** y elegir la infracción antes de que pasen los 10 s (y una vez después). | La ley queda en la marca y se ve en la cola de revisión. |
 
 **Anota por cada fallo:** número de prueba, modelo de móvil y versión de Android, minuto del partido y qué se veía (una captura si es posible).
 
-## 3. Backlog v1.1
+## 3. Backlog v1.2
+
+La versión 1.1 la ocupa el marcador con sanciones y leyes; estos tres puntos siguen pendientes, con el mismo orden:
 
 | Prioridad | Función | Punto de partida |
 |---|---|---|

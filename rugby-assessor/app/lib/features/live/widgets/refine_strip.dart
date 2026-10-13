@@ -5,13 +5,15 @@ import 'package:flutter/material.dart';
 import '../../../core/design_system/theme.dart';
 import '../../../core/design_system/tokens.dart';
 import '../../../domain/clock.dart';
+import '../../../domain/laws.dart';
 import '../../../domain/model.dart';
+import '../../common/infraction_picker.dart';
 import '../live_controller.dart';
 import '../live_labels.dart';
 
 /// Tira inferior de altura FIJA (no desplaza la rejilla). Tres estados:
 ///  · vacío: indica qué hacer;
-///  · valoración (10 s tras una marca): ✓ Bien / ✗ Error / Deshacer, con cuenta atrás;
+///  · valoración (10 s tras una marca): ✓ Bien / ✗ Error / Ley / Deshacer, con cuenta atrás;
 ///  · reposo: resumen de la última marca.
 /// Valorar es opcional: si no se toca nada, la marca queda "Por revisar".
 class RefineStrip extends StatefulWidget {
@@ -98,7 +100,10 @@ class _LastSummary extends StatelessWidget {
         const SizedBox(width: RefSpace.m),
         Expanded(
           child: Text(
-            voided ? 'Anulada: ${_incidentTitle(incident)}' : 'Última: ${_incidentTitle(incident)} · ${polarityLabel(incident.polarity)}',
+            voided
+                ? 'Anulada: ${_incidentTitle(incident)}'
+                : 'Última: ${_incidentTitle(incident)} · ${polarityLabel(incident.polarity)}'
+                    '${incident.infraction == null ? '' : ' · ${incident.infraction!.label}'}',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: RefType.body.copyWith(
@@ -117,6 +122,19 @@ class _RefineControls extends StatelessWidget {
   final LiveController controller;
   final Incident incident;
   final int remainingMs;
+
+  /// La ley se asigna a ESTA marca aunque la ventana de 10 s termine mientras se elige.
+  Future<void> _pickLaw(BuildContext context) async {
+    final id = incident.id;
+    final choice = await showInfractionPicker(
+      context,
+      title: 'Ley · ${_incidentTitle(incident)}',
+      subtitle: 'Vale tanto si la decisión fue correcta como si fue un error.',
+      groups: lawGroupsFor(incident.category),
+      current: incident.infraction,
+    );
+    if (choice != null) controller.setIncidentInfraction(id, choice.value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +204,20 @@ class _RefineControls extends StatelessWidget {
               const SizedBox(width: RefTouch.gap),
               Expanded(
                 child: _StripButton(
+                  key: const ValueKey('refine-law'),
+                  label: 'Ley',
+                  icon: Icons.menu_book_rounded,
+                  selected: incident.infraction != null,
+                  bg: c.surface,
+                  fg: c.onSurface,
+                  outline: c.outline,
+                  semanticsLabel: incident.infraction == null ? 'Asignar ley' : 'Ley: ${incident.infraction!.label}',
+                  onPressed: () => _pickLaw(context),
+                ),
+              ),
+              const SizedBox(width: RefTouch.gap),
+              Expanded(
+                child: _StripButton(
                   key: const ValueKey('refine-undo'),
                   label: 'Deshacer',
                   icon: Icons.undo_rounded,
@@ -214,8 +246,10 @@ class _StripButton extends StatelessWidget {
     required this.fg,
     required this.onPressed,
     this.outline,
+    this.semanticsLabel,
   });
 
+  final String? semanticsLabel;
   final String label;
   final IconData icon;
   final bool selected;
@@ -229,6 +263,7 @@ class _StripButton extends StatelessWidget {
     final c = context.refColors;
     return Semantics(
       selected: selected,
+      label: semanticsLabel,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(

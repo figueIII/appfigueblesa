@@ -8,10 +8,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ref_assess/domain/laws.dart';
+import 'package:ref_assess/domain/match_facts.dart';
 import 'package:ref_assess/domain/model.dart';
 import 'package:ref_assess/domain/rubric.dart';
 
 import '../features/live/live_screen_test.dart' show Harness, tile;
+import '../features/live/match_facts_ui_test.dart' as facts;
 import '../features/review/review_screen_test.dart' as review;
 import '../features/evaluation/evaluation_screen_test.dart' as evaluation;
 import '../export/fixture.dart' as exportfx;
@@ -255,5 +258,58 @@ void main() {
       HomeScreen(repository: ListRepository(const []), rubric: kDefaultRubric, onNewMatch: () async {}, onOpenMatch: (_) async {}),
     );
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33_inicio_vacio_light.png'));
+  });
+
+  // ─── Marcador, sanciones y leyes ───
+  Future<void> withFacts(WidgetTester tester, Brightness b) async {
+    final h = await facts.playing(tester, minute: 34, brightness: b);
+    for (final (team, kind) in const [
+      (TeamSide.home, ScoreKind.tryScored),
+      (TeamSide.home, ScoreKind.conversion),
+      (TeamSide.away, ScoreKind.penaltyGoal),
+      (TeamSide.home, ScoreKind.tryScored),
+    ]) {
+      h.controller.addScore(team, kind, t: h.clock.t);
+    }
+    for (final (team, kind, code) in const [
+      (TeamSide.home, SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL'),
+      (TeamSide.home, SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL'),
+      (TeamSide.home, SanctionKind.freeKick, 'OFFSIDE_RUCK_MAUL'),
+      (TeamSide.home, SanctionKind.penalty, 'SIDE_ENTRY'),
+      (TeamSide.home, SanctionKind.penalty, 'NOT_RELEASING'),
+      (TeamSide.home, SanctionKind.yellowCard, 'HIGH_TACKLE'),
+      (TeamSide.away, SanctionKind.penalty, 'HANDS_IN_RUCK'),
+      (TeamSide.away, SanctionKind.freeKick, 'SCRUM_EARLY_ENGAGEMENT'),
+    ]) {
+      h.controller.logSanction(team, kind, t: h.clock.t, infraction: InfractionRef.catalog(code));
+    }
+    await tester.pumpAndSettle();
+  }
+
+  for (final b in Brightness.values) {
+    testWidgets('directo con marcador y sanciones (${b.name})', (tester) async {
+      await withFacts(tester, b);
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/08_marcador_sanciones_${b.name}.png'));
+    });
+  }
+
+  testWidgets('hoja del marcador con la transformación pendiente (light)', (tester) async {
+    await withFacts(tester, Brightness.light);
+    await facts.tapIn(tester, facts.key('scoreboard'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/08_hoja_marcador_light.png'));
+  });
+
+  testWidgets('panel de sanciones con desglose (light)', (tester) async {
+    await withFacts(tester, Brightness.light);
+    await facts.tapIn(tester, facts.key('discipline-bar'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/08_panel_sanciones_light.png'));
+  });
+
+  testWidgets('selector de leyes desde una marca de ruck (light)', (tester) async {
+    await facts.playing(tester);
+    await tester.tap(tile('ruck'));
+    await tester.pump();
+    await facts.tapIn(tester, facts.key('refine-law'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/08_selector_leyes_light.png'));
   });
 }

@@ -35,7 +35,7 @@ class DriftExportRepository implements ExportRepository {
           ..orderBy([(t) => OrderingTerm.desc(t.version)])
           ..limit(1))
         .getSingle();
-    final review = await _live.loadReview(assessmentId);
+    final live = await _live.load(assessmentId);
     return ExportSource(
       assessmentId: a.id,
       competition: a.competition,
@@ -63,7 +63,9 @@ class DriftExportRepository implements ExportRepository {
       reportStatus: report.status,
       canonicalJson: report.canonicalJson,
       contentHash: report.contentHash,
-      incidents: review.incidents,
+      incidents: live.incidents,
+      scores: live.scores,
+      sanctions: live.sanctions,
     );
   }
 

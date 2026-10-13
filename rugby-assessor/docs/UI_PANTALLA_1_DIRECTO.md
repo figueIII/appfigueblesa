@@ -158,8 +158,10 @@ Así se distinguen sin mirar. La skill pide no abusar de la háptica; aquí cada
   - Si no se puede leer, se usa una aproximación (instante de arranque en hora de pared, con ±2 min de tolerancia).
   - Además, si la fuente retrocede, se trata como reinicio aunque el id coincida.
 
+> **v1.1:** la cabecera incluye el **marcador** y el **contador de sanciones**, y la tira de valoración un botón **Ley**. Ver [MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md).
+
 ## 7. Pendiente
 
 1. **Probar en un dispositivo Android e iOS reales** (protocolo en [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md)). En este entorno no hay SDK de Android ni de iOS: lo comprobado es el análisis estático, los tests en el anfitrión (Linux, con la misma FFI `CLOCK_BOOTTIME`) y las capturas. Hay que confirmar en móvil que `/proc/.../boot_id` se puede leer (si no, entra la aproximación) y probar a pleno sol y con guantes.
-2. **Nota de voz** (mantener pulsado → adjuntar a la última marca): backlog v1.1, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v11).
+2. **Nota de voz** (mantener pulsado → adjuntar a la última marca): backlog v1.2, ver [PRUEBAS_DE_CAMPO.md](PRUEBAS_DE_CAMPO.md#3-backlog-v12).
 3. ~~Pantalla de preparación del partido.~~ Hecha: ver [UI_SETUP_E_INICIO.md](UI_SETUP_E_INICIO.md). La app arranca en la lista de partidos.

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ref_assess/core/design_system/theme.dart';
 import 'package:ref_assess/data/live_session_repository.dart';
 import 'package:ref_assess/domain/category_presets.dart';
+import 'package:ref_assess/domain/laws.dart';
 import 'package:ref_assess/domain/model.dart';
 import 'package:ref_assess/features/review/review_controller.dart';
 import 'package:ref_assess/features/review/review_screen.dart';
@@ -179,6 +180,52 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('save-incident')));
     await tester.pumpAndSettle();
     expect(h.stored('ruck').criterionCode, 'D2_POSITIONING');
+  });
+
+  testWidgets('asignar la ley de una acción correcta y verla en la cola', (tester) async {
+    final h = Harness();
+    await h.pump(tester);
+    await tester.tap(card('ruck'));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const ValueKey('verdict-correct')));
+    await tapVisible(tester, find.byKey(const ValueKey('infraction-field')));
+    expect(tester.getTopLeft(find.text('RUCK / SUELO')).dy, lessThan(tester.getTopLeft(find.text('FUERA DE JUEGO')).dy),
+        reason: 'en una marca de ruck, primero las leyes del ruck');
+    final opt = find.byKey(const ValueKey('infraction-SIDE_ENTRY'));
+    await tester.scrollUntilVisible(opt, 200, scrollable: find.byType(Scrollable).last);
+    await tester.pumpAndSettle();
+    await tester.tap(opt);
+    await tester.pumpAndSettle();
+    expect(find.text('Entrada lateral'), findsOneWidget);
+    expect(find.text('Side entry · Ley 15'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-incident')));
+    await tester.pumpAndSettle();
+    expect(h.stored('ruck').infraction, InfractionRef.catalog('SIDE_ENTRY'));
+    // "Guardar y siguiente" abrió la siguiente pendiente: se vuelve a la lista.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Todas (5)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Entrada lateral · Ley 15'), findsOneWidget, reason: 'la tarjeta de la cola muestra la ley');
+  });
+
+  testWidgets('quitar la ley de una marca', (tester) async {
+    final h = Harness([
+      seedIncident('ruck', 1, 12 * min, IncidentCategory.ruck, verdict: Verdict.correct, impact: ImpactLevel.low, polarity: QuickPolarity.positive)
+          .copyWith(infraction: InfractionRef.catalog('HANDS_IN_RUCK')),
+    ]);
+    await h.pump(tester);
+    await tester.tap(find.text('Todas (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(card('ruck'));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const ValueKey('infraction-field')));
+    await tester.tap(find.byKey(const ValueKey('infraction-clear')));
+    await tester.pumpAndSettle();
+    expect(find.text('Elegir ley o infracción'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-incident')));
+    await tester.pumpAndSettle();
+    expect(h.stored('ruck').infraction, isNull);
   });
 
   testWidgets('salir con cambios sin guardar pide confirmación', (tester) async {
