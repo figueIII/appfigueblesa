@@ -14,22 +14,23 @@ export type SessionMs = number;
 
 export type TeamSide = 'HOME' | 'AWAY';
 export type GameFormat = 'XV' | 'SEVENS' | 'TENS';
-export type OfficialRole = 'REFEREE' | 'AR1' | 'AR2' | 'TMO';
 export type PeriodId = 'H1' | 'H2' | 'ET1' | 'ET2' | 'SD';
 
 // ───────────────────────── Catálogos ─────────────────────────
 
 /** Configuración de categoría. Se copia (snapshot) dentro de cada partido: si la federación
- *  cambia la duración de M16 la temporada que viene, los informes antiguos no se alteran. */
+ *  cambia la duración de M16 la temporada que viene, los informes antiguos no se alteran.
+ *  Los valores oficiales están en category-presets.ts. */
 export interface CategoryConfig {
-  code: string;                 // "SENIOR", "M18", "M16", "SEVENS_SENIOR"…
+  code: string;                 // "SM_DHCAT_1_2_3", "M16", "SEVENS"…
   name: string;
+  competitions: string[];       // competiciones que cubre el preset (informativo, para el selector)
   format: GameFormat;
-  periodLengthMin: number;      // 40 (XV senior), 7 (7s)… configurable por federación
-  halfTimeMin: number;
+  periodLengthMin: number;      // duración de cada parte
+  halfTimeMin?: number;         // no fijado por los presets; dato opcional
   extraTime: { periodLengthMin: number; suddenDeath: boolean } | null; // null = no hay prórroga
-  sinBinMin: number;            // 10 (XV), 2 (7s)
-  lawVariations: string[];      // códigos libres: "U18_SCRUM_1.5M", "RED_20MIN_TRIAL"…
+  sinBinMin: number;            // duración de la exclusión temporal
+  lawVariations: string[];      // códigos libres: "RED_20MIN_TRIAL"…
 }
 
 export interface Official {
@@ -54,13 +55,6 @@ export interface TeamRef { name: string; clubCode?: string }
 export type ObservationMode = 'LIVE' | 'VIDEO' | 'LIVE_AND_VIDEO';
 export type MatchDifficulty = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH';
 
-export interface MatchOfficialAssignment {
-  role: OfficialRole;
-  officialId: Id;
-  /** true = este oficial recibe informe en esta evaluación. MVP: solo REFEREE. */
-  assessed: boolean;
-}
-
 export interface MatchMetadata {
   competition: string;
   round?: string;
@@ -69,10 +63,13 @@ export interface MatchMetadata {
   venue: string;
   home: TeamRef;
   away: TeamRef;
-  officials: MatchOfficialAssignment[];
+  /** Único oficial evaluado. La app evalúa EXCLUSIVAMENTE al árbitro principal (decisión R5). */
+  refereeId: Id;
+  /** Asistentes: solo nombre, como dato descriptivo del partido. No se evalúan. */
+  assistants?: { ar1?: string; ar2?: string };
   assessorId: Id;
   observationMode: ObservationMode;
-  difficulty?: MatchDifficulty;       // dato de contexto: NO modifica la nota (ver §2.3)
+  difficulty?: MatchDifficulty;       // SOLO descriptivo: nunca modifica la puntuación (decisión R3)
   conditions?: { weather?: string; pitch?: string };
   finalScore?: { home: number; away: number };
 }
@@ -99,12 +96,22 @@ export type IncidentCategory =
   | 'FOUL_PLAY' | 'CARD' | 'TMO_PROCESS'
   | 'POSITIONING' | 'FITNESS' | 'RUNNING_LINE';
 
-export interface ScoreScale { min: number; max: number; step: number }  // 1–10, paso 0,5
+/** Escala numérica INTERNA del motor. Nunca se muestra al evaluador ni en el informe. */
+export interface ScoreScale { min: number; max: number }   // 1–10
+
+/** Bandas cualitativas: la única cara visible de la evaluación (decisión R2).
+ *  Siempre relativas al nivel del partido evaluado. */
+export type BandCode = 'BELOW' | 'AT' | 'ABOVE';
 
 export interface PerformanceBand {
-  code: string;            // "EXCEPTIONAL", "ABOVE", "STANDARD", "IMPROVE", "BELOW"
-  label: string;
-  minInclusive: number;    // sobre la nota global redondeada a 1 decimal
+  code: BandCode;
+  label: string;            // "Por debajo del nivel", "En el nivel", "Por encima del nivel"
+  description: string;      // texto de ayuda para el evaluador
+  representative: number;   // valor interno cuando el evaluador elige esta banda (5 / 7 / 9)
+  /** Límite inferior en la escala interna. ABOVE es estricto (> 8,0) y BELOW también (< 6,0):
+   *  los empates exactos caen en AT, la opción conservadora. */
+  lower: number;
+  lowerInclusive: boolean;
 }
 
 export interface Criterion {
@@ -124,8 +131,9 @@ export interface RubricArea {
 }
 
 /** Regla de tope: si en un criterio hay ≥ minCount errores con impacto ≥ minImpact,
- *  la nota sugerida no puede superar `cap`. */
-export interface CapRule { minImpact: ImpactLevel; minCount: number; cap: number }
+ *  la sugerencia de ESE criterio no puede superar la banda `capBand`. Nunca afecta a otros
+ *  criterios, al área ni a la evaluación global de forma directa (decisión R4). */
+export interface CapRule { minImpact: ImpactLevel; minCount: number; capBand: BandCode }
 
 export interface ScoringParams {
   impactWeights: Record<ImpactLevel, number>;     // LOW 1 · MEDIUM 2 · HIGH 4 · MATCH_DEFINING 8
@@ -134,7 +142,8 @@ export interface ScoringParams {
   baseline: number;                     // nota "estándar del nivel" (prior), 7,0
   priorStrength: number;                // k, en incidencias MEDIUM equivalentes, 3
   capRules: CapRule[];
-  deviationRequiringJustification: number; // |final − sugerida| > 1,0 ⇒ justificación larga
+  /** Longitud mínima de la justificación cuando la banda final difiere de la sugerida
+   *  o supera un tope. */
   minJustificationChars: number;        // 40
 }
 
@@ -143,9 +152,9 @@ export interface AssessmentRubric {
   code: string;                         // "FER-XV-2026"
   version: string;                      // semver; un informe guarda id + versión
   name: string;
-  appliesTo: { formats: GameFormat[]; roles: OfficialRole[] };
+  appliesTo: { formats: GameFormat[] };
   scale: ScoreScale;
-  bands: PerformanceBand[];             // ordenadas de mayor a menor minInclusive
+  bands: PerformanceBand[];             // ordenadas de mayor a menor (ABOVE, AT, BELOW)
   areas: RubricArea[];
   /** Qué criterio alimenta cada etiqueta rápida. Total: todas las categorías mapeadas. */
   categoryToCriterion: Record<IncidentCategory, CriterionCode>;
@@ -205,7 +214,6 @@ export interface Incident {
   seq: number;                          // 1, 2, 3… por evaluación; el orden de captura manda
   capturedAt: { sessionMs: SessionMs; wallUtc: IsoUtc };
   matchTime: MatchTimeStamp;
-  officialRole: OfficialRole;           // a quién se atribuye (REFEREE por defecto)
   category: IncidentCategory;
   criterionCode: CriterionCode;         // por defecto, el del mapa de la rúbrica; editable
   polarity: QuickPolarity;
@@ -227,15 +235,17 @@ export interface Incident {
 
 export interface CriterionScore {
   criterionCode: CriterionCode;
-  suggested: number | null;             // null = sin incidencias evaluadas
-  final: number | null;                 // null solo si notObserved
+  suggestedBand: BandCode | null;       // lo que ve el evaluador; null = sin incidencias evaluadas
+  suggested: number | null;             // interno
+  finalBand: BandCode | null;           // lo que ELIGE el evaluador; null solo si notObserved
+  final: number | null;                 // interno = representative de finalBand
   notObserved: boolean;                 // p. ej. ningún scrum disputado ⇒ el peso se redistribuye
   justification: string;
   evidenceIncidentIds: Id[];
-  capApplied: number | null;            // tope aplicado a la sugerida, si lo hubo
+  capBand: BandCode | null;             // tope aplicado a la sugerencia de este criterio, si lo hubo
 }
 
-export interface AreaScore { areaCode: AreaCode; score: number | null }
+export interface AreaScore { areaCode: AreaCode; band: BandCode | null; score: number | null /* interno */ }
 
 export interface Finding {
   id: Id;
@@ -248,7 +258,7 @@ export interface Finding {
 /** Recomendación obligatoria que el siguiente evaluador DEBE revisar. */
 export interface ActionPoint {
   id: Id;
-  officialId: Id;
+  refereeId: Id;
   originAssessmentId: Id;
   criterionCode: CriterionCode;
   text: string;                         // qué hacer
@@ -268,19 +278,18 @@ export type ReportStatus = 'DRAFT' | 'READY' | 'FINALIZED' | 'SUPERSEDED';
 
 export interface FinalReport {
   assessmentId: Id;
-  officialId: Id;
-  role: OfficialRole;
+  refereeId: Id;
   rubric: { id: Id; code: string; version: string };
   criterionScores: CriterionScore[];
   areaScores: AreaScore[];
-  overallScore: number | null;          // 1 decimal
-  band: string | null;                  // código de PerformanceBand
+  band: BandCode | null;                // RESULTADO VISIBLE de la evaluación
+  overallScore: number | null;          // interno, sin redondear; solo auditoría y exportación técnica
   keyDecisionAccuracy: { correct: number; total: number; ratio: number | null }; // impacto ≥ HIGH
   summary: string;
   strengths: Finding[];                 // 1–3
   developmentAreas: Finding[];          // 1–3
   actionPoints: ActionPoint[];          // ≥ 1, máx. 3
-  previousActionPointReviews: ActionPointReview[]; // todas las OPEN del oficial
+  previousActionPointReviews: ActionPointReview[]; // todas las OPEN del árbitro
   status: ReportStatus;
   version: number;                      // 1, 2… (enmiendas)
   supersedesVersion?: number;
@@ -296,7 +305,7 @@ export type AssessmentStatus =
   | 'READY'          // listo para el saque inicial
   | 'LIVE'           // reloj en marcha o en descanso
   | 'POST_MATCH'     // final del partido; redacción y puntuación
-  | 'FINALIZED'      // todos los informes cerrados y con hash
+  | 'FINALIZED'      // informe cerrado y con hash
   | 'ARCHIVED';
 
 export interface Assessment {

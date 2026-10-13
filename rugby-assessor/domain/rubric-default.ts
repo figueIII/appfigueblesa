@@ -1,25 +1,27 @@
-// Rúbrica por defecto (propuesta v1). Los pesos, bandas y topes son PARÁMETROS a validar con el
-// comité técnico de árbitros: ver docs/…/ESPECIFICACION… §1.2 y la pregunta abierta Q1.
+// Rúbrica por defecto v2.0.0, validada por el responsable de dominio (decisiones R1–R5):
+// prioridad al conocimiento reglamentario (área C al 30 %, C1 al 50 %), bandas cualitativas
+// como única cara visible y topes limitados al criterio. Ver docs/…/ESPECIFICACION… §0 y §1.2.
 
 import type { AssessmentRubric } from './model.ts';
 
 export const DEFAULT_RUBRIC: AssessmentRubric = {
   id: '01929d6e-0000-7000-8000-000000000001',
   code: 'RUGBY-XV-BASE',
-  version: '1.0.0',
-  name: 'Evaluación de árbitro principal — XV (base)',
-  appliesTo: { formats: ['XV', 'TENS', 'SEVENS'], roles: ['REFEREE'] },
-  scale: { min: 1, max: 10, step: 0.5 },
+  version: '2.0.0',
+  name: 'Evaluación del árbitro principal',
+  appliesTo: { formats: ['XV', 'TENS', 'SEVENS'] },
+  scale: { min: 1, max: 10 },
   bands: [
-    { code: 'EXCEPTIONAL', label: 'Excepcional', minInclusive: 8.5 },
-    { code: 'ABOVE', label: 'Por encima del estándar', minInclusive: 7.5 },
-    { code: 'STANDARD', label: 'Estándar del nivel', minInclusive: 6.5 },
-    { code: 'IMPROVE', label: 'Necesita mejorar', minInclusive: 5.0 },
-    { code: 'BELOW', label: 'Por debajo del estándar', minInclusive: 1.0 },
+    { code: 'ABOVE', label: 'Por encima del nivel', representative: 9, lower: 8, lowerInclusive: false,
+      description: 'Rendimiento superior al exigible para el nivel de este partido.' },
+    { code: 'AT', label: 'En el nivel', representative: 7, lower: 6, lowerInclusive: true,
+      description: 'Rendimiento acorde al nivel de este partido.' },
+    { code: 'BELOW', label: 'Por debajo del nivel', representative: 5, lower: -Infinity, lowerInclusive: true,
+      description: 'Rendimiento inferior al exigible para el nivel de este partido.' },
   ],
   areas: [
     {
-      code: 'PHASES', name: 'Gestión de fases de juego', weight: 40,
+      code: 'PHASES', name: 'Gestión de fases de juego', weight: 35,
       criteria: [
         { code: 'A1_SCRUM', name: 'Scrum', weight: 25, description: 'Secuencia de llamadas, estabilidad, ángulos de empuje, introducción, colapsos y lectura de la primera línea dominante.' },
         { code: 'A2_LINEOUT_MAUL', name: 'Touch y maul', weight: 20, description: 'Alineación, espacio entre líneas, lanzamiento recto, formación y obstrucción en el maul, uso de la ventaja en maul parado.' },
@@ -28,7 +30,7 @@ export const DEFAULT_RUBRIC: AssessmentRubric = {
       ],
     },
     {
-      code: 'MANAGEMENT', name: 'Comunicación y gestión del partido', weight: 25,
+      code: 'MANAGEMENT', name: 'Comunicación y gestión del partido', weight: 20,
       criteria: [
         { code: 'B1_VERBAL_CONTROL', name: 'Control verbal y preventivo', weight: 30, description: 'Llamadas claras y a tiempo que evitan infracciones (“suelta”, “fuera manos”).' },
         { code: 'B2_TONE_PRESENCE', name: 'Tono, señalización y presencia', weight: 20, description: 'Señales correctas, tono adecuado a la situación, credibilidad y calma.' },
@@ -37,11 +39,11 @@ export const DEFAULT_RUBRIC: AssessmentRubric = {
       ],
     },
     {
-      code: 'LAW_DISCIPLINE', name: 'Aplicación de leyes y consistencia disciplinaria', weight: 20,
+      code: 'LAW_DISCIPLINE', name: 'Aplicación de leyes y consistencia disciplinaria', weight: 30,
       criteria: [
-        { code: 'C1_LAW_ACCURACY', name: 'Exactitud en la aplicación de las leyes', weight: 30, description: 'Decisiones de hecho (ensayo, avant, pase adelantado) y sanción correcta en cada caso.' },
-        { code: 'C2_FOUL_PLAY', name: 'Detección y sanción del juego desleal', weight: 40, description: 'Placajes altos, juego peligroso, proceso del árbitro y del TMO, factores agravantes y atenuantes.' },
-        { code: 'C3_SANCTION_CONSISTENCY', name: 'Consistencia disciplinaria', weight: 30, description: 'Mismo criterio para ambos equipos y durante todo el partido; infracción repetida y tarjeta por acumulación.' },
+        { code: 'C1_LAW_ACCURACY', name: 'Exactitud en la aplicación de las leyes', weight: 50, description: 'Conocimiento y aplicación correcta del reglamento: decisiones de hecho (ensayo, avant, pase adelantado), sanción y reinicio correctos, errores teóricos de reglamento.' },
+        { code: 'C2_FOUL_PLAY', name: 'Detección y sanción del juego desleal', weight: 30, description: 'Placajes altos, juego peligroso, proceso de decisión del árbitro (incluida la consulta al TMO cuando la hay; el TMO no se evalúa), factores agravantes y atenuantes.' },
+        { code: 'C3_SANCTION_CONSISTENCY', name: 'Consistencia disciplinaria', weight: 20, description: 'Mismo criterio para ambos equipos y durante todo el partido; infracción repetida y tarjeta por acumulación.' },
       ],
     },
     {
@@ -68,10 +70,9 @@ export const DEFAULT_RUBRIC: AssessmentRubric = {
     baseline: 7.0,
     priorStrength: 3,
     capRules: [
-      { minImpact: 'MATCH_DEFINING', minCount: 1, cap: 5.5 },
-      { minImpact: 'HIGH', minCount: 2, cap: 6.0 },
+      { minImpact: 'MATCH_DEFINING', minCount: 1, capBand: 'BELOW' },
+      { minImpact: 'HIGH', minCount: 2, capBand: 'BELOW' },
     ],
-    deviationRequiringJustification: 1.0,
     minJustificationChars: 40,
   },
   status: 'PUBLISHED',
