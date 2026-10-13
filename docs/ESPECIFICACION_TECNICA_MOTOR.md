@@ -1,20 +1,42 @@
 # Especificación técnica del motor de cálculo — Fase 1: Auditoría matemática y de dominio
 
-> **Estado:** borrador para validación. No hay código de aplicación asociado.
+> **Estado:** **v1.0 — CERRADA.** Validada por el responsable de dominio el 2026‑10‑13. Las resoluciones vinculantes están en la [sección 0](#0-registro-de-resoluciones-vinculantes) y prevalecen sobre cualquier "propuesta" del resto del texto.
 > **Alcance:** (1) psicrometría y punto de rocío, (2) cinética de curado y pot life, (3) álgebra de mezclas bicomponente y rendimiento.
 > **Convenciones:** SI salvo indicación. Temperaturas en °C en la interfaz de datos y en K dentro de Arrhenius ($T_K = T + 273{,}15$). Separador decimal en este documento: punto, para que coincida con los casos de prueba.
 > **Verificación:** todos los valores numéricos de las tablas de prueba se han recalculado con un script independiente (doble precisión, IEEE‑754). Las tolerancias de aceptación se indican en cada tabla.
 
-Las marcas **⚠ AMBIGÜEDAD** señalan puntos en los que una norma, una ficha técnica o la propia física dejan margen de interpretación. Cada una lleva una **propuesta de decisión** que debes validar o corregir.
+Las marcas **⚠ AMBIGÜEDAD** señalan puntos en los que una norma, una ficha técnica o la propia física dejan margen de interpretación. Cada una lleva una propuesta; las que se han modificado en la validación están marcadas con **✅ RESUELTO**.
 
 ---
 
 ## Índice
 
+0. [Registro de resoluciones vinculantes](#0-registro-de-resoluciones-vinculantes)
 1. [Psicrometría y punto de rocío](#1-psicrometría-y-punto-de-rocío)
 2. [Cinética de curado y modelado del pot life](#2-cinética-de-curado-y-modelado-del-pot-life)
 3. [Álgebra de mezclas bicomponente (A + B) y rendimiento](#3-álgebra-de-mezclas-bicomponente-a--b-y-rendimiento)
-4. [Resumen de decisiones pendientes de validación](#4-resumen-de-decisiones-pendientes-de-validación)
+4. [Estado final de las decisiones](#4-estado-final-de-las-decisiones)
+
+---
+
+## 0. Registro de resoluciones vinculantes
+
+| ID | Resolución | Secciones afectadas |
+|---|---|---|
+| **D1** | Semáforo de 3 estados para el sustrato. ROJO: $\Delta T < U$; ÁMBAR: $U \le \Delta T < U + 0.8$; VERDE: $\Delta T \ge U + 0.8$. Con $U$ = 3,0 °C por defecto (umbrales 3,0 / 3,8 °C). | §1.4, §1.6 |
+| **D2** | Merma: $M_{bruta} = M_{teórica}/(1-p)$. | §3.3, §3.4, §3.5 |
+| **D3** | Tolerancia de relación de mezcla ±2 % en peso. Alerta de báscula si la pesada del componente minoritario es inferior a $d/\varepsilon_{max}$. Conversión de corte del pot life $\alpha_{pl}$ = 0,10 (solo como criterio conceptual; el motor no integra cinética, ver D4). | §2.3, §3.3, §3.5 |
+| **D4** | **El motor no simula la exotermia del recipiente.** El pot life se obtiene solo por Arrhenius calibrado con los puntos declarados en la ficha técnica, con $T_{ref}$ obligatoria. Para lotes de más de 3 kg se emite una alerta de efecto masa con temporizador al 50 % del pot life teórico. Disclaimer obligatorio en toda salida exportable. El modelo de §2.3 queda como **anexo informativo no implementado**. | §2.2, §2.3, §2.4, §2.5 |
+
+Decisiones derivadas que aplican las anteriores (las listo para trazabilidad; si alguna no encaja, se corrige en la fase 2):
+
+| ID | Decisión derivada | Motivo |
+|---|---|---|
+| D1.a | Si la ficha exige un umbral mayor que 3,0 °C ($U_{prod}$), $U = \max(3.0, U_{prod})$ y la banda ámbar mantiene su anchura de 0,8 °C. | La banda ámbar absorbe la incertidumbre instrumental, que no depende del producto. |
+| D1.b | Si se incumple un límite duro de la ficha ($T_s < T_{s,min}$, $\phi > \phi_{max}$, humedad del soporte > máximo), el resultado es ROJO, sea cual sea $\Delta T$. | El semáforo resume la aptitud global, no solo la del punto de rocío. |
+| D3.a | La alerta de báscula se aplica al componente de **menor** masa del lote (normalmente B, pero no siempre). | Con ratios como 1 : 3 el minoritario es A. |
+| D4.a | Con ≥ 2 puntos de pot life en la ficha: interpolación de Arrhenius por tramos (pasa exactamente por cada punto declarado). Con 1 solo punto: $E_a$ por defecto de la familia, y el resultado se etiqueta como "estimación". | Ceñirse a lo declarado por el fabricante (D4). |
+| D4.b | La masa que activa la alerta es la **masa total del lote** (A + B + cargas, si las hay). | Es la opción conservadora: contar las cargas produce más alertas, nunca menos. |
 
 ---
 
@@ -90,7 +112,17 @@ Error máximo de AERK en el rango ≈ 0,25 %. Un error de 0,25 % en $e_s$ se tra
 
 ### 1.4 Condición de seguridad del sustrato
 
-$$\Delta T_{rocío} = T_s - T_d \qquad\qquad \text{APTO} \iff \Delta T_{rocío} \ge 3.0\ \text{°C}$$
+$$\Delta T_{rocío} = T_s - T_d$$
+
+✅ **RESUELTO (D1) — semáforo de 3 estados**, con $U = \max(3.0, U_{prod})$ y $\varepsilon = 10^{-9}$ (tolerancia numérica):
+
+| Estado | Condición | Mensaje |
+|---|---|---|
+| 🔴 ROJO — NO APTO | $\Delta T < U - \varepsilon$ | "Riesgo inminente de condensación." |
+| 🟠 ÁMBAR — APTO MARGINAL | $U - \varepsilon \le \Delta T < U + 0.8 - \varepsilon$ | "Condiciones límite. Monitorear evolución ambiental durante la aplicación." |
+| 🟢 VERDE — APTO ÓPTIMO | $\Delta T \ge U + 0.8 - \varepsilon$ | — |
+
+Además, cualquier incumplimiento de un límite duro de la ficha fuerza ROJO (D1.b).
 
 Origen: práctica recogida en ISO 8502‑4 (estimación de la probabilidad de condensación antes de aplicar pintura) y en EN ISO 12944‑7; para pavimentos de resina la exigen prácticamente todas las fichas técnicas de los fabricantes, normalmente junto con un límite de HR (habitualmente 75–85 %) y una temperatura mínima de sustrato (habitualmente +8 a +10 °C).
 
@@ -110,7 +142,7 @@ $$\frac{\partial T_d}{\partial \phi} = \frac{a\,b}{(a-\gamma)^2}\cdot\frac{1}{\p
 | 10 °C, 90 % | 0.164 | 0.988 |
 
 Un higrómetro de obra típico (±3 % HR) produce una incertidumbre de ±0,5 a ±0,8 °C en $T_d$; un termómetro IR mal ajustado de emisividad puede errar ±1–2 °C en $T_s$. Es decir, el margen de 3 °C ya existe en buena parte para absorber estos errores.
-**Propuesta:** el motor devuelve además una banda de incertidumbre $u(\Delta T) = \sqrt{(\partial T_d/\partial\phi \cdot u_\phi)^2 + (\partial T_d/\partial T \cdot u_T)^2 + u_{T_s}^2}$ con $u_\phi$, $u_T$, $u_{T_s}$ configurables (por defecto 3 %, 0,5 °C, 0,5 °C), y un estado intermedio **"APTO MARGINAL"** si $3 \le \Delta T < 3 + u$. Necesito que confirmes si quieres este tercer estado o un booleano estricto.
+✅ **RESUELTO (D1):** la banda fija de 0,8 °C sustituye a esta propuesta. La fórmula de propagación se conserva solo como justificación del ancho de la banda: ~~el motor devuelve además una banda de incertidumbre $u(\Delta T) = \sqrt{(\partial T_d/\partial\phi \cdot u_\phi)^2 + (\partial T_d/\partial T \cdot u_T)^2 + u_{T_s}^2}$ con $u_\phi$, $u_T$, $u_{T_s}$ configurables (por defecto 3 %, 0,5 °C, 0,5 °C), y un estado intermedio **"APTO MARGINAL"** si $3 \le \Delta T < 3 + u$. Necesito que confirmes si quieres este tercer estado o un booleano estricto.~~
 
 ⚠ **AMBIGÜEDAD 1.5 — la condición es dinámica.** La norma se refiere al momento de la aplicación, pero el riesgo real (blushing aminado, pérdida de adherencia, velos blancos) se da durante las primeras horas de curado si la temperatura cae por la tarde/noche.
 **Propuesta (fase posterior):** permitir evaluar la condición sobre una previsión horaria (T, HR) y una estimación de $T_s(t)$, y avisar si deja de cumplirse dentro de la ventana de curado "al tacto" del producto.
@@ -142,10 +174,15 @@ Casos de la regla de seguridad (aire 20 °C, 80 % → $T_d$ = 16.444 °C):
 
 | # | $T_s$ (°C) | $\Delta T$ | Resultado esperado |
 |---|---|---|---|
-| S1 | 19.0 | 2.556 | NO APTO |
-| S2 | 19.5 | 3.056 | APTO |
-| S3 | 16.444… + 3.0 (exacto) | 3.000 | APTO (frontera, `≥`) |
-| S4 | 15.0 | −1.444 | NO APTO (condensación activa) |
+| S1 | 19.0 | 2.556 | 🔴 ROJO |
+| S2 | 19.5 | 3.056 | 🟠 ÁMBAR |
+| S3 | $T_d$ + 3.0 (exacto) | 3.000 | 🟠 ÁMBAR (frontera inferior incluida) |
+| S4 | 15.0 | −1.444 | 🔴 ROJO (condensación activa) |
+| S5 | 20.3 | 3.856 | 🟢 VERDE |
+| S6 | $T_d$ + 3.8 (exacto) | 3.800 | 🟢 VERDE (frontera inferior incluida) |
+| S7 | $T_d$ + 3.799 | 3.799 | 🟠 ÁMBAR |
+| S8 | 20.3, con $U_{prod}$ = 4.0 | 3.856 | 🔴 ROJO (D1.a: verde a partir de 4.8) |
+| S9 | 22.0, con $\phi_{max}$ = 75 % (HR real 80 %) | 5.556 | 🔴 ROJO (D1.b) |
 
 Invariante obligatorio: $\phi = 100 \Rightarrow T_d = T$ (P8). Monotonía: $T_d$ creciente estricta en $T$ y en $\phi$.
 
@@ -201,6 +238,13 @@ $$E_a = \frac{R\,\ln(t_1/t_2)}{\frac{1}{T_{1,K}} - \frac{1}{T_{2,K}}}$$
 
 **Propuesta:** prioridad de datos → (1) $E_a$ calculada a partir de dos puntos de la ficha; (2) $E_a$ declarada por el fabricante; (3) valor por defecto de la familia con aviso "estimación".
 
+✅ **RESUELTO (D4, D4.a) — modelo normativo del pot life.** Sean $\{(T_i, t_i)\}_{i=1..n}$ los puntos de la ficha, ordenados por $T_i$ creciente (siempre incluye el punto en $T_{ref}$).
+
+- **$n = 1$:** $t_{pl}(T) = t_1 \exp\left[\frac{E_{a,fam}}{R}\left(\frac{1}{T_K} - \frac{1}{T_{1,K}}\right)\right]$, con $E_{a,fam}$ según la tabla anterior, o la $E_a$ declarada por el fabricante si la hay. Etiqueta `ESTIMACION_EA_FAMILIA`.
+- **$n \ge 2$:** en cada tramo $[T_i, T_{i+1}]$, $E_{a,i} = R\ln(t_i/t_{i+1})\,/\,(1/T_{i,K} - 1/T_{i+1,K})$, y se aplica la fórmula usando como ancla el extremo inferior del tramo. Por debajo de $T_1$ o por encima de $T_n$ se extrapola con la $E_a$ del tramo extremo y se emite `EXTRAPOLACION`.
+- **Validación de la ficha:** los $t_i$ deben ser estrictamente decrecientes con $T$ ($E_{a,i} > 0$); si no lo son, la ficha se rechaza como inconsistente. Si $E_{a,i}$ cae fuera de [25, 90] kJ/mol, se emite el aviso `EA_ATIPICA` (posible error de transcripción).
+- **Dominio:** $T$ se toma de $T_{mat}$ (AMBIGÜEDAD 2.3). Fuera de $[T_{min}, T_{max}]$ de aplicación de la ficha, el cálculo se bloquea (`FUERA_DE_RANGO_FICHA`).
+
 ⚠ **AMBIGÜEDAD 2.2 — $T_{ref}$ = 20 °C o 23 °C.** Las fichas europeas suelen usar 20 °C / 65 % HR (EN 23270), otras 23 °C / 50 % HR (ISO 291 / ASTM). **No es despreciable:** con $E_a$ = 55 kJ/mol, un pot life de 30 min declarado a 23 °C equivale a **37,7 min a 20 °C** (+26 %). $T_{ref}$ tiene que ser un campo obligatorio por producto; si no consta, el motor no debe suponerlo en silencio.
 
 ⚠ **AMBIGÜEDAD 2.3 — ¿qué temperatura es $T$?** La reacción la gobierna la **temperatura de la masa**, no la del aire. Al empezar, es la temperatura de los componentes en el momento de mezclar (bidones al sol en verano a 35–40 °C, o en una nave fría en invierno), que puede diferir mucho del ambiente.
@@ -219,6 +263,8 @@ Los tres difieren hasta en un factor 2–4 para el mismo producto (ver §2.4). *
 - **Poliuretanos:** la reacción secundaria NCO + H₂O → urea + CO₂ depende de la humedad (espuma, burbujas, poros). Arrhenius sobre el pot life sigue siendo aplicable como primera aproximación, pero la HR es una variable de calidad adicional que este modelo no captura.
 
 ### 2.3 Factor de masa: por qué un cubo de 10 kg se acelera frente a 1 kg
+
+> ✅ **RESUELTO (D4) — SECCIÓN INFORMATIVA, NO IMPLEMENTADA.** Este análisis se conserva como fundamento físico de la regla operacional de §2.5. El motor **no** integra estas ecuaciones ni publica tiempos calculados con ellas. Los casos P‑K4 a P‑K8 no son tests del motor. Motivo: extrapolar sin datos de laboratorio genera riesgo de reclamación.
 
 #### Balance de energía del recipiente (modelo concentrado)
 
@@ -272,7 +318,7 @@ Con los parámetros de §2.3.1 (cubos cilíndricos con H = D):
 
 Por eso, cuando un aplicador dice "10 kg se me corta antes que 1 kg", casi siempre compara contra una referencia medida en condiciones casi isotermas (100–200 g en laboratorio, o la mezcla ya extendida en el suelo). **Necesito que valides este punto con experiencia de campo** (ver la propuesta de ensayo en §2.6), porque condiciona qué dato de la ficha se usa como referencia.
 
-#### 2.3.1 Modelo numérico propuesto (motor)
+#### 2.3.1 Modelo numérico (anexo informativo — descartado para el motor)
 
 Sistema de EDO:
 
@@ -333,6 +379,8 @@ Con $z = 0.05$ y $\alpha_{pl} = 0.30$ → $k\,t = 2.496676$. RK4 con Δt = 1 s r
 
 **P‑K3 — $E_a$ a partir de dos puntos:** 60 min a 10 °C y 25 min a 25 °C → $E_a = 8.314462618\cdot\ln(2.4)/(1/283.15 - 1/298.15) = 40.97$ kJ/mol.
 
+> Los casos P‑K0 y P‑K4 a P‑K8 son **informativos** (D4): documentan el análisis, pero no forman parte de la batería de tests del motor. Son normativos P‑K1, P‑K2, P‑K3 y P‑K9 a P‑K13.
+
 **P‑K4 — modelo de masa, calibrado en recipiente** (dato: 30 min a 20 °C en cubo de 1 kg; parámetros por defecto; $k_{ref}$ resultante = 3.6660·10⁻⁴ s⁻¹). Formato: pot life (min) / temperatura de la masa al final del pot life (°C). **Tolerancia: ±1 % en tiempo, ±0,5 °C en temperatura** (son tests de regresión del modelo, no valores de laboratorio).
 
 | $T_{mat} = T_{amb}$ | Película (isoterma) | 0.1 kg | 1 kg | 5 kg | 10 kg | 20 kg | Adiabático |
@@ -365,15 +413,46 @@ Con $z = 0.05$ y $\alpha_{pl} = 0.30$ → $k\,t = 2.496676$. RK4 con Δt = 1 s r
 
 **P‑K8 — dilución con árido** (calibración P‑K4, 10 kg a 20 °C, ligante:cuarzo 1:2 en masa, $\rho$ = 1900 kg/m³, $\lambda$ = 0.6 W/(m·K)): **38.8 min** frente a 29.4 min del ligante solo.
 
+**Casos normativos del modelo D4.** Tolerancia ±0,01 min.
+
+**P‑K9 — interpolación por tramos.** Ficha: (10 °C, 60 min), (20 °C, 30 min), (30 °C, 15 min). $E_{a}$ del tramo 10–20 = 47.837 kJ/mol; del tramo 20–30 = 51.216 kJ/mol.
+
+| $T_{mat}$ | Tramo | $t_{pl}$ (min) | Avisos |
+|---|---|---|---|
+| 10 | punto | 60.00 | — |
+| 15 | 10–20 | 42.17 | — |
+| 20 | punto | 30.00 | — |
+| 25 | 20–30 | 21.09 | — |
+| 35 | extrapolación 20–30 | 10.79 | `EXTRAPOLACION` |
+| 5 | extrapolación 10–20 | 86.45 | `EXTRAPOLACION` |
+
+**P‑K10 — $E_a$ atípica.** Ficha: (10, 50), (20, 30), (30, 20) → $E_a$ = 35.25 y 29.96 kJ/mol (dentro de [25, 90]: sin aviso); $t_{pl}$(15 °C) = 38.56; $t_{pl}$(25 °C) = 24.41.
+
+**P‑K11 — ficha inconsistente.** (10, 30), (20, 40) → rechazo `FICHA_INCONSISTENTE` ($E_a$ < 0).
+
+**P‑K12 — regla de masa** (1 punto: 30 min a 20 °C, $E_{a,fam}$ = 55 kJ/mol):
+
+| Masa del lote | $T_{mat}$ | $t_{pl}$ | Alerta de masa | Instante de la alerta |
+|---|---|---|---|---|
+| 2.500 kg | 20 | 30.00 | no | — |
+| 3.000 kg | 20 | 30.00 | no (la condición es estrictamente > 3 kg) | — |
+| 3.001 kg | 20 | 30.00 | **sí** | $t_0$ + 15.00 min |
+| 10.000 kg | 30 | 14.25 | **sí** | $t_0$ + 7.13 min |
+
+**P‑K13 — referencia a 23 °C:** 30 min declarados a 23 °C, 1 punto, $E_a$ = 55 kJ/mol, $T_{mat}$ = 20 °C → 37.70 min (igual que P‑K2, ahora como test normativo del flujo completo).
+
 ### 2.5 Salidas y alertas del módulo
 
-- $t_{pl}$ estimado (min) en el cubo para la masa real que se va a mezclar.
-- Tiempo abierto estimado en película (límite isotermo a $T_s$).
-- Alerta "**masa por encima de la recomendada**" si $\psi > 0.8\,\psi_c$ (umbral a validar), recomendando mezclar en tandas o verter la mezcla al suelo de inmediato (extenderla en el suelo la devuelve al régimen isotermo).
-- Aviso de extrapolación si $T$ < $T_{min}$ del producto o > 35 °C.
-- Toda salida lleva la etiqueta "estimación de ingeniería; prevalece la ficha técnica del fabricante".
+✅ **RESUELTO (D4).** Salidas normativas:
 
-### 2.6 Propuesta de ensayo de validación de campo
+- $t_{pl}(T_{mat})$ según §2.2 (modelo por tramos), en minutos, con el origen del dato (`PUNTOS_FICHA` o `ESTIMACION_EA_FAMILIA`).
+- Instantes absolutos: $t_{fin} = t_0 + t_{pl}$, donde $t_0$ es el momento de la mezcla (entrada; el motor no lee el reloj).
+- **Regla de seguridad por masa:** si $m_{lote} > 3.0$ kg (D4.b), se activa `ALERTA_EFECTO_MASA`, con $t_{alerta} = t_0 + 0.5\,t_{pl}$ y el mensaje: *"Alerta de efecto masa exotérmico: volcar o repartir sobre el suelo antes de [hh:mm]"*. El umbral (3,0 kg) y la fracción (0,5) son parámetros globales versionados con el motor, no por producto.
+- Avisos `EXTRAPOLACION`, `EA_ATIPICA` y `ESTIMACION_EA_FAMILIA`; error bloqueante `FUERA_DE_RANGO_FICHA`.
+- **Disclaimer obligatorio** en toda ficha o parte exportable (texto versionado):
+  > *"Los tiempos de vida de mezcla (pot life) son valores referenciales obtenidos por corrección de temperatura (Arrhenius) a partir de los datos declarados por el fabricante en su ficha técnica, medidos bajo condiciones normalizadas de laboratorio. No consideran el calentamiento exotérmico propio de la masa mezclada, la radiación solar ni otras condiciones de obra. Prevalecen siempre la ficha técnica del fabricante y la observación directa del material por el aplicador."*
+
+### 2.6 Propuesta de ensayo de validación de campo (futuro, fuera del alcance actual por D4)
 
 Para cerrar las ambigüedades 2.4–2.5 y validar el hallazgo de §2.3: mezclar 1 kg y 10 kg del mismo producto a la misma $T_{mat}$, con un termopar en el centro geométrico y otro en la pared, registrando T cada 30 s y anotando el instante en que el aplicador considera que la mezcla ya no es trabajable. Con dos curvas T(t) se ajustan $U$ y $Q_{tot}\cdot\alpha_{pl}$ por mínimos cuadrados.
 
@@ -423,11 +502,13 @@ Entrada: relación normalizada $(p_A, p_B)$ y **una** de estas restricciones:
 3. Calcular el error real de relación: $\varepsilon = \dfrac{m_B^{red}/m_A^{red}}{p_B/p_A} - 1$.
 4. Si $|\varepsilon| > \varepsilon_{max}$ → aviso bloqueante.
 
-Masa mínima del componente minoritario para que el redondeo respete la tolerancia (error de redondeo máximo $d/2$):
+Masa mínima del componente minoritario. ✅ **RESUELTO (D3, D3.a):** se adopta el criterio conservador de un dígito completo de error de báscula (no medio):
 
-$$\boxed{m_{min,minoritario} \ge \frac{d}{2\,\varepsilon_{max}}}$$
+$$\boxed{m_{min,minoritario} \ge \frac{d}{\varepsilon_{max}}},\qquad \varepsilon_{max} = 0.02$$
 
-⚠ **AMBIGÜEDAD 3.3 — tolerancia de relación.** Pocas fichas la declaran. La práctica habitual en epoxi‑amina es ±2–5 % (fuera de ella baja la Tg y aparecen superficies pegajosas o exudación de amina); en poliuretano (índice NCO/OH) es más estricta. **Propuesta:** $\varepsilon_{max}$ por producto, con 2 % por defecto. Añadir también un aviso general: "mezclar el kit completo siempre que sea posible", porque los kits predosificados compensan el residuo que queda en el envase.
+(La versión anterior, $d/(2\varepsilon)$, solo cubría el error de redondeo. La de un dígito completo cubre además la exactitud típica de ±1 división de una báscula de obra.) Si no se cumple → `ALERTA_RESOLUCION_BASCULA`, no bloqueante.
+
+⚠ **AMBIGÜEDAD 3.3 — tolerancia de relación.** Pocas fichas la declaran. La práctica habitual en epoxi‑amina es ±2–5 % (fuera de ella baja la Tg y aparecen superficies pegajosas o exudación de amina); en poliuretano (índice NCO/OH) es más estricta. ✅ **RESUELTO (D3):** $\varepsilon_{max}$ = 2 % por defecto; una ficha puede declarar una tolerancia más estricta, nunca una más laxa sin confirmación explícita. Añadir también un aviso general: "mezclar el kit completo siempre que sea posible", porque los kits predosificados compensan el residuo que queda en el envase.
 
 ### 3.4 Rendimiento: superficie, espesor, sólidos y consumo
 
@@ -454,7 +535,7 @@ $$\boxed{c\ [\text{kg/m}^2] = \rho_{mix}[\text{kg/L}]\cdot\frac{WFT[\mu\text{m}]
 
 $$M_{total} = S\cdot c\cdot f_{pérd},\qquad N_{kits} = \left\lceil \frac{M_{total}}{M_{kit}} \right\rceil$$
 
-⚠ **AMBIGÜEDAD 3.4 — cómo se aplica el % de pérdidas.** "10 % de pérdidas" puede significar $\times 1.10$ (sobre lo teórico) o $\div 0.90$ (el 10 % de lo comprado se pierde): 47,67 kg frente a 48,15 kg en el ejemplo R3. **Propuesta:** $f_{pérd} = 1/(1-p)$ (lo comprado se pierde en parte), mostrando la fórmula al usuario. Pendiente de tu validación.
+⚠ **AMBIGÜEDAD 3.4 — cómo se aplica el % de pérdidas.** "10 % de pérdidas" puede significar $\times 1.10$ (sobre lo teórico) o $\div 0.90$ (el 10 % de lo comprado se pierde): 47,67 kg frente a 48,15 kg en el ejemplo R3. ✅ **RESUELTO (D2):** $f_{pérd} = 1/(1-p)$, con $0 \le p < 1$ (para $p \ge 0.5$ se pide confirmación). Nota numérica: el motor trabaja sin redondeos intermedios, así que 43,333… kg / 0,9 = **48,148 kg**. El 48,11 kg de la validación sale de redondear antes a 43,3 kg; la diferencia es de 37 g y no cambia el número de kits.
 
 ⚠ **AMBIGÜEDAD 3.5 — sólidos en masa frente a sólidos en volumen.** Algunas fichas solo dan sólidos en masa (ISO 3251). No se puede pasar a volumen sin la densidad de la película seca. **Propuesta:** si falta $SV$, el motor no calcula DFT ↔ WFT y pide el dato.
 
@@ -483,7 +564,7 @@ $r_w = 3\cdot1.40/0.98 = 4.2857$ → $w_A$ = 0.81081, $w_B$ = 0.18919 (≈ 100 :
 **M5 — total con redondeo.** 100 : 50, $M$ = 4.000 kg, $d$ = 5 g.
 Exacto: 2666.67 g / 1333.33 g → redondeado: 2665 g / 1335 g → $\varepsilon = (1335/2665)/0.5 - 1 = +0.19\,\%$ → OK.
 
-**M6 — masa mínima.** $d$ = 5 g, $\varepsilon_{max}$ = 2 % → componente minoritario ≥ 125 g → con 100 : 50, mezcla total ≥ 375 g. Con $d$ = 10 g → ≥ 250 g de B (750 g en total).
+**M6 — masa mínima (D3).** $d$ = 5 g, $\varepsilon_{max}$ = 2 % → componente minoritario ≥ **250 g** → con 100 : 50, mezcla total ≥ 750 g. Con $d$ = 10 g → ≥ 500 g de B (1500 g en total). Con 1 : 3 (A minoritario) y $d$ = 5 g → alerta si A < 250 g.
 
 **M7 — límite de envase.** 100 : 50, quedan 6.0 kg de A y 2.5 kg de B → B limita: 2.5 kg de B + 5.0 kg de A (sobra 1.0 kg de A).
 
@@ -491,7 +572,7 @@ Exacto: 2666.67 g / 1333.33 g → redondeado: 2665 g / 1335 g → $\varepsilon =
 
 **R2 — base disolvente.** $SV$ = 60 %, $DFT$ = 80 µm, $\rho$ = 1.30 → $WFT$ = 133.33 µm, $R$ = 7.50 m²/L, $c$ = 0.17333 kg/m².
 
-**R3 — pedido.** R2 sobre $S$ = 250 m², pérdidas 10 %: teórico 43.333 kg; con $\div 0.90$: **48.148 kg**; con $\times 1.10$: 47.667 kg. Kits de 20 kg → **3 kits** en ambos casos (60 kg; sobran ~11,9 kg).
+**R3 — pedido (D2).** R2 sobre $S$ = 250 m², merma 10 %: teórico 43.333 kg → bruto $43.333/0.90$ = **48.148 kg**. Kits de 20 kg → **3 kits** (60 kg; sobran 11.85 kg).
 
 **R4 — autonivelante.** 2 mm, $\rho_{mortero}$ = 1.80 kg/L, 100 % sólidos → 3.60 kg/m²; 120 m² → 432 kg teóricos.
 
@@ -508,27 +589,25 @@ Exacto: 2666.67 g / 1333.33 g → redondeado: 2665 g / 1335 g → $\varepsilon =
 
 ---
 
-## 4. Resumen de decisiones pendientes de validación
+## 4. Estado final de las decisiones
 
-| ID | Tema | Propuesta por defecto |
+| ID | Tema | Estado |
 |---|---|---|
-| 1.1 | Agua/hielo por debajo de 0 °C | Coeficientes sobre agua siempre |
-| 1.2 | ≥ o > 3 °C | `≥`, umbral parametrizable por producto |
-| 1.3 | Redondeo | Comparar sin redondear |
-| 1.4 | Incertidumbre | Añadir estado "APTO MARGINAL" (**¿lo quieres?**) |
-| 1.5 | Condición dinámica nocturna | Fase posterior con previsión horaria |
-| 2.1 | $E_a$ ausente | Dos puntos > valor declarado > valor por familia |
-| 2.2 | $T_{ref}$ 20 / 23 °C | Campo obligatorio, sin valor por defecto silencioso |
-| 2.3 | T de la masa | Entrada $T_{mat}$ separada de $T_{aire}$ |
-| 2.4 | Tipo de pot life en la ficha | Campos obligatorios: régimen y $m_{ref}$ |
-| 2.5 | $\alpha_{pl}$ | 0.10, calibrable |
-| 2.6 | Árido en la mezcla | Dilución de $Q$ y $c_p$ por fracción de ligante |
-| §2.3 | Efecto de masa 1 vs 10 kg pequeño si la referencia ya es un cubo | **Validar con experiencia de campo / ensayo §2.6** |
-| 3.1 | Densidades | Prevalece la $\rho_{mix}$ declarada |
-| 3.3 | Tolerancia de relación | 2 % por defecto, por producto |
-| 3.4 | % de pérdidas | $\div(1-p)$ |
-| 3.5 | Sólidos en masa | No calcular sin $SV$ |
-| 3.6 | Dilución en masa | Requiere $\rho_{dil}$ |
-| 3.7 | Imprimaciones y espolvoreos | Consumo directo de la ficha |
+| 1.1 | Agua/hielo por debajo de 0 °C | Aceptada la propuesta: coeficientes sobre agua siempre |
+| 1.2 | ≥ o > 3 °C | Aceptada: `≥` con $\varepsilon$; umbral por producto (D1.a) |
+| 1.3 | Redondeo | Aceptada: comparar sin redondear |
+| 1.4 | Incertidumbre | **D1**: semáforo 3,0 / 3,8 °C |
+| 1.5 | Condición dinámica nocturna | Aplazada (fase posterior) |
+| 2.1 | $E_a$ | **D4.a**: tramos con los puntos de la ficha; con 1 punto, $E_a$ de familia |
+| 2.2 | $T_{ref}$ 20 / 23 °C | Aceptada: obligatoria |
+| 2.3 | T de la masa | Aceptada: entrada $T_{mat}$ |
+| 2.4 | Tipo de pot life en la ficha | Se guarda como metadato informativo; no interviene en el cálculo (D4) |
+| 2.5 | $\alpha_{pl}$ | **D3**: 0,10 como criterio conceptual; sin uso numérico en el motor |
+| 2.6 | Árido | No aplica al motor (D4); D4.b para la masa de alerta |
+| §2.3 | Modelo de exotermia | **D4**: descartado; regla > 3 kg → alerta al 50 % |
+| 3.1 | Densidades | Aceptada |
+| 3.3 | Tolerancia de relación | **D3**: 2 %; masa mínima $d/\varepsilon$ |
+| 3.4 | Merma | **D2**: $\div(1-p)$ |
+| 3.5–3.7 | Sólidos, dilución, imprimaciones | Aceptadas |
 
-**Fin de la fase 1.** Quedo a la espera de tu validación antes de definir el modelo de datos (fichas de producto, parámetros por familia, trazabilidad de fuentes) y la arquitectura del motor.
+**Fase 1 cerrada.** La arquitectura y el modelo de datos están en [`ARQUITECTURA_MOTOR_FASE2.md`](./ARQUITECTURA_MOTOR_FASE2.md).
