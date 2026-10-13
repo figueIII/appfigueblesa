@@ -146,6 +146,8 @@ void main() {
     log = d.appendClockEvent(log, const d.PeriodEnd(d.PeriodEndNext.fullTime), 4900000, cat);
     await repo.appendClockEvent(id, log.last, at(4900000), AssessmentPhase.postMatch);
     expect(await status(), 'POST_MATCH');
+    expect(await AssessmentSetup(db, SeqIds()).latestOpenAssessment(), id, reason: 'POST_MATCH sigue abierta: falta revisar y evaluar');
+    await db.customStatement("UPDATE assessment SET status = 'FINALIZED' WHERE id = '$id'");
     expect(await AssessmentSetup(db, SeqIds()).latestOpenAssessment(), isNull);
     await db.close();
   });

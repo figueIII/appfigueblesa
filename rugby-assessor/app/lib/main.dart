@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'core/design_system/theme.dart';
 import 'core/platform_ports.dart';
 import 'data/db/app_database.dart';
+import 'data/drift_evaluation_repository.dart';
 import 'data/drift_live_session_repository.dart';
+import 'data/evaluation_repository.dart';
 import 'data/live_session_repository.dart';
 import 'data/session_time.dart';
 import 'domain/category_presets.dart';
+import 'domain/rubric_default.dart';
+import 'features/evaluation/evaluation_controller.dart';
+import 'features/evaluation/evaluation_screen.dart';
 import 'features/live/live_controller.dart';
 import 'features/live/live_screen.dart';
 import 'features/review/review_controller.dart';
@@ -45,13 +50,26 @@ Future<void> main() async {
     haptics: const SystemHaptics(),
     clockRecovery: recovery,
   );
-  runApp(RefAssessApp(controller: controller, reviewRepository: repo));
+  runApp(RefAssessApp(
+    controller: controller,
+    reviewRepository: repo,
+    evaluationRepository: DriftEvaluationRepository(db),
+    ids: ids,
+  ));
 }
 
 class RefAssessApp extends StatelessWidget {
-  const RefAssessApp({super.key, required this.controller, required this.reviewRepository});
+  const RefAssessApp({
+    super.key,
+    required this.controller,
+    required this.reviewRepository,
+    required this.evaluationRepository,
+    required this.ids,
+  });
   final LiveController controller;
   final ReviewRepository reviewRepository;
+  final EvaluationRepository evaluationRepository;
+  final IdGenerator ids;
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +88,18 @@ class RefAssessApp extends StatelessWidget {
             await Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (routeContext) => ReviewScreen(
                 controller: ReviewController(assessmentId: controller.assessmentId, repository: reviewRepository),
-                onContinueToRubric: () => ScaffoldMessenger.of(routeContext).showSnackBar(
-                  const SnackBar(content: Text('La evaluación por criterios es la pantalla 3.')),
-                ),
+                onContinueToRubric: () => Navigator.of(routeContext).push(MaterialPageRoute<void>(
+                  builder: (evalContext) => EvaluationScreen(
+                    controller: EvaluationController(
+                      assessmentId: controller.assessmentId,
+                      repository: evaluationRepository,
+                      rubric: kDefaultRubric,
+                      ids: ids,
+                    ),
+                    // Desde la evaluación, "ir a la revisión" vuelve a la pantalla anterior.
+                    onOpenReview: () => Navigator.of(evalContext).pop(),
+                  ),
+                )),
               ),
             ));
             // Al volver, el directo recarga: la revisión puede haber anulado o editado marcas.

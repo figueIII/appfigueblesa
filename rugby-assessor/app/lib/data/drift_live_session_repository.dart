@@ -289,10 +289,11 @@ class AssessmentSetup {
     });
   }
 
-  /// Evaluación en curso más reciente (READY o LIVE), para reanudar tras un cierre.
+  /// Evaluación sin cerrar más reciente (READY, LIVE o POST_MATCH), para reanudar tras un cierre
+  /// de la app: también la que espera revisión y evaluación después del partido.
   Future<String?> latestOpenAssessment() async {
     final row = await (db.select(db.assessment)
-          ..where((t) => t.status.isIn(['READY', 'LIVE']))
+          ..where((t) => t.status.isIn(['READY', 'LIVE', 'POST_MATCH']))
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
           ..limit(1))
         .getSingleOrNull();

@@ -9,9 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ref_assess/domain/model.dart';
+import 'package:ref_assess/domain/rubric.dart';
 
 import '../features/live/live_screen_test.dart' show Harness, tile;
 import '../features/review/review_screen_test.dart' as review;
+import '../features/evaluation/evaluation_screen_test.dart' as evaluation;
 
 const min = 60000;
 
@@ -120,5 +122,40 @@ void main() {
     final h = review.Harness([review.seedIncident('a', 1, 5 * min, IncidentCategory.ruck, verdict: Verdict.correct)]);
     await h.pump(tester);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_revision_completa_light.png'));
+  });
+
+  for (final b in Brightness.values) {
+    testWidgets('evaluación: área A con tope y banda contraria a la sugerencia (${b.name})', (tester) async {
+      final h = evaluation.Harness();
+      await h.pump(tester, brightness: b);
+      await evaluation.tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-above')));
+      await tester.enterText(find.byKey(const ValueKey('justification-A1_SCRUM')), 'Visto en vídeo.');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('suggested-A1_SCRUM')));
+      await tester.pumpAndSettle();
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/20_evaluacion_area_${b.name}.png'));
+    });
+  }
+
+  testWidgets('evaluación: cierre con pendientes (light)', (tester) async {
+    final h = evaluation.Harness();
+    await h.pump(tester);
+    for (final c in evaluation.rubric.criteria.take(9)) {
+      h.controller.setBand(c.code, h.controller.suggestions[c.code]!.suggestedBand ?? BandCode.at);
+    }
+    await tester.pumpAndSettle();
+    await evaluation.openTab(tester, 'close');
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/21_evaluacion_cierre_light.png'));
+  });
+
+  testWidgets('evaluación: informe cerrado (light)', (tester) async {
+    final h = evaluation.Harness();
+    await h.pump(tester);
+    h.completeAll();
+    await tester.pumpAndSettle();
+    await evaluation.openTab(tester, 'close');
+    await h.controller.finalize();
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/22_evaluacion_cerrado_light.png'));
   });
 }
