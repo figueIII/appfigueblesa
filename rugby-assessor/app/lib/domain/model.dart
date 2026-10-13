@@ -99,7 +99,64 @@ class MatchTimeStamp {
   final TimeIntegrity integrity;
 }
 
-/// Incidencia tal y como la crea el tap. El enriquecimiento llega en la pantalla 2.
+enum TeamSide { home, away }
+
+enum DecisionOutcome {
+  playOn,
+  advantage,
+  penalty,
+  freeKick,
+  scrum,
+  lineout,
+  tryAwarded,
+  noTry,
+  penaltyTry,
+  yellowCard,
+  redCard20,
+  redCard,
+  warning,
+  tmoReferral,
+  noDecision,
+}
+
+enum GamePhase { setPiece, breakdown, openPlay, kicking, restart, stoppage, offField }
+
+enum FieldZone { own22, own22ToHalf, halfToOpp22, opp22, inGoal }
+
+/// Decisión del árbitro (tomada o esperada). `outcomes` es una lista: p. ej. golpe + amarilla.
+class Decision {
+  const Decision({required this.outcomes, this.againstTeam, this.lawRef, this.description});
+  final List<DecisionOutcome> outcomes;
+  final TeamSide? againstTeam;
+  final String? lawRef;
+  final String? description;
+
+  bool get isEmpty => outcomes.isEmpty;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Decision &&
+      _listEq(other.outcomes, outcomes) &&
+      other.againstTeam == againstTeam &&
+      other.lawRef == lawRef &&
+      other.description == description;
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(outcomes), againstTeam, lawRef, description);
+}
+
+bool _listEq<T>(List<T> a, List<T> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Centinela para distinguir "no cambiar" de "poner a null" en copyWith.
+const Object _keep = Object();
+
+/// Incidencia: la crea el tap (pantalla 1) y se enriquece en la revisión (pantalla 2).
 class Incident {
   const Incident({
     required this.id,
@@ -115,6 +172,11 @@ class Incident {
     required this.impact,
     required this.impactConfirmed,
     required this.status,
+    this.gamePhase,
+    this.fieldZone,
+    this.decisionTaken,
+    this.decisionExpected,
+    this.notes,
   });
 
   final String id;
@@ -130,10 +192,29 @@ class Incident {
   final ImpactLevel impact;
   final bool impactConfirmed;
   final IncidentStatus status;
+  final GamePhase? gamePhase;
+  final FieldZone? fieldZone;
+  final Decision? decisionTaken;
+  final Decision? decisionExpected;
+  final String? notes;
 
   bool get needsReview => status != IncidentStatus.voided && verdict == Verdict.pending;
+  bool get isVoid => status == IncidentStatus.voided;
 
-  Incident copyWith({QuickPolarity? polarity, Verdict? verdict, ImpactLevel? impact, IncidentStatus? status}) =>
+  Incident copyWith({
+    IncidentCategory? category,
+    String? criterionCode,
+    QuickPolarity? polarity,
+    Verdict? verdict,
+    ImpactLevel? impact,
+    bool? impactConfirmed,
+    IncidentStatus? status,
+    Object? gamePhase = _keep,
+    Object? fieldZone = _keep,
+    Object? decisionTaken = _keep,
+    Object? decisionExpected = _keep,
+    Object? notes = _keep,
+  }) =>
       Incident(
         id: id,
         assessmentId: assessmentId,
@@ -141,14 +222,34 @@ class Incident {
         sessionMs: sessionMs,
         wallUtc: wallUtc,
         matchTime: matchTime,
-        category: category,
-        criterionCode: criterionCode,
+        category: category ?? this.category,
+        criterionCode: criterionCode ?? this.criterionCode,
         polarity: polarity ?? this.polarity,
         verdict: verdict ?? this.verdict,
         impact: impact ?? this.impact,
-        impactConfirmed: impactConfirmed,
+        impactConfirmed: impactConfirmed ?? this.impactConfirmed,
         status: status ?? this.status,
+        gamePhase: identical(gamePhase, _keep) ? this.gamePhase : gamePhase as GamePhase?,
+        fieldZone: identical(fieldZone, _keep) ? this.fieldZone : fieldZone as FieldZone?,
+        decisionTaken: identical(decisionTaken, _keep) ? this.decisionTaken : decisionTaken as Decision?,
+        decisionExpected: identical(decisionExpected, _keep) ? this.decisionExpected : decisionExpected as Decision?,
+        notes: identical(notes, _keep) ? this.notes : notes as String?,
       );
+
+  /// Igualdad de contenido editable (para saber si hay cambios sin guardar).
+  bool sameContentAs(Incident o) =>
+      o.category == category &&
+      o.criterionCode == criterionCode &&
+      o.polarity == polarity &&
+      o.verdict == verdict &&
+      o.impact == impact &&
+      o.impactConfirmed == impactConfirmed &&
+      o.status == status &&
+      o.gamePhase == gamePhase &&
+      o.fieldZone == fieldZone &&
+      o.decisionTaken == decisionTaken &&
+      o.decisionExpected == decisionExpected &&
+      (o.notes ?? '') == (notes ?? '');
 }
 
 /// Valores iniciales de un tap (usecases.ts, quickTagDefaults).

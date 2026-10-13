@@ -8,8 +8,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ref_assess/domain/model.dart';
 
 import '../features/live/live_screen_test.dart' show Harness, tile;
+import '../features/review/review_screen_test.dart' as review;
 
 const min = 60000;
 
@@ -91,5 +93,32 @@ void main() {
     await tester.tap(tile('ruck'));
     await h.advance(tester, 1000);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/07_horizontal_light.png'));
+  });
+
+  for (final b in Brightness.values) {
+    testWidgets('revisión: cola (${b.name})', (tester) async {
+      final h = review.Harness();
+      await h.pump(tester, brightness: b);
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/10_revision_cola_${b.name}.png'));
+    });
+  }
+
+  testWidgets('revisión: editor con error a medio completar (light)', (tester) async {
+    final h = review.Harness();
+    await h.pump(tester);
+    await tester.tap(review.card('scrum'));
+    await tester.pumpAndSettle();
+    await review.tapVisible(tester, find.byKey(const ValueKey('verdict-incorrect')));
+    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, 600));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/11_revision_editor_light.png'));
+    await review.tapVisible(tester, find.byKey(const ValueKey('expected-penalty')));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/12_revision_editor_decision_light.png'));
+  });
+
+  testWidgets('revisión: completa (light)', (tester) async {
+    final h = review.Harness([review.seedIncident('a', 1, 5 * min, IncidentCategory.ruck, verdict: Verdict.correct)]);
+    await h.pump(tester);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_revision_completa_light.png'));
   });
 }

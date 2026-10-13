@@ -98,3 +98,64 @@ ClockEventBody decodeClockBody(String type, String payload) {
     _ => throw FormatException('Tipo de evento de reloj desconocido: $type'),
   };
 }
+
+// ───────────── Enriquecimiento (pantalla 2) ─────────────
+
+const Map<DecisionOutcome, String> _outcomeCodes = {
+  DecisionOutcome.playOn: 'PLAY_ON',
+  DecisionOutcome.advantage: 'ADVANTAGE',
+  DecisionOutcome.penalty: 'PENALTY',
+  DecisionOutcome.freeKick: 'FREE_KICK',
+  DecisionOutcome.scrum: 'SCRUM',
+  DecisionOutcome.lineout: 'LINEOUT',
+  DecisionOutcome.tryAwarded: 'TRY',
+  DecisionOutcome.noTry: 'NO_TRY',
+  DecisionOutcome.penaltyTry: 'PENALTY_TRY',
+  DecisionOutcome.yellowCard: 'YELLOW_CARD',
+  DecisionOutcome.redCard20: 'RED_CARD_20',
+  DecisionOutcome.redCard: 'RED_CARD',
+  DecisionOutcome.warning: 'WARNING',
+  DecisionOutcome.tmoReferral: 'TMO_REFERRAL',
+  DecisionOutcome.noDecision: 'NO_DECISION',
+};
+
+const Map<FieldZone, String> _zoneCodes = {
+  FieldZone.own22: 'OWN_22',
+  FieldZone.own22ToHalf: 'OWN_22_TO_HALF',
+  FieldZone.halfToOpp22: 'HALF_TO_OPP_22',
+  FieldZone.opp22: 'OPP_22',
+  FieldZone.inGoal: 'IN_GOAL',
+};
+
+String encodeOutcome(DecisionOutcome o) => _outcomeCodes[o]!;
+DecisionOutcome decodeOutcome(String s) => _byCode(DecisionOutcome.values, s, encodeOutcome);
+
+String encodeZone(FieldZone z) => _zoneCodes[z]!;
+FieldZone decodeZone(String s) => _byCode(FieldZone.values, s, encodeZone);
+
+String encodeGamePhase(GamePhase p) => _snake(p.name);
+GamePhase decodeGamePhase(String s) => _byCode(GamePhase.values, s, encodeGamePhase);
+
+String encodeTeam(TeamSide t) => t.name.toUpperCase();
+TeamSide decodeTeam(String s) => _byCode(TeamSide.values, s, encodeTeam);
+
+/// Mismo formato que `Decision` en domain/model.ts y en el JSON de exportación.
+String? encodeDecision(Decision? d) => d == null
+    ? null
+    : jsonEncode({
+        'outcomes': [for (final o in d.outcomes) encodeOutcome(o)],
+        if (d.againstTeam != null) 'againstTeam': encodeTeam(d.againstTeam!),
+        if (d.lawRef != null && d.lawRef!.isNotEmpty) 'lawRef': d.lawRef,
+        if (d.description != null && d.description!.isNotEmpty) 'description': d.description,
+      });
+
+Decision? decodeDecision(String? json) {
+  if (json == null) return null;
+  final m = jsonDecode(json) as Map<String, dynamic>;
+  return Decision(
+    outcomes: [for (final o in m['outcomes'] as List) decodeOutcome(o as String)],
+    againstTeam: m['againstTeam'] == null ? null : decodeTeam(m['againstTeam'] as String),
+    lawRef: m['lawRef'] as String?,
+    description: m['description'] as String?,
+  );
+}

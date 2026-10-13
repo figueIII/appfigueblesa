@@ -41,8 +41,27 @@ abstract interface class LiveSessionRepository {
   Future<void> updateIncident(Incident incident);
 }
 
+class ReviewSnapshot {
+  const ReviewSnapshot({required this.homeTeam, required this.awayTeam, required this.incidents});
+  final String homeTeam;
+  final String awayTeam;
+  final List<Incident> incidents;
+}
+
+/// Persistencia de la revisión post-partido (pantalla 2).
+abstract interface class ReviewRepository {
+  Future<ReviewSnapshot> loadReview(String assessmentId);
+
+  /// Guarda todo el contenido editable de una incidencia en una transacción (el trigger
+  /// incident_audit conserva la versión anterior).
+  Future<void> saveEnrichment(Incident incident);
+
+  /// Anulación lógica con motivo (nunca se borra).
+  Future<void> voidIncident(Incident incident, String reason);
+}
+
 /// Implementación en memoria para la demo y los tests de widget.
-class InMemoryLiveSessionRepository implements LiveSessionRepository {
+class InMemoryLiveSessionRepository implements LiveSessionRepository, ReviewRepository {
   InMemoryLiveSessionRepository(this._seed);
 
   /// Estado inicial (p. ej. un partido ya empezado, para probar la recuperación).
@@ -89,5 +108,24 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository {
   Future<void> updateIncident(Incident incident) async {
     _guard();
     _incidents[incident.id] = incident;
+  }
+
+  final Map<String, String> voidReasons = {};
+
+  @override
+  Future<ReviewSnapshot> loadReview(String assessmentId) async =>
+      ReviewSnapshot(homeTeam: _seed.homeTeam, awayTeam: _seed.awayTeam, incidents: incidents);
+
+  @override
+  Future<void> saveEnrichment(Incident incident) async {
+    _guard();
+    _incidents[incident.id] = incident;
+  }
+
+  @override
+  Future<void> voidIncident(Incident incident, String reason) async {
+    _guard();
+    _incidents[incident.id] = incident.copyWith(status: IncidentStatus.voided);
+    voidReasons[incident.id] = reason;
   }
 }

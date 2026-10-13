@@ -189,6 +189,49 @@ void main() {
     await db.close();
   });
 
+  test('revisión: el enriquecimiento completo sobrevive a cerrar y reabrir; anular guarda el motivo', () async {
+    var db = open();
+    final id = await seed(db);
+    var repo = DriftLiveSessionRepository(db);
+    final base = incident(id, 1, 120000, d.IncidentCategory.scrum);
+    await repo.insertIncident(base);
+    await repo.insertIncident(incident(id, 2, 130000, d.IncidentCategory.ruck));
+    final enriched = base.copyWith(
+      verdict: d.Verdict.incorrect,
+      polarity: d.QuickPolarity.negative,
+      impact: d.ImpactLevel.matchDefining,
+      impactConfirmed: true,
+      criterionCode: 'D2_POSITIONING',
+      gamePhase: d.GamePhase.setPiece,
+      fieldZone: d.FieldZone.opp22,
+      decisionTaken: const d.Decision(outcomes: [d.DecisionOutcome.playOn]),
+      decisionExpected: const d.Decision(
+        outcomes: [d.DecisionOutcome.penalty, d.DecisionOutcome.yellowCard],
+        againstTeam: d.TeamSide.away,
+        lawRef: '19.10',
+      ),
+      notes: '  Colapso intencionado en 5 m.  ',
+      status: d.IncidentStatus.enriched,
+    );
+    await repo.saveEnrichment(enriched);
+    final second = (await repo.loadReview(id)).incidents[1];
+    await repo.voidIncident(second, 'REVIEW');
+    await db.close();
+
+    db = open();
+    repo = DriftLiveSessionRepository(db);
+    final r = await repo.loadReview(id);
+    final got = r.incidents.first;
+    expect(got.sameContentAs(enriched.copyWith(notes: 'Colapso intencionado en 5 m.')), isTrue, reason: 'notas recortadas, resto idéntico');
+    expect(got.decisionExpected!.outcomes, [d.DecisionOutcome.penalty, d.DecisionOutcome.yellowCard]);
+    expect(r.incidents[1].status, d.IncidentStatus.voided);
+    final row = await (db.select(db.incident)..where((t) => t.seq.equals(2))).getSingle();
+    expect(row.voidReason, 'REVIEW');
+    final json = (await (db.select(db.incident)..where((t) => t.seq.equals(1))).getSingle()).decisionExpectedJson;
+    expect(json, '{"outcomes":["PENALTY","YELLOW_CARD"],"againstTeam":"AWAY","lawRef":"19.10"}', reason: 'mismo formato que Decision en model.ts');
+    await db.close();
+  });
+
   test('schema.drift es copia literal de persistence/schema.sql (salvo PRAGMAs y nombres Dart)', () {
     List<String> statements(String sql) => sql
         .split('\n')

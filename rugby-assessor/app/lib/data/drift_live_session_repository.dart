@@ -12,7 +12,7 @@ import 'db/app_database.dart';
 import 'live_session_repository.dart';
 import 'session_time.dart';
 
-class DriftLiveSessionRepository implements LiveSessionRepository, SessionTimeStore {
+class DriftLiveSessionRepository implements LiveSessionRepository, ReviewRepository, SessionTimeStore {
   DriftLiveSessionRepository(this.db);
   final AppDatabase db;
 
@@ -68,6 +68,11 @@ class DriftLiveSessionRepository implements LiveSessionRepository, SessionTimeSt
         impact: decodeImpact(i.impact),
         impactConfirmed: i.impactConfirmed == 1,
         status: decodeIncidentStatus(i.status),
+        gamePhase: i.gamePhase == null ? null : decodeGamePhase(i.gamePhase!),
+        fieldZone: i.fieldZone == null ? null : decodeZone(i.fieldZone!),
+        decisionTaken: decodeDecision(i.decisionTakenJson),
+        decisionExpected: decodeDecision(i.decisionExpectedJson),
+        notes: i.notes,
       );
 
   // ───────────── Escritura ─────────────
@@ -118,6 +123,11 @@ class DriftLiveSessionRepository implements LiveSessionRepository, SessionTimeSt
         impactConfirmed: i.impactConfirmed ? 1 : 0,
         source: 'ONE_TAP',
         status: encodeIncidentStatus(i.status),
+        gamePhase: Value(i.gamePhase == null ? null : encodeGamePhase(i.gamePhase!)),
+        fieldZone: Value(i.fieldZone == null ? null : encodeZone(i.fieldZone!)),
+        decisionTakenJson: Value(encodeDecision(i.decisionTaken)),
+        decisionExpectedJson: Value(encodeDecision(i.decisionExpected)),
+        notes: Value(i.notes),
         updatedAt: _iso(i.wallUtc),
       ));
 
@@ -131,6 +141,45 @@ class DriftLiveSessionRepository implements LiveSessionRepository, SessionTimeSt
       impactConfirmed: Value(i.impactConfirmed ? 1 : 0),
       status: Value(encodeIncidentStatus(i.status)),
       voidReason: Value(i.status == d.IncidentStatus.voided ? 'UNDO' : null),
+      updatedAt: Value(_nowIso()),
+    ));
+    if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');
+  }
+
+  // ───────────── Revisión post-partido ─────────────
+
+  @override
+  Future<ReviewSnapshot> loadReview(String assessmentId) async {
+    final snap = await load(assessmentId);
+    return ReviewSnapshot(homeTeam: snap.homeTeam, awayTeam: snap.awayTeam, incidents: snap.incidents);
+  }
+
+  @override
+  Future<void> saveEnrichment(d.Incident i) async {
+    final notes = i.notes?.trim();
+    final n = await (db.update(db.incident)..where((t) => t.id.equals(i.id))).write(IncidentCompanion(
+      category: Value(encodeCategory(i.category)),
+      criterionCode: Value(i.criterionCode),
+      polarity: Value(encodePolarity(i.polarity)),
+      verdict: Value(encodeVerdict(i.verdict)),
+      impact: Value(encodeImpact(i.impact)),
+      impactConfirmed: Value(i.impactConfirmed ? 1 : 0),
+      gamePhase: Value(i.gamePhase == null ? null : encodeGamePhase(i.gamePhase!)),
+      fieldZone: Value(i.fieldZone == null ? null : encodeZone(i.fieldZone!)),
+      decisionTakenJson: Value(encodeDecision(i.decisionTaken)),
+      decisionExpectedJson: Value(encodeDecision(i.decisionExpected)),
+      notes: Value(notes == null || notes.isEmpty ? null : notes),
+      status: Value(encodeIncidentStatus(i.status)),
+      updatedAt: Value(_nowIso()),
+    ));
+    if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');
+  }
+
+  @override
+  Future<void> voidIncident(d.Incident i, String reason) async {
+    final n = await (db.update(db.incident)..where((t) => t.id.equals(i.id))).write(IncidentCompanion(
+      status: const Value('VOID'),
+      voidReason: Value(reason),
       updatedAt: Value(_nowIso()),
     ));
     if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');

@@ -4,10 +4,13 @@ import 'core/design_system/theme.dart';
 import 'core/platform_ports.dart';
 import 'data/db/app_database.dart';
 import 'data/drift_live_session_repository.dart';
+import 'data/live_session_repository.dart';
 import 'data/session_time.dart';
 import 'domain/category_presets.dart';
 import 'features/live/live_controller.dart';
 import 'features/live/live_screen.dart';
+import 'features/review/review_controller.dart';
+import 'features/review/review_screen.dart';
 
 /// Arranque de producción: base de datos Drift en el dispositivo + reloj de sesión anclado.
 /// Reanuda la evaluación abierta más reciente; si no hay ninguna, crea un partido de ejemplo
@@ -42,12 +45,13 @@ Future<void> main() async {
     haptics: const SystemHaptics(),
     clockRecovery: recovery,
   );
-  runApp(RefAssessApp(controller: controller));
+  runApp(RefAssessApp(controller: controller, reviewRepository: repo));
 }
 
 class RefAssessApp extends StatelessWidget {
-  const RefAssessApp({super.key, required this.controller});
+  const RefAssessApp({super.key, required this.controller, required this.reviewRepository});
   final LiveController controller;
+  final ReviewRepository reviewRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +63,21 @@ class RefAssessApp extends StatelessWidget {
       home: Builder(
         builder: (context) => LiveScreen(
           controller: controller,
-          onGoToReview: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('La revisión post-partido es la pantalla 2.')),
-          ),
+          onGoToReview: () async {
+            // Lo que quede en la cola del directo se escribe antes de leer para la revisión.
+            await controller.flush();
+            if (!context.mounted) return;
+            await Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (routeContext) => ReviewScreen(
+                controller: ReviewController(assessmentId: controller.assessmentId, repository: reviewRepository),
+                onContinueToRubric: () => ScaffoldMessenger.of(routeContext).showSnackBar(
+                  const SnackBar(content: Text('La evaluación por criterios es la pantalla 3.')),
+                ),
+              ),
+            ));
+            // Al volver, el directo recarga: la revisión puede haber anulado o editado marcas.
+            await controller.load();
+          },
         ),
       ),
     );
