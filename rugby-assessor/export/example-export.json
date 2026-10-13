@@ -1,0 +1,396 @@
+{
+  "format": "rugby-referee-assessment",
+  "formatVersion": "1.0",
+  "exportedAt": "2026-10-18T09:13:05Z",
+  "generator": {
+    "app": "RefAssess",
+    "appVersion": "0.1.0",
+    "rubricEngineVersion": "1.0.0"
+  },
+  "match": {
+    "assessmentId": "0192a1b0-0000-7000-8000-000000000001",
+    "competition": "Liga Territorial Sénior",
+    "round": "J5",
+    "category": {
+      "code": "SENIOR",
+      "name": "Sénior",
+      "format": "XV",
+      "periodLengthMin": 40,
+      "lawVariations": []
+    },
+    "kickoff": {
+      "local": "2026-10-17T17:00",
+      "tz": "Europe/Madrid"
+    },
+    "venue": "Campo Municipal",
+    "home": {
+      "name": "Club Local RC"
+    },
+    "away": {
+      "name": "Visitante RT"
+    },
+    "finalScore": {
+      "home": 24,
+      "away": 19
+    },
+    "observationMode": "LIVE",
+    "difficulty": "HIGH",
+    "officials": [
+      {
+        "role": "REFEREE",
+        "fullName": "Árbitro Ejemplo"
+      },
+      {
+        "role": "AR1",
+        "fullName": "Asistente Uno"
+      },
+      {
+        "role": "AR2",
+        "fullName": "Asistente Dos"
+      }
+    ]
+  },
+  "official": {
+    "id": "0192a1b0-0000-7000-8000-0000000000f1",
+    "fullName": "Árbitro Ejemplo",
+    "role": "REFEREE"
+  },
+  "assessor": {
+    "id": "0192a1b0-0000-7000-8000-0000000000e1",
+    "fullName": "Evaluador Ejemplo"
+  },
+  "rubric": {
+    "id": "01929d6e-0000-7000-8000-000000000001",
+    "code": "RUGBY-XV-BASE",
+    "version": "1.0.0",
+    "areas": [
+      {
+        "code": "PHASES",
+        "name": "Gestión de fases de juego",
+        "weight": 40,
+        "criteria": [
+          {
+            "code": "A1_SCRUM",
+            "name": "Scrum",
+            "weight": 25
+          },
+          {
+            "code": "A2_LINEOUT_MAUL",
+            "name": "Touch y maul",
+            "weight": 20
+          },
+          {
+            "code": "A3_TACKLE_RUCK",
+            "name": "Placaje y ruck",
+            "weight": 35
+          },
+          {
+            "code": "A4_OFFSIDE_SPACE",
+            "name": "Espacio y fuera de juego",
+            "weight": 20
+          }
+        ]
+      },
+      {
+        "code": "MANAGEMENT",
+        "name": "Comunicación y gestión del partido",
+        "weight": 25,
+        "criteria": [
+          {
+            "code": "B1_VERBAL_CONTROL",
+            "name": "Control verbal y preventivo",
+            "weight": 30
+          },
+          {
+            "code": "B2_TONE_PRESENCE",
+            "name": "Tono, señalización y presencia",
+            "weight": 20
+          },
+          {
+            "code": "B3_CAPTAINS_PLAYERS",
+            "name": "Gestión de capitanes y jugadores",
+            "weight": 20
+          },
+          {
+            "code": "B4_ADVANTAGE",
+            "name": "Aplicación de la ventaja",
+            "weight": 30
+          }
+        ]
+      },
+      {
+        "code": "LAW_DISCIPLINE",
+        "name": "Aplicación de leyes y consistencia disciplinaria",
+        "weight": 20,
+        "criteria": [
+          {
+            "code": "C1_LAW_ACCURACY",
+            "name": "Exactitud en la aplicación de las leyes",
+            "weight": 30
+          },
+          {
+            "code": "C2_FOUL_PLAY",
+            "name": "Detección y sanción del juego desleal",
+            "weight": 40
+          },
+          {
+            "code": "C3_SANCTION_CONSISTENCY",
+            "name": "Consistencia disciplinaria",
+            "weight": 30
+          }
+        ]
+      },
+      {
+        "code": "FITNESS_POSITIONING",
+        "name": "Condición física, posicionamiento y líneas de carrera",
+        "weight": 15,
+        "criteria": [
+          {
+            "code": "D1_FITNESS",
+            "name": "Condición física",
+            "weight": 30
+          },
+          {
+            "code": "D2_POSITIONING",
+            "name": "Posicionamiento",
+            "weight": 40
+          },
+          {
+            "code": "D3_RUNNING_LINES",
+            "name": "Líneas de carrera",
+            "weight": 30
+          }
+        ]
+      }
+    ]
+  },
+  "report": {
+    "version": 1,
+    "status": "FINALIZED",
+    "finalizedAt": "2026-10-18T09:12:00Z",
+    "criterionScores": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A2_LINEOUT_MAUL",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A3_TACKLE_RUCK",
+        "suggested": 6,
+        "final": 6,
+        "notObserved": false,
+        "justification": "Lectura correcta del placador; un error clave al no sancionar la entrada lateral en el 52.",
+        "capApplied": null,
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      },
+      {
+        "criterionCode": "A4_OFFSIDE_SPACE",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B1_VERBAL_CONTROL",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B2_TONE_PRESENCE",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B3_CAPTAINS_PLAYERS",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C1_LAW_ACCURACY",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C2_FOUL_PLAY",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C3_SANCTION_CONSISTENCY",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D1_FITNESS",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D2_POSITIONING",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D3_RUNNING_LINES",
+        "suggested": null,
+        "final": 7,
+        "notObserved": false,
+        "justification": "Nivel acorde a la categoría.",
+        "capApplied": null,
+        "evidenceIncidentIds": []
+      }
+    ],
+    "areaScores": [
+      {
+        "areaCode": "PHASES",
+        "score": 6.7
+      },
+      {
+        "areaCode": "MANAGEMENT",
+        "score": 7
+      },
+      {
+        "areaCode": "LAW_DISCIPLINE",
+        "score": 7
+      },
+      {
+        "areaCode": "FITNESS_POSITIONING",
+        "score": 7
+      }
+    ],
+    "overallScore": 6.9,
+    "band": "STANDARD",
+    "keyDecisionAccuracy": {
+      "correct": 0,
+      "total": 1,
+      "ratio": 0
+    },
+    "summary": "Partido de dificultad alta bien gestionado en lo físico; el breakdown es la prioridad.",
+    "strengths": [
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "text": "Ventaja territorial bien leída y cerrada con claridad.",
+        "evidenceIncidentIds": []
+      }
+    ],
+    "developmentAreas": [
+      {
+        "criterionCode": "A3_TACKLE_RUCK",
+        "text": "Entradas laterales del tercera línea defensor sin sancionar.",
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      }
+    ],
+    "actionPoints": [
+      {
+        "id": "0192a1b0-0000-7000-8000-0000000000a1",
+        "criterionCode": "A3_TACKLE_RUCK",
+        "text": "Posicionarse en el lado de la llegada defensiva tras el placaje.",
+        "successIndicator": "En la próxima evaluación, ≥ 80 % de rucks observados desde el lado defensor."
+      }
+    ],
+    "previousActionPointReviews": []
+  },
+  "incidents": [
+    {
+      "id": "0192a1b0-0000-7000-8000-000000000012",
+      "seq": 12,
+      "matchClock": "52:14",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "officialRole": "REFEREE",
+      "category": "RUCK",
+      "criterionCode": "A3_TACKLE_RUCK",
+      "gamePhase": "BREAKDOWN",
+      "fieldZone": "OPP_22",
+      "decisionTaken": {
+        "outcomes": [
+          "PLAY_ON"
+        ]
+      },
+      "decisionExpected": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "AWAY",
+        "lawRef": "15.10"
+      },
+      "verdict": "INCORRECT",
+      "impact": "HIGH",
+      "notes": "Entrada lateral del 7 visitante; recuperan y salen de 22.",
+      "attachments": [
+        {
+          "kind": "VOICE_NOTE",
+          "fileName": "inc-012.m4a",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "canonicalization": "sorted-keys-no-whitespace-v1",
+    "hashedPointer": "/report",
+    "contentHash": "5c6888b8f7869f3f9c3ad5aa76410d9c613d90fdac47d56b7cf493528025548b"
+  }
+}

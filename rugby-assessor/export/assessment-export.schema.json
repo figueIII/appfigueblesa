@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rugby-assessor:export:1.0",
+  "title": "Informe de evaluación arbitral — exportación",
+  "description": "Un archivo por oficial evaluado y versión de informe. Ver docs/ESPECIFICACION_EVALUADOR_ARBITRAL.md §3.2.",
+  "type": "object",
+  "required": ["format", "formatVersion", "exportedAt", "generator", "match", "official", "assessor", "rubric", "report", "incidents", "integrity"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "rugby-referee-assessment" },
+    "formatVersion": { "const": "1.0" },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "generator": {
+      "type": "object", "required": ["app", "appVersion", "rubricEngineVersion"], "additionalProperties": false,
+      "properties": { "app": { "type": "string" }, "appVersion": { "type": "string" }, "rubricEngineVersion": { "type": "string" } }
+    },
+    "match": {
+      "type": "object",
+      "required": ["assessmentId", "competition", "category", "kickoff", "venue", "home", "away", "observationMode", "officials"],
+      "additionalProperties": false,
+      "properties": {
+        "assessmentId": { "$ref": "#/$defs/id" },
+        "competition": { "type": "string", "minLength": 1 },
+        "round": { "type": "string" },
+        "category": {
+          "type": "object", "required": ["code", "format", "periodLengthMin"],
+          "properties": {
+            "code": { "type": "string" }, "name": { "type": "string" },
+            "format": { "enum": ["XV", "SEVENS", "TENS"] },
+            "periodLengthMin": { "type": "number", "exclusiveMinimum": 0 },
+            "lawVariations": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "kickoff": {
+          "type": "object", "required": ["local", "tz"], "additionalProperties": false,
+          "properties": { "local": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$" }, "tz": { "type": "string" } }
+        },
+        "venue": { "type": "string" },
+        "home": { "$ref": "#/$defs/team" },
+        "away": { "$ref": "#/$defs/team" },
+        "finalScore": {
+          "type": "object", "required": ["home", "away"],
+          "properties": { "home": { "type": "integer", "minimum": 0 }, "away": { "type": "integer", "minimum": 0 } }
+        },
+        "observationMode": { "enum": ["LIVE", "VIDEO", "LIVE_AND_VIDEO"] },
+        "difficulty": { "enum": ["LOW", "MEDIUM", "HIGH", "VERY_HIGH"] },
+        "conditions": { "type": "object" },
+        "officials": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "required": ["role", "fullName"],
+            "properties": { "role": { "$ref": "#/$defs/role" }, "fullName": { "type": "string" }, "federationLicence": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "official": {
+      "type": "object", "required": ["id", "fullName", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "fullName": { "type": "string" }, "role": { "$ref": "#/$defs/role" },
+        "federationLicence": { "type": "string" }, "grade": { "type": "string" }
+      }
+    },
+    "assessor": {
+      "type": "object", "required": ["id", "fullName"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "fullName": { "type": "string" }, "federationLicence": { "type": "string" } }
+    },
+    "rubric": {
+      "type": "object", "required": ["id", "code", "version", "areas"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "code": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "areas": {
+          "description": "Copia de áreas, criterios y pesos usados: el receptor puede recalcular sin conocer la rúbrica.",
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["code", "name", "weight", "criteria"],
+            "properties": {
+              "code": { "type": "string" }, "name": { "type": "string" }, "weight": { "type": "number", "minimum": 0 },
+              "criteria": {
+                "type": "array",
+                "items": {
+                  "type": "object", "required": ["code", "name", "weight"],
+                  "properties": { "code": { "type": "string" }, "name": { "type": "string" }, "weight": { "type": "number", "minimum": 0 } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "required": ["version", "status", "criterionScores", "areaScores", "overallScore", "band", "keyDecisionAccuracy", "summary", "strengths", "developmentAreas", "actionPoints", "previousActionPointReviews"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["FINALIZED", "SUPERSEDED"] },
+        "supersedesVersion": { "type": "integer", "minimum": 1 },
+        "amendmentReason": { "type": "string" },
+        "finalizedAt": { "type": "string", "format": "date-time" },
+        "criterionScores": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["criterionCode", "suggested", "final", "notObserved", "justification"],
+            "properties": {
+              "criterionCode": { "type": "string" },
+              "suggested": { "type": ["number", "null"] },
+              "final": { "type": ["number", "null"], "minimum": 1, "maximum": 10 },
+              "notObserved": { "type": "boolean" },
+              "justification": { "type": "string", "minLength": 1 },
+              "capApplied": { "type": ["number", "null"] },
+              "evidenceIncidentIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+            }
+          }
+        },
+        "areaScores": {
+          "type": "array",
+          "items": { "type": "object", "required": ["areaCode", "score"], "properties": { "areaCode": { "type": "string" }, "score": { "type": ["number", "null"] } } }
+        },
+        "overallScore": { "type": ["number", "null"] },
+        "band": { "type": ["string", "null"] },
+        "keyDecisionAccuracy": {
+          "type": "object", "required": ["correct", "total", "ratio"],
+          "properties": { "correct": { "type": "integer", "minimum": 0 }, "total": { "type": "integer", "minimum": 0 }, "ratio": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } }
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "strengths": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "$ref": "#/$defs/finding" } },
+        "developmentAreas": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "$ref": "#/$defs/finding" } },
+        "actionPoints": {
+          "type": "array", "minItems": 1, "maxItems": 3,
+          "items": {
+            "type": "object", "required": ["id", "criterionCode", "text", "successIndicator"],
+            "properties": { "id": { "$ref": "#/$defs/id" }, "criterionCode": { "type": "string" }, "text": { "type": "string", "minLength": 1 }, "successIndicator": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "previousActionPointReviews": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["actionPointId", "text", "status", "comment"],
+            "properties": {
+              "actionPointId": { "$ref": "#/$defs/id" }, "text": { "type": "string" },
+              "status": { "enum": ["ACHIEVED", "PARTIAL", "NOT_ACHIEVED", "NOT_OBSERVED"] }, "comment": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "seq", "matchClock", "period", "category", "criterionCode", "verdict", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "seq": { "type": "integer", "minimum": 1 },
+          "matchClock": { "type": "string", "pattern": "^\\d{2,3}:\\d{2}$" },
+          "period": { "enum": ["H1", "H2", "ET1", "ET2", "SD", null] },
+          "overtime": { "type": "boolean" },
+          "timeIntegrity": { "enum": ["OK", "DEGRADED"] },
+          "officialRole": { "$ref": "#/$defs/role" },
+          "category": { "type": "string" },
+          "criterionCode": { "type": "string" },
+          "gamePhase": { "type": "string" },
+          "fieldZone": { "type": "string" },
+          "decisionTaken": { "$ref": "#/$defs/decision" },
+          "decisionExpected": { "$ref": "#/$defs/decision" },
+          "verdict": { "enum": ["CORRECT", "INCORRECT", "MISSED", "DEBATABLE", "NOT_ASSESSABLE"] },
+          "impact": { "enum": ["LOW", "MEDIUM", "HIGH", "MATCH_DEFINING"] },
+          "notes": { "type": "string" },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["kind"],
+              "properties": {
+                "kind": { "enum": ["VOICE_NOTE", "PHOTO", "VIDEO_CLIP", "VIDEO_LINK"] },
+                "fileName": { "type": "string" }, "url": { "type": "string" },
+                "videoPositionMs": { "type": "integer", "minimum": 0 }, "sha256": { "type": "string" },
+                "transcript": { "type": "string" }
+              }
+            }
+          }
+        },
+        "allOf": [{
+          "if": { "properties": { "verdict": { "enum": ["INCORRECT", "MISSED"] } } },
+          "then": { "required": ["decisionExpected"] }
+        }]
+      }
+    },
+    "integrity": {
+      "type": "object", "required": ["algorithm", "canonicalization", "contentHash", "hashedPointer"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "const": "SHA-256" },
+        "canonicalization": { "const": "sorted-keys-no-whitespace-v1" },
+        "hashedPointer": { "const": "/report", "description": "El hash cubre el objeto /report canónico SIN la clave status (que pasa de FINALIZED a SUPERSEDED tras una enmienda sin alterar el contenido firmado)." },
+        "contentHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1 },
+    "role": { "enum": ["REFEREE", "AR1", "AR2", "TMO"] },
+    "team": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "clubCode": { "type": "string" } } },
+    "decision": {
+      "type": "object", "required": ["outcomes"],
+      "properties": {
+        "outcomes": {
+          "type": "array", "minItems": 1,
+          "items": { "enum": ["PLAY_ON", "ADVANTAGE", "PENALTY", "FREE_KICK", "SCRUM", "LINEOUT", "TRY", "NO_TRY", "PENALTY_TRY", "YELLOW_CARD", "RED_CARD_20", "RED_CARD", "WARNING", "TMO_REFERRAL", "NO_DECISION"] }
+        },
+        "againstTeam": { "enum": ["HOME", "AWAY"] },
+        "lawRef": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "finding": {
+      "type": "object", "required": ["criterionCode", "text"],
+      "properties": { "criterionCode": { "type": "string" }, "text": { "type": "string", "minLength": 1 }, "evidenceIncidentIds": { "type": "array", "items": { "$ref": "#/$defs/id" } } }
+    }
+  }
+}
