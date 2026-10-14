@@ -4,6 +4,7 @@ import '../../core/design_system/theme.dart';
 import '../../core/design_system/tokens.dart';
 import '../../domain/clock.dart';
 import '../../domain/laws.dart';
+import '../../domain/match_facts.dart';
 import '../../domain/model.dart';
 import '../../domain/review.dart';
 import '../live/live_controller.dart' show periodLabel;
@@ -152,6 +153,7 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
     final i = _draft;
     final issues = _issues;
     final hasNext = widget.chainPending && widget.controller.nextPendingAfter(i.id) != null;
+    final sanction = isSanction(i);
     final period = i.matchTime.period;
 
     return PopScope(
@@ -206,6 +208,7 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                 SectionHeader(
                   title: 'Veredicto',
                   required: true,
+                  subtitle: sanction ? 'Es una sanción: el árbitro la pitó. ¿Estuvo bien pitada?' : null,
                   error: issues.contains(ReviewIssue.verdictPending) ? 'Elige un veredicto.' : null,
                 ),
                 ChoiceGrid<Verdict>(
@@ -220,6 +223,9 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                       Verdict.debatable,
                       Verdict.notAssessable,
                     ])
+                      // "No pitada" solo tiene sentido en lo que el árbitro NO pitó: una sanción sí
+                      // se pitó. (Si ya estaba elegida, se sigue mostrando para poder cambiarla.)
+                      if (v != Verdict.missed || !sanction || i.verdict == Verdict.missed)
                       ChoiceOption(
                         value: v,
                         label: verdictLabel(v),

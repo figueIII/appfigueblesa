@@ -6,10 +6,12 @@ import '../../../domain/clock.dart';
 import '../live_controller.dart';
 import 'hold_to_confirm_button.dart';
 
-/// Opciones del reloj, fuera de la zona de juego para que no se toquen sin querer:
-/// ajuste fino con el reloj oficial, fin de periodo (mantener pulsado) y deshacer.
-Future<void> showClockMenuSheet(BuildContext context, LiveController controller) {
-  return showModalBottomSheet<void>(
+/// Menú del partido, fuera de la zona de juego para que no se toque sin querer:
+///  · salir al menú principal (el partido queda guardado y el reloj sigue contando);
+///  · reloj: ajuste fino con el reloj oficial, fin de periodo (mantener pulsado) y deshacer.
+/// Devuelve true si se eligió salir al menú principal.
+Future<bool> showClockMenuSheet(BuildContext context, LiveController controller) async {
+  final exit = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -18,6 +20,7 @@ Future<void> showClockMenuSheet(BuildContext context, LiveController controller)
       builder: (context, _) => _ClockMenu(controller: controller),
     ),
   );
+  return exit ?? false;
 }
 
 class _ClockMenu extends StatelessWidget {
@@ -44,6 +47,31 @@ class _ClockMenu extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Semantics(header: true, child: Text('Menú del partido', style: RefType.control.copyWith(color: c.onSurface))),
+          const SizedBox(height: RefSpace.m),
+          SizedBox(
+            height: RefTouch.control,
+            child: FilledButton.icon(
+              key: const ValueKey('exit-to-home'),
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.home_rounded),
+              label: const Text('Salir al menú principal'),
+              style: FilledButton.styleFrom(
+                backgroundColor: c.primary,
+                foregroundColor: c.onPrimary,
+                textStyle: context.refText(RefType.control),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RefRadius.control)),
+              ),
+            ),
+          ),
+          const SizedBox(height: RefSpace.xs),
+          Text(
+            playing
+                ? 'El partido queda guardado y el reloj sigue contando. Vuelve desde «En curso».'
+                : 'El partido queda guardado. Vuelve desde la lista de partidos.',
+            style: RefType.caption.copyWith(color: c.onSurfaceMuted),
+          ),
+          const SizedBox(height: RefSpace.xl),
           Semantics(header: true, child: Text('Reloj', style: RefType.control.copyWith(color: c.onSurface))),
           const SizedBox(height: RefSpace.l),
           Text('Ajustar al reloj oficial', style: RefType.status.copyWith(color: c.onSurfaceMuted)),

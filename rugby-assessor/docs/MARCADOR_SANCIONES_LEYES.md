@@ -1,6 +1,10 @@
 # Marcador, sanciones y leyes (v1.1, revisado en 1.1.1)
 
-> **Estado:** app **1.1.1**, base de datos **v4**, exportación **2.1**.
+> **Estado:** app **1.1.2**, base de datos **v4**, exportación **2.1**.
+>
+> **1.1.2:**
+> - En una sanción el editor no ofrece «No pitada»: el árbitro sí la pitó. Solo Correcta, Incorrecta, Discutible o No evaluable. «No pitada» sigue en las marcas de la rejilla.
+> - El icono de arriba a la derecha es el **menú del partido**, con «Salir al menú principal».
 >
 > **Cambio en 1.1.1, tras la primera prueba:**
 > - **Las sanciones son marcas.** Un golpe de castigo, un golpe franco o una tarjeta registrados desde el panel crean una marca con la decisión del árbitro. Esa marca se valora en el momento con Bien o Error, como las demás, y se revisa con ellas.

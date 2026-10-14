@@ -222,4 +222,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LiveScreen), findsOneWidget);
   });
+
+  testWidgets('desde el partido se sale al menú principal (con el reloj en marcha) y se vuelve', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final id = (await tester.runAsync(() => services.matches.createMatch(MatchSetupInput(
+          category: categoryPreset('M16'),
+          homeTeam: 'Club Local RC',
+          awayTeam: 'Visitante RT',
+          refereeName: 'Ana Árbitro',
+          assessorName: 'Evaluadora',
+          kickoffLocal: DateTime(2026, 10, 17, 17),
+          venue: 'Campo Municipal',
+        ))))!;
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$id')));
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('primary-clock-action')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('clock-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Menú del partido'), findsOneWidget);
+    expect(find.text('El partido queda guardado y el reloj sigue contando. Vuelve desde «En curso».'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('exit-to-home')));
+    for (var i = 0; i < 50 && find.byType(LiveScreen).evaluate().isNotEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(LiveScreen), findsNothing, reason: 'en el menú principal, sin diálogo de confirmación');
+    expect(find.textContaining('En directo'), findsOneWidget);
+
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    expect(find.text('1ª PARTE · EN JUEGO'), findsOneWidget, reason: 'el reloj siguió contando');
+  });
 }

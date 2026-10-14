@@ -228,6 +228,30 @@ void main() {
     expect(h.stored('ruck').infraction, isNull);
   });
 
+  testWidgets('una sanción se pitó: su editor no ofrece "No pitada"; una marca normal sí', (tester) async {
+    final h = Harness([
+      seedIncident('ruck', 1, 12 * min, IncidentCategory.ruck),
+      seedIncident('gc', 2, 20 * min, IncidentCategory.ruck).copyWith(
+        decisionTaken: const Decision(outcomes: [DecisionOutcome.penalty], againstTeam: TeamSide.home),
+        infraction: InfractionRef.catalog('SIDE_ENTRY'),
+      ),
+    ]);
+    await h.pump(tester);
+    await tester.tap(card('gc'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Golpe de castigo contra'), findsWidgets, reason: 'se titula por lo que se pitó');
+    expect(find.text('Es una sanción: el árbitro la pitó. ¿Estuvo bien pitada?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('verdict-missed')), findsNothing);
+    for (final v in ['correct', 'incorrect', 'debatable', 'notAssessable']) {
+      expect(find.byKey(ValueKey('verdict-$v')), findsOneWidget, reason: v);
+    }
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(card('ruck'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('verdict-missed')), findsOneWidget, reason: 'en las marcas individuales sigue existiendo');
+  });
+
   testWidgets('salir con cambios sin guardar pide confirmación', (tester) async {
     final h = Harness();
     await h.pump(tester);

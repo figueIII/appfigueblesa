@@ -49,8 +49,8 @@ class MatchClockHeader extends StatelessWidget {
               _MarksButton(pending: controller.pendingReviewCount, total: controller.activeCount, onPressed: onOpenMarks!),
             _IconControl(
               key: const ValueKey('clock-menu'),
-              icon: Icons.tune_rounded,
-              label: 'Opciones del reloj',
+              icon: Icons.menu_rounded,
+              label: 'Menú del partido: salir al menú principal y reloj',
               onPressed: onOpenClockMenu,
             ),
           ],

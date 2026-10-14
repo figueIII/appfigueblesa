@@ -126,7 +126,13 @@ class _ReadyLayout extends StatelessWidget {
         final header = MatchClockHeader(
           controller: controller,
           compact: compact,
-          onOpenClockMenu: () => showClockMenuSheet(context, controller),
+          onOpenClockMenu: () async {
+            final exit = await showClockMenuSheet(context, controller);
+            if (!exit || !context.mounted) return;
+            await controller.flush();
+            // Salir es una decisión explícita: no se pide confirmación aunque el reloj corra.
+            if (context.mounted) Navigator.of(context).pop();
+          },
           onGoToReview: onGoToReview,
           onOpenMarks: onOpenMarks,
         );
