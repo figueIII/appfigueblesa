@@ -254,4 +254,43 @@ void main() {
     expect(gone, isEmpty, reason: 'la tabla y sus triggers desaparecen');
     expect((await migrated.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
   });
+
+  for (final staleVersion in [3, 2]) {
+    test('una base de datos v4 que una versión antigua dejó marcada como v$staleVersion se abre sin perder nada', () async {
+      // Caso real: el HTML 1.1.0 (código v3) abrió la base de datos ya migrada a v4 y rebajó su
+      // número de versión sin tocar las tablas; el HTML nuevo fallaba al buscar sanction_event.
+      final dir = Directory.systemTemp.createTempSync('refassess_stale_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/v4.sqlite');
+      final first = AppDatabase(NativeDatabase(file));
+      final r1 = DriftLiveSessionRepository(first);
+      final aid = await AssessmentSetup(first, SeqIds()).createLiveAssessment(
+        category: categoryPreset('M18'),
+        competition: 'Liga',
+        venue: 'Campo',
+        homeTeam: 'Local',
+        awayTeam: 'Visitante',
+        refereeName: 'Árbitro',
+        assessorName: 'Evaluador',
+        kickoffLocal: DateTime(2026, 10, 17, 17),
+      );
+      await r1.insertIncident(sanctionMark(aid, 1, d.TeamSide.home, SanctionKind.penalty, InfractionRef.catalog('SIDE_ENTRY')));
+      await r1.insertScoreEvent(score(aid, 1, d.TeamSide.away, ScoreKind.tryScored));
+      await first.close();
+
+      final raw3 = raw.sqlite3.open(file.path);
+      raw3.userVersion = staleVersion;
+      raw3.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      addTearDown(reopened.close);
+      final snap = await DriftLiveSessionRepository(reopened).load(aid);
+      expect(snap.incidents.single.decisionTaken!.againstTeam, d.TeamSide.home);
+      expect(snap.incidents.single.infraction, InfractionRef.catalog('SIDE_ENTRY'));
+      expect(scorelineOf(snap.scores), const Scoreline(0, 5));
+      expect((await reopened.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+      // Los triggers siguen en su sitio (sin duplicar ni romper nada).
+      await expectLater(reopened.customStatement("DELETE FROM score_event WHERE assessment_id = '$aid'"), throwsA(isA<Exception>()));
+    });
+  }
 }

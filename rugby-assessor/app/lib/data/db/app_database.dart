@@ -21,22 +21,25 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
+          // Cada paso comprueba si ya está hecho: el número de versión no es de fiar si una
+          // versión antigua de la app abrió la base de datos (lo rebaja sin tocar las tablas).
+          //
           // v2 → v3: marcador e infracción de cada incidencia. Solo añade: los partidos ya
           // registrados en el móvil se conservan tal cual.
           if (from < 3) {
-            await m.addColumn(incident, incident.infractionCode);
-            await m.addColumn(incident, incident.infractionCustom);
-            await m.addColumn(incident, incident.infractionLawRef);
+            for (final col in [incident.infractionCode, incident.infractionCustom, incident.infractionLawRef]) {
+              if (!await sqliteColumnExists(this, 'incident', col.name)) await m.addColumn(incident, col);
+            }
             await m.drop(incidentAudit);
             await m.createTrigger(incidentAudit);
-            await m.createTable(scoreEvent);
+            if (!await sqliteObjectExists(this, 'table', 'score_event')) await m.createTable(scoreEvent);
             for (final t in [scoreEventVoidOnly, scoreEventNoDelete, scoreEventLockedInsert, scoreEventLockedUpdate]) {
-              await m.createTrigger(t);
+              if (!await sqliteObjectExists(this, 'trigger', t.entityName)) await m.createTrigger(t);
             }
           }
           // v3 → v4: cada sanción registrada pasa a ser una incidencia con su decisión tomada
-          // (así se puede valorar) y la tabla sanction_event desaparece.
-          if (from == 3) await migrateSanctionsToIncidents(this);
+          // (así se puede valorar) y la tabla sanction_event desaparece. Si no existe, no hace nada.
+          if (from < 4) await migrateSanctionsToIncidents(this);
         },
         beforeOpen: (details) async {
           // Integridad referencial y durabilidad (spec §3.1): con synchronous=FULL cada
