@@ -15,7 +15,8 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 | `app/` | App Flutter + Drift (paquete `ref_assess`, Android `com.refassess.ref_assess`). |
 | `app/lib/` | Código: `app/` (arranque y navegación), `features/` (inicio, preparación, directo, revisión, evaluación), `domain/` (reloj, puntuación, rúbrica), `data/` (SQLite), `export/` (JSON y PDF). |
 | `app/test/` | Tests de Flutter (dominio, datos, pantallas, flujo completo, exportación, capturas en `test/screenshots/goldens/`). |
-| `app/scripts/build_apk.sh` | **Compilar el APK** (debug o release, con instalación opcional por adb). |
+| `app/scripts/build_html.sh` | **Versión HTML de pruebas**: la misma app en un único archivo que se abre en el navegador, sin servidor. Es lo que se entrega tras cada cambio. |
+| `app/scripts/build_apk.sh` | **Compilar el APK** (debug o release, con instalación opcional por adb), solo cuando se pida. |
 | `docs/` | Especificación, una guía por pantalla, exportación y prueba de campo. |
 | `domain/`, `test/` | Especificación ejecutable en TypeScript (modelo, reloj, puntuación, rúbrica) y sus tests. |
 | `persistence/schema.sql` | Esquema SQLite de referencia (v3), del que se copia `app/lib/data/db/schema.drift`. |
@@ -40,10 +41,24 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 cd app
 flutter pub get
 flutter analyze && flutter test
-./scripts/build_apk.sh release --install   # requiere Android SDK y JDK 17+
+./scripts/build_html.sh                    # HTML de pruebas → build/html/RefAssess-<versión>-pruebas.html
+./scripts/build_apk.sh release --install   # APK (requiere Android SDK y JDK 17+)
 
 # Especificación TypeScript
 npm test
 ```
+
+## Versión HTML de pruebas
+
+`app/scripts/build_html.sh` compila la app para web y la empaqueta en **un único HTML** de unos 7 MB:
+- **Qué lleva dentro:** el código, el motor gráfico, SQLite en WebAssembly y las fuentes, comprimidos (`app/scripts/pack_single_html.py`).
+- **Cómo se usa:** se abre con doble clic o desde el móvil (Chrome, Safari, Firefox), sin servidor y sin conexión.
+- **Lo que comparte con el APK:** es el mismo código Dart, con las mismas pantallas, reglas y base de datos.
+- **Diferencias con el APK:**
+  - los datos se guardan en el navegador;
+  - el reloj usa la hora del sistema en lugar del reloj de arranque del dispositivo;
+  - «Compartir» descarga el PDF/JSON;
+  - no hay vibración.
+- **Uso previsto:** probar cambios, no evaluar partidos reales.
 
 Privacidad: todos los datos se guardan solo en el dispositivo del evaluador y salen de él únicamente cuando se comparte un informe.

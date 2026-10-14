@@ -1,7 +1,8 @@
 // Base de datos local (Drift). El esquema vive en schema.drift, copia de persistence/schema.sql.
 
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
+
+import 'connection.dart';
 
 part 'app_database.g.dart';
 
@@ -9,9 +10,9 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
-  /// Base de datos de la app en el almacenamiento privado del dispositivo, en un isolate de
-  /// fondo: las escrituras nunca bloquean el frame de la UI.
-  factory AppDatabase.onDevice() => AppDatabase(driftDatabase(name: 'refassess'));
+  /// Base de datos de la app: archivo SQLite en el dispositivo (isolate de fondo) o, en la versión
+  /// HTML de pruebas, SQLite en WebAssembly (ver connection.dart).
+  factory AppDatabase.onDevice() => AppDatabase(openAppConnection());
 
   @override
   int get schemaVersion => 3; // = PRAGMA user_version de persistence/schema.sql

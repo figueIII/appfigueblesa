@@ -7,6 +7,7 @@ import 'package:ref_assess/data/drift_export_repository.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
 import 'package:ref_assess/export/export_document.dart';
 import 'package:ref_assess/export/report_exporter.dart';
+import 'package:ref_assess/features/evaluation/export_controller.dart';
 
 import 'fixture.dart';
 
@@ -245,6 +246,39 @@ void main() {
     expect(text, contains('(PDF y JSON)'));
     expect(text, contains('SHA-256 del informe: abc123'));
   });
+
+  group('versión HTML (descarga en lugar de compartir)', () {
+    test('render no escribe en disco; renderForDownload lo registra en export_log como descarga', () async {
+      final r = await f.exporter().render(f.firstId, ExportFormat.pdf);
+      expect(String.fromCharCodes(r.bytes.take(5)), '%PDF-');
+      expect(r.fileName, endsWith('_v1.pdf'));
+      expect(r.mimeType, 'application/pdf');
+      expect(r.sha256, sha256.convert(r.bytes).toString());
+      expect(Directory('${f.dir.path}/exports').existsSync(), isFalse, reason: 'nada escrito en disco');
+      final d = await f.exporter().renderForDownload(f.firstId, ExportFormat.json);
+      final log = await (f.db.select(f.db.exportLog)..where((t) => t.assessmentId.equals(f.firstId))).get();
+      expect(log.single.relativePath, 'download/${d.fileName}');
+      expect(log.single.sha256, d.sha256);
+    });
+
+    test('el controlador entrega PDF + JSON en memoria y muestra sus nombres', () async {
+      final sink = _MemorySharer();
+      final c = ExportController(
+        assessmentId: f.firstId,
+        exporter: f.exporter(),
+        sharer: const SystemFileSharer(), // no debe usarse
+        bytesSharer: sink,
+        homeTeam: 'Club Local RC',
+        awayTeam: 'Visitante RT',
+      );
+      await c.share(const [ExportFormat.pdf, ExportFormat.json]);
+      expect(c.error, isNull);
+      expect(sink.files.map((r) => r.format), [ExportFormat.pdf, ExportFormat.json]);
+      expect(c.lastSharedNames, [for (final r in sink.files) r.fileName]);
+      expect(jsonDecode(utf8.decode(sink.files.last.bytes))['formatVersion'], '2.1');
+      c.dispose();
+    });
+  });
 }
 
 String _canonical(Object? v) {
@@ -254,4 +288,10 @@ String _canonical(Object? v) {
   final m = v as Map;
   final keys = m.keys.cast<String>().toList()..sort();
   return '{${keys.map((k) => '${jsonEncode(k)}:${_canonical(m[k])}').join(',')}}';
+}
+
+class _MemorySharer implements BytesSharer {
+  final List<RenderedExport> files = [];
+  @override
+  Future<void> shareBytes(List<RenderedExport> files) async => this.files.addAll(files);
 }

@@ -12,7 +12,11 @@ class ExportController extends ChangeNotifier {
     required this.sharer,
     required this.homeTeam,
     required this.awayTeam,
+    this.bytesSharer,
   });
+
+  /// Si existe (versión HTML), los archivos se entregan en memoria en lugar de escribirse.
+  final BytesSharer? bytesSharer;
 
   final String assessmentId;
   final ReportExporter exporter;
@@ -26,6 +30,9 @@ class ExportController extends ChangeNotifier {
   List<ExportFormat>? busy;
   String? error;
   List<ExportedFile> lastShared = const [];
+
+  /// Nombres de los últimos archivos entregados (para "Preparado: …").
+  List<String> lastSharedNames = const [];
   bool _disposed = false;
 
   void setIncludeAnnex(bool v) {
@@ -39,10 +46,20 @@ class ExportController extends ChangeNotifier {
     error = null;
     _notify();
     try {
-      final files = [for (final f in formats) await exporter.export(assessmentId, f, includeIncidentAnnex: includeIncidentAnnex)];
-      final (subject, text) = shareMessage(homeTeam, awayTeam, files.first.reportHash, formats);
-      await sharer.share([for (final f in files) f.file], subject: subject, text: text);
-      lastShared = files;
+      final web = bytesSharer;
+      if (web != null) {
+        final rendered = [
+          for (final f in formats) await exporter.renderForDownload(assessmentId, f, includeIncidentAnnex: includeIncidentAnnex),
+        ];
+        await web.shareBytes(rendered);
+        lastSharedNames = [for (final r in rendered) r.fileName];
+      } else {
+        final files = [for (final f in formats) await exporter.export(assessmentId, f, includeIncidentAnnex: includeIncidentAnnex)];
+        final (subject, text) = shareMessage(homeTeam, awayTeam, files.first.reportHash, formats);
+        await sharer.share([for (final f in files) f.file], subject: subject, text: text);
+        lastShared = files;
+        lastSharedNames = [for (final f in files) f.file.uri.pathSegments.last];
+      }
     } on ExportException catch (e) {
       error = switch (e.code) {
         ExportErrorCode.integrityMismatch =>

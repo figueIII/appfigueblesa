@@ -126,7 +126,7 @@ class ExportSection extends StatelessWidget {
                   ),
                 ),
               ),
-            if (controller.lastShared.isNotEmpty && controller.error == null)
+            if (controller.lastSharedNames.isNotEmpty && controller.error == null)
               Padding(
                 padding: const EdgeInsets.only(top: RefSpace.s),
                 child: Semantics(
@@ -138,7 +138,7 @@ class ExportSection extends StatelessWidget {
                       const SizedBox(width: RefSpace.xs),
                       Expanded(
                         child: Text(
-                          'Preparado: ${controller.lastShared.map((f) => f.file.uri.pathSegments.last).join(' · ')}',
+                          'Preparado: ${controller.lastSharedNames.join(' · ')}',
                           style: RefType.caption.copyWith(color: c.onSurface),
                         ),
                       ),

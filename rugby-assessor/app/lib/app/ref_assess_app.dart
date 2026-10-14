@@ -148,6 +148,7 @@ class AppNavigator {
           assessmentId: id,
           exporter: s.exporter,
           sharer: s.sharer,
+          bytesSharer: s.bytesSharer,
           homeTeam: home,
           awayTeam: away,
         ),

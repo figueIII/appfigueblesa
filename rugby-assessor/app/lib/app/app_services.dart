@@ -14,6 +14,7 @@ import '../data/match_repository.dart';
 import '../data/session_time.dart';
 import '../domain/rubric.dart';
 import '../domain/rubric_default.dart';
+import '../export/download.dart';
 import '../export/report_exporter.dart';
 import '../export/report_pdf.dart';
 
@@ -29,8 +30,10 @@ class AppServices {
     this.haptics = const SystemHaptics(),
     this.screenAwake = const WakelockScreenAwake(),
     this.sharer = const SystemFileSharer(),
+    BytesSharer? bytesSharer,
     this.wallNow,
-  })  : rubric = rubric ?? kDefaultRubric,
+  })  : bytesSharer = bytesSharer ?? platformBytesSharer(),
+        rubric = rubric ?? kDefaultRubric,
         live = DriftLiveSessionRepository(db),
         evaluation = DriftEvaluationRepository(db),
         matches = DriftMatchRepository(db, AssessmentSetup(db, ids));
@@ -43,6 +46,9 @@ class AppServices {
   final Haptics haptics;
   final ScreenAwake screenAwake;
   final FileSharer sharer;
+
+  /// Solo en la versión HTML: los informes se descargan en lugar de compartirse.
+  final BytesSharer? bytesSharer;
 
   /// Reloj de pared (solo se sustituye en tests).
   final DateTime Function()? wallNow;

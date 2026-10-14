@@ -17,8 +17,10 @@ dependencies:
   path_provider: ^2.1.6
   pdf: ^3.13.1
   share_plus: ^13.3.1
+  sqlite3: ^3.5.2 # versión web: SQLite en WASM (y tests de migración)
   uuid: ^4.6.0
   wakelock_plus: ^1.8.1
+  web: ^1.1.1 # versión web: descarga de los informes exportados
 
 dev_dependencies:
   flutter_test:
@@ -26,7 +28,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.1
   build_runner: ^2.16.2
-  sqlite3: ^3.5.2 # tests de migración: base de datos v2 creada sin Drift
 
 flutter:
   uses-material-design: true
