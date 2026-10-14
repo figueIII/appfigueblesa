@@ -93,16 +93,17 @@ Future<void> tapVisible(WidgetTester tester, Finder f) async {
 }
 
 void main() {
-  testWidgets('progreso y cola: sin veredicto por impacto y minuto; después las clave sin notas', (tester) async {
+  testWidgets('progreso y cola: solo las marcas sin veredicto, por impacto y minuto; lo recomendado, como sugerencia', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('de 5 resueltas'), findsOneWidget);
-    expect(find.text('Pendientes (4)'), findsOneWidget);
-    final ys = [for (final id in ['scrum', 'ruck', 'offside', 'card']) tester.getTopLeft(card(id)).dy];
-    expect(ys, orderedEquals([...ys]..sort()), reason: 'orden: scrum (alto) · ruck 12′ · offside 45′ · tarjeta (falta nota)');
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('de 5 resueltas'), findsOneWidget, reason: 'la tarjeta sin notas ya cuenta como resuelta');
+    expect(find.text('Pendientes (3)'), findsOneWidget);
+    final ys = [for (final id in ['scrum', 'ruck', 'offside']) tester.getTopLeft(card(id)).dy];
+    expect(ys, orderedEquals([...ys]..sort()), reason: 'orden: scrum (alto) · ruck 12′ · offside 45′');
     expect(card('tackle'), findsNothing, reason: 'la resuelta no está en la cola');
-    expect(find.text('Faltan notas (impacto alto)'), findsNWidgets(2), reason: 'scrum (alto, sin veredicto) y tarjeta');
+    expect(card('card'), findsNothing, reason: 'con veredicto: las notas que faltan son solo recomendadas');
+    expect(find.text('Recomendado: notas (impacto alto)'), findsOneWidget, reason: 'scrum: sugerencia, no error');
   });
 
   testWidgets('"Todas" muestra todo en orden cronológico', (tester) async {
@@ -114,34 +115,45 @@ void main() {
     expect(tester.getTopLeft(card('ruck')).dy, lessThan(tester.getTopLeft(card('scrum')).dy));
   });
 
-  testWidgets('resolver un error: decisión esperada y notas obligatorias junto al campo; guardar salta a la siguiente', (tester) async {
+  testWidgets('resolver un error: basta el veredicto; decisión esperada y notas son recomendadas', (tester) async {
     final h = Harness();
     await h.pump(tester);
     await tester.tap(card('scrum'));
     await tester.pumpAndSettle();
     expect(find.text('30:00'), findsOneWidget);
-    expect(find.text('Elige un veredicto.'), findsOneWidget);
+    expect(find.text('Elige un veredicto.'), findsOneWidget, reason: 'lo único obligatorio');
 
     await tapVisible(tester, find.byKey(const ValueKey('verdict-incorrect')));
-    expect(find.text('Marca al menos una decisión.'), findsOneWidget);
-    expect(find.text('Las marcas de impacto alto o decisivo necesitan notas.'), findsOneWidget);
+    expect(find.text('Elige un veredicto.'), findsNothing);
+    expect(find.text('Lo que debía pitar según el reglamento (recomendado).'), findsOneWidget);
+    expect(find.text('Recomendado en las de impacto alto o decisivo.'), findsOneWidget);
+    expect(find.textContaining('Lista para el informe.'), findsOneWidget, reason: 'se puede guardar ya');
 
+    await tester.tap(find.byKey(const ValueKey('save-incident')));
+    await tester.pumpAndSettle();
+    final saved = h.stored('scrum');
+    expect((saved.verdict, saved.decisionExpected, saved.notes), (Verdict.incorrect, null, null));
+    expect(find.text('12:00'), findsOneWidget, reason: 'abre la siguiente pendiente (ruck, 12:00)');
+  });
+
+  testWidgets('completar lo recomendado sigue funcionando: decisión esperada con ley y notas', (tester) async {
+    final h = Harness();
+    await h.pump(tester);
+    await tester.tap(card('scrum'));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const ValueKey('verdict-incorrect')));
     await tapVisible(tester, find.byKey(const ValueKey('expected-penalty')));
     await tapVisible(tester, find.byKey(const ValueKey('expected-team-away')));
     await tester.enterText(find.byKey(const ValueKey('law-ref')), '19.10');
     await tester.ensureVisible(find.byKey(const ValueKey('notes')));
     await tester.enterText(find.byKey(const ValueKey('notes')), 'Colapso del pilar visitante no sancionado.');
     await tester.pumpAndSettle();
-    expect(find.text('Marca al menos una decisión.'), findsNothing);
-    expect(find.text('Lista para el informe.'), findsOneWidget);
-
     await tester.tap(find.byKey(const ValueKey('save-incident')));
     await tester.pumpAndSettle();
     final saved = h.stored('scrum');
     expect((saved.verdict, saved.polarity, saved.status), (Verdict.incorrect, QuickPolarity.negative, IncidentStatus.enriched));
     expect(saved.decisionExpected, const Decision(outcomes: [DecisionOutcome.penalty], againstTeam: TeamSide.away, lawRef: '19.10'));
     expect(saved.notes, 'Colapso del pilar visitante no sancionado.');
-    expect(find.text('12:00'), findsOneWidget, reason: 'abre la siguiente pendiente (ruck, 12:00)');
   });
 
   testWidgets('las decisiones poco frecuentes están plegadas hasta "Más decisiones"', (tester) async {
@@ -156,15 +168,16 @@ void main() {
     expect(find.byKey(const ValueKey('expected-more')), findsNothing);
   });
 
-  testWidgets('un error con impacto por defecto exige confirmarlo', (tester) async {
+  testWidgets('en un error se recomienda confirmar el impacto (no bloquea)', (tester) async {
     final h = Harness();
     await h.pump(tester);
     await tester.tap(card('ruck'));
     await tester.pumpAndSettle();
     await tapVisible(tester, find.byKey(const ValueKey('verdict-missed')));
-    expect(find.text('En un error, confirma el impacto.'), findsOneWidget);
+    const hint = 'Recomendado en un error: confirma el impacto (por defecto, el del directo).';
+    expect(find.text(hint), findsOneWidget);
     await tapVisible(tester, find.byKey(const ValueKey('impact-low')));
-    expect(find.text('En un error, confirma el impacto.'), findsNothing);
+    expect(find.text(hint), findsNothing);
   });
 
   testWidgets('reasignar el criterio de una marca', (tester) async {
@@ -263,7 +276,7 @@ void main() {
     expect(find.text('¿Descartar los cambios?'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('confirm-discard')));
     await tester.pumpAndSettle();
-    expect(find.text('Pendientes (4)'), findsOneWidget);
+    expect(find.text('Pendientes (3)'), findsOneWidget);
     expect(h.stored('ruck').verdict, Verdict.pending);
   });
 
@@ -279,7 +292,7 @@ void main() {
     expect(h.stored('offside').status, IncidentStatus.voided);
     expect(h.repo.voidReasons['offside'], 'REVIEW');
     expect(find.text('de 4 resueltas'), findsOneWidget);
-    expect(find.text('Pendientes (3)'), findsOneWidget);
+    expect(find.text('Pendientes (2)'), findsOneWidget);
   });
 
   testWidgets('fallo al guardar: aviso junto al botón y el borrador se conserva', (tester) async {

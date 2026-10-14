@@ -1,6 +1,6 @@
 # Marcador, sanciones y leyes (v1.1, revisado en 1.1.1)
 
-> **Estado:** app **1.1.2**, base de datos **v4**, exportación **2.1**.
+> **Estado:** app **1.1.3** (en la revisión solo el veredicto es obligatorio; ver UI_PANTALLA_2_REVISION.md), base de datos **v4**, exportación **2.1**.
 >
 > **1.1.2:**
 > - En una sanción el editor no ofrece «No pitada»: el árbitro sí la pitó. Solo Correcta, Incorrecta, Discutible o No evaluable. «No pitada» sigue en las marcas de la rejilla.

@@ -99,6 +99,14 @@ String fieldZoneLabel(FieldZone z) => switch (z) {
   FieldZone.inGoal => 'Zona de ensayo',
 };
 
+/// Lo recomendado, en tono de sugerencia (no es un error).
+String recommendationLabel(ReviewIssue i) => switch (i) {
+  ReviewIssue.verdictPending => 'Falta el veredicto',
+  ReviewIssue.keyIncidentNotesMissing => 'Recomendado: notas (impacto alto)',
+  ReviewIssue.expectedDecisionMissing => 'Recomendado: decisión esperada',
+  ReviewIssue.impactNotConfirmed => 'Recomendado: confirmar el impacto',
+};
+
 String issueLabel(ReviewIssue i) => switch (i) {
   ReviewIssue.verdictPending => 'Falta el veredicto',
   ReviewIssue.keyIncidentNotesMissing => 'Faltan notas (impacto alto)',

@@ -33,30 +33,37 @@ Incident inc(
 const penalty = Decision(outcomes: [DecisionOutcome.penalty], againstTeam: TeamSide.away);
 
 void main() {
-  test('reglas por incidencia = validateForFinalization (usecases.ts)', () {
+  test('obligatorio: solo el veredicto (= errores de validateForFinalization en usecases.ts)', () {
     expect(reviewIssues(inc(1)), [ReviewIssue.verdictPending]);
     expect(reviewIssues(inc(1, verdict: Verdict.correct)), isEmpty, reason: 'un ✓ del directo ya está resuelto');
-    expect(reviewIssues(inc(1, verdict: Verdict.incorrect)), [ReviewIssue.expectedDecisionMissing, ReviewIssue.impactNotConfirmed]);
-    expect(reviewIssues(inc(1, verdict: Verdict.missed, confirmed: true, expected: penalty)), isEmpty);
-    expect(reviewIssues(inc(1, verdict: Verdict.correct, impact: ImpactLevel.high)), [ReviewIssue.keyIncidentNotesMissing]);
-    expect(reviewIssues(inc(1, verdict: Verdict.correct, impact: ImpactLevel.matchDefining, notes: '  ')), [ReviewIssue.keyIncidentNotesMissing]);
-    expect(reviewIssues(inc(1, verdict: Verdict.debatable, impact: ImpactLevel.high, notes: 'ok')), isEmpty);
-    expect(reviewIssues(inc(1, verdict: Verdict.incorrect, confirmed: true, expected: const Decision(outcomes: []))), [ReviewIssue.expectedDecisionMissing]);
+    expect(reviewIssues(inc(1, verdict: Verdict.incorrect)), isEmpty, reason: 'decisión esperada e impacto: recomendados');
+    expect(reviewIssues(inc(1, verdict: Verdict.correct, impact: ImpactLevel.high)), isEmpty, reason: 'notas: recomendadas');
     expect(reviewIssues(inc(1, status: IncidentStatus.voided)), isEmpty, reason: 'las anuladas no cuentan');
   });
 
-  test('cola: sin veredicto primero, luego claves sin notas, luego errores incompletos; dentro, por impacto y minuto', () {
+  test('recomendado (= avisos de validateForFinalization): notas en las clave, decisión esperada e impacto en los errores', () {
+    expect(reviewRecommendations(inc(1, verdict: Verdict.correct)), isEmpty);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.incorrect)), [ReviewIssue.expectedDecisionMissing, ReviewIssue.impactNotConfirmed]);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.missed, confirmed: true, expected: penalty)), isEmpty);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.correct, impact: ImpactLevel.high)), [ReviewIssue.keyIncidentNotesMissing]);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.correct, impact: ImpactLevel.matchDefining, notes: '  ')), [ReviewIssue.keyIncidentNotesMissing]);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.debatable, impact: ImpactLevel.high, notes: 'ok')), isEmpty);
+    expect(reviewRecommendations(inc(1, verdict: Verdict.incorrect, confirmed: true, expected: const Decision(outcomes: []))), [ReviewIssue.expectedDecisionMissing]);
+    expect(reviewRecommendations(inc(1, status: IncidentStatus.voided)), isEmpty);
+  });
+
+  test('cola: solo las marcas sin veredicto, por impacto y minuto; lo recomendado no entra', () {
     final list = [
-      inc(1, verdict: Verdict.incorrect, impact: ImpactLevel.matchDefining, confirmed: true, notes: 'x'), // nivel 3, decisivo
-      inc(2), // nivel 1, medio, t=2000
-      inc(3, impact: ImpactLevel.high, confirmed: true), // nivel 1, alto
-      inc(4, verdict: Verdict.correct, impact: ImpactLevel.high), // nivel 2
-      inc(5, impact: ImpactLevel.medium, t: 500), // nivel 1, medio, antes que el 2
+      inc(1, verdict: Verdict.incorrect, impact: ImpactLevel.matchDefining, confirmed: true, notes: 'x'), // con veredicto: fuera
+      inc(2), // medio, t=2000
+      inc(3, impact: ImpactLevel.high, confirmed: true), // alto
+      inc(4, verdict: Verdict.correct, impact: ImpactLevel.high), // sin notas, pero con veredicto: fuera
+      inc(5, impact: ImpactLevel.medium, t: 500), // medio, antes que el 2
       inc(6, verdict: Verdict.correct), // resuelta: fuera
       inc(7, status: IncidentStatus.voided), // anulada: fuera
-      inc(8, verdict: Verdict.missed, impact: ImpactLevel.low, confirmed: true), // nivel 3, bajo
+      inc(8, verdict: Verdict.missed, impact: ImpactLevel.low, confirmed: true), // sin decisión esperada: fuera
     ];
-    expect(buildReviewQueue(list).map((i) => i.seq), [3, 5, 2, 4, 1, 8]);
+    expect(buildReviewQueue(list).map((i) => i.seq), [3, 5, 2]);
   });
 
   test('progreso y fin de revisión', () {

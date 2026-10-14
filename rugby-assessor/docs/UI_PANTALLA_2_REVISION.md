@@ -12,22 +12,20 @@ Después del partido, el evaluador convierte las marcas rápidas del directo en 
 
 La pantalla hace dos cosas:
 - **Prioriza** qué revisar primero, con una cola ordenada por urgencia e impacto.
-- **Garantiza** que, al vaciar la cola, todas las incidencias cumplen las reglas de cierre del informe.
+- **Garantiza** que, al vaciar la cola, todas las incidencias tienen veredicto, que es lo único obligatorio para cerrar el informe.
 
-Las reglas por incidencia son **exactamente** las de `validateForFinalization` (`domain/usecases.ts`):
+Las reglas por incidencia son las de `validateForFinalization` (`domain/usecases.ts`). **Desde 1.1.3 solo el veredicto es obligatorio**: lo demás es **recomendado**. Se muestra como sugerencia en gris, junto al campo y en la tarjeta, y no bloquea ni la cola ni el cierre del informe (en TypeScript, `WARNING` en lugar de `ERROR`).
 
-| Regla | Código | Mensaje junto al campo |
-|---|---|---|
-| Sin veredicto | `INCIDENT_VERDICT_PENDING` | "Elige un veredicto." |
-| Impacto Alto o Decisivo sin notas | `KEY_INCIDENT_NOTES_REQUIRED` | "Las marcas de impacto alto o decisivo necesitan notas." |
-| Incorrecta o No pitada sin decisión esperada | `INCIDENT_EXPECTED_DECISION_REQUIRED` | "Marca al menos una decisión." |
-| Incorrecta o No pitada con el impacto por defecto del tap | `INCIDENT_IMPACT_NOT_CONFIRMED` | "En un error, confirma el impacto." |
+| Regla | Código | Tipo | Texto |
+|---|---|---|---|
+| Sin veredicto | `INCIDENT_VERDICT_PENDING` | **Obligatorio** | "Elige un veredicto." |
+| Impacto Alto o Decisivo sin notas | `KEY_INCIDENT_NOTES_REQUIRED` | Recomendado | "Recomendado en las de impacto alto o decisivo." |
+| Incorrecta o No pitada sin decisión esperada | `INCIDENT_EXPECTED_DECISION_REQUIRED` | Recomendado | "Lo que debía pitar según el reglamento (recomendado)." |
+| Incorrecta o No pitada con el impacto por defecto del tap | `INCIDENT_IMPACT_NOT_CONFIRMED` | Recomendado | "Recomendado en un error: confirma el impacto." |
 
 ## 2. Cola ordenada por impacto (`lib/domain/review.dart`, pura)
 
-1. **Nivel 1:** sin veredicto.
-2. **Nivel 2:** impacto Alto o Decisivo sin notas.
-3. **Nivel 3:** error sin decisión esperada o sin impacto confirmado.
+Desde 1.1.3 la cola solo contiene las marcas **sin veredicto**, ordenadas por impacto y minuto. Antes había tres niveles: sin veredicto, clave sin notas y error incompleto; los dos últimos ahora son recomendaciones.
 
 Dentro de cada nivel, **impacto de mayor a menor** y, a igualdad, por minuto de partido. Una incidencia con varios problemas va a su nivel más urgente. Las anuladas no cuentan.
 

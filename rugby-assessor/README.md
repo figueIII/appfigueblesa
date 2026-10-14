@@ -6,7 +6,7 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 - **Evaluación por bandas cualitativas**: Por debajo, En el nivel o Por encima del nivel, sin notas numéricas visibles.
 - **Informe firmado** (SHA-256) que se exporta en PDF y JSON.
 
-**Estado:** versión **1.1.2** (marcador, sanciones valorables como marcas, leyes y edición durante el partido, sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
+**Estado:** versión **1.1.3** (marcador, sanciones valorables como marcas, leyes y edición durante el partido, sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
 
 ## Estructura
 

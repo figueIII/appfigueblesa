@@ -141,15 +141,17 @@ const cs = (o: Partial<CriterionScore>): CriterionScore => ({
   justification: 'ok', evidenceIncidentIds: [], capBand: null, ...o,
 });
 
-test('validación de cierre: bloquea pendientes, superar el tope sin justificar y action points sin revisar', () => {
+test('validación de cierre: bloquea marcas sin veredicto, superar el tope sin justificar y action points sin revisar', () => {
   const report = baseReport([cs({ suggestedBand: 'BELOW', finalBand: 'AT', capBand: 'BELOW', justification: 'Visto en vídeo' })]);
   const issues = validateForFinalization(report, [inc('A1_SCRUM', 'PENDING', 'MEDIUM'), inc('A1_SCRUM', 'MISSED', 'HIGH', { impactConfirmed: false })], ['ap-prev'], R.scoring);
   const codes = issues.filter((i) => i.severity === 'ERROR').map((i) => i.code).sort();
   assert.deepEqual(codes, [
     'ACTION_POINTS_COUNT_1_TO_3', 'CAP_OVERRIDE_JUSTIFICATION_TOO_SHORT', 'DEVELOPMENT_COUNT_1_TO_3',
-    'INCIDENT_EXPECTED_DECISION_REQUIRED', 'INCIDENT_IMPACT_NOT_CONFIRMED', 'INCIDENT_VERDICT_PENDING',
-    'KEY_INCIDENT_NOTES_REQUIRED', 'PREVIOUS_ACTION_POINT_NOT_REVIEWED', 'STRENGTHS_COUNT_1_TO_3',
+    'INCIDENT_VERDICT_PENDING', 'PREVIOUS_ACTION_POINT_NOT_REVIEWED', 'STRENGTHS_COUNT_1_TO_3',
   ]);
+  // Decisión esperada, impacto confirmado y notas de las clave: recomendados, no bloquean.
+  const warnings = issues.filter((i) => i.severity === 'WARNING').map((i) => i.code).sort();
+  assert.deepEqual(warnings, ['INCIDENT_EXPECTED_DECISION_REQUIRED', 'INCIDENT_IMPACT_NOT_CONFIRMED', 'KEY_INCIDENT_NOTES_REQUIRED']);
 });
 
 test('validación por bandas: elegir otra banda que la sugerida exige justificación larga', () => {

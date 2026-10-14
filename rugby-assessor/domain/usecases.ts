@@ -130,11 +130,12 @@ export function validateForFinalization(
     if (i.status === 'VOID') return;
     const p = `incidents[${k}]`;
     if (i.verdict === 'PENDING') err('INCIDENT_VERDICT_PENDING', `${p}.verdict`);
+    // Recomendado, no obligatorio (v1.1.2): solo el veredicto bloquea el cierre.
     if (i.verdict === 'INCORRECT' || i.verdict === 'MISSED') {
-      if (!i.decisionExpected) err('INCIDENT_EXPECTED_DECISION_REQUIRED', `${p}.decisionExpected`);
-      if (!i.impactConfirmed) err('INCIDENT_IMPACT_NOT_CONFIRMED', `${p}.impact`);
+      if (!i.decisionExpected) warn('INCIDENT_EXPECTED_DECISION_REQUIRED', `${p}.decisionExpected`);
+      if (!i.impactConfirmed) warn('INCIDENT_IMPACT_NOT_CONFIRMED', `${p}.impact`);
     }
-    if ((i.impact === 'HIGH' || i.impact === 'MATCH_DEFINING') && !i.notes?.trim()) err('KEY_INCIDENT_NOTES_REQUIRED', `${p}.notes`);
+    if ((i.impact === 'HIGH' || i.impact === 'MATCH_DEFINING') && !i.notes?.trim()) warn('KEY_INCIDENT_NOTES_REQUIRED', `${p}.notes`);
     if (i.attachments.some((a) => a.status !== 'COMMITTED')) warn('ATTACHMENT_NOT_COMMITTED', `${p}.attachments`);
     if (i.matchTime.integrity === 'DEGRADED' && !i.matchTime.manualOverride) warn('INCIDENT_TIME_DEGRADED', `${p}.matchTime`);
   });

@@ -1,6 +1,6 @@
 # Prueba de campo y backlog v1.2
 
-> **Estado:** versión **1.1.2** para pruebas de campo: el MVP 1.0 más marcador, sanciones y leyes ([MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md)). El APK 1.1 se instala encima del 1.0 y conserva los partidos guardados.
+> **Estado:** versión **1.1.3** para pruebas de campo: el MVP 1.0 más marcador, sanciones y leyes ([MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md)). El APK 1.1 se instala encima del 1.0 y conserva los partidos guardados.
 
 ## 1. Antes del partido
 

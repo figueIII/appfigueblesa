@@ -231,6 +231,7 @@ class _IncidentCard extends StatelessWidget {
         verdictLabel(i.verdict),
         'impacto ${impactLabel(i.impact).toLowerCase()}${i.impactConfirmed ? '' : ' sin confirmar'}',
         ...issues.map(issueLabel),
+        ...reviewRecommendations(i).map(recommendationLabel),
       ].join('. '),
       excludeSemantics: true,
       child: Material(
@@ -298,6 +299,19 @@ class _IncidentCard extends StatelessWidget {
                               const SizedBox(width: RefSpace.xs),
                               Expanded(
                                 child: Text(issueLabel(issue), style: RefType.caption.copyWith(color: c.onSurface)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      for (final r in reviewRecommendations(i))
+                        Padding(
+                          padding: const EdgeInsets.only(top: RefSpace.xs),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lightbulb_outline_rounded, size: 18, color: c.onSurfaceMuted),
+                              const SizedBox(width: RefSpace.xs),
+                              Expanded(
+                                child: Text(recommendationLabel(r), style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
                               ),
                             ],
                           ),

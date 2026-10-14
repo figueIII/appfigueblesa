@@ -258,9 +258,11 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                 // ─── Impacto ───
                 SectionHeader(
                   title: 'Impacto en el partido',
-                  required: _needsExpected,
-                  subtitle: i.impactConfirmed ? null : 'Valor por defecto del directo: tócalo para confirmarlo.',
-                  error: issues.contains(ReviewIssue.impactNotConfirmed) ? 'En un error, confirma el impacto.' : null,
+                  subtitle: i.impactConfirmed
+                      ? null
+                      : _needsExpected
+                          ? 'Recomendado en un error: confirma el impacto (por defecto, el del directo).'
+                          : 'Valor por defecto del directo: tócalo para confirmarlo.',
                 ),
                 ChoiceGrid<ImpactLevel>(
                   keyPrefix: 'impact',
@@ -273,11 +275,9 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
 
                 // ─── Decisión esperada (solo si es un error) ───
                 if (_needsExpected) ...[
-                  SectionHeader(
+                  const SectionHeader(
                     title: 'Decisión esperada',
-                    required: true,
-                    subtitle: 'Lo que debía pitar según el reglamento.',
-                    error: issues.contains(ReviewIssue.expectedDecisionMissing) ? 'Marca al menos una decisión.' : null,
+                    subtitle: 'Lo que debía pitar según el reglamento (recomendado).',
                   ),
                   _DecisionEditor(
                     keyPrefix: 'expected',
@@ -331,9 +331,8 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                 // ─── Notas ───
                 SectionHeader(
                   title: 'Notas',
-                  required: i.impact == ImpactLevel.high || i.impact == ImpactLevel.matchDefining,
-                  error: issues.contains(ReviewIssue.keyIncidentNotesMissing)
-                      ? 'Las marcas de impacto alto o decisivo necesitan notas.'
+                  subtitle: i.impact == ImpactLevel.high || i.impact == ImpactLevel.matchDefining
+                      ? 'Recomendado en las de impacto alto o decisivo.'
                       : null,
                 ),
                 TextField(
@@ -397,7 +396,11 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                     ),
                   ),
                 Text(
-                  issues.isEmpty ? 'Lista para el informe.' : 'Pendiente: ${issues.map(issueLabel).join(' · ')}',
+                  issues.isNotEmpty
+                      ? 'Pendiente: ${issues.map(issueLabel).join(' · ')}'
+                      : reviewRecommendations(i).isEmpty
+                          ? 'Lista para el informe.'
+                          : 'Lista para el informe. ${reviewRecommendations(i).map(recommendationLabel).join(' · ')}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: RefType.caption.copyWith(color: c.onSurfaceMuted),
