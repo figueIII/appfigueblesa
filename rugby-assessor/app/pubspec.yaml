@@ -1,0 +1,38 @@
+name: ref_assess
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.2.0+7
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  crypto: ^3.0.7
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
+  ffi: ^2.2.0
+  flutter:
+    sdk: flutter
+  json_schema: ^5.2.2
+  path_provider: ^2.1.6
+  pdf: ^3.13.1
+  share_plus: ^13.3.1
+  sqlite3: ^3.5.2 # versión web: SQLite en WASM (y tests de migración)
+  uuid: ^4.6.0
+  wakelock_plus: ^1.8.1
+  web: ^1.1.1 # versión web: descarga de los informes exportados
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.35.1
+  build_runner: ^2.16.2
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Fuentes incrustadas en el PDF (offline: no se descargan nunca). Licencia Apache 2.0.
+    - assets/fonts/
+    # Copia del esquema de exportación: test/export/ comprueba que es idéntica a export/.
+    - assets/export/

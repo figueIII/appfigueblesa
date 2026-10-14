@@ -1,0 +1,351 @@
+import 'dart:io';
+
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ref_assess/app/app_services.dart';
+import 'package:ref_assess/app/ref_assess_app.dart';
+import 'package:ref_assess/core/platform_ports.dart';
+import 'package:ref_assess/data/db/app_database.dart';
+import 'package:ref_assess/data/drift_export_repository.dart';
+import 'package:ref_assess/data/drift_live_session_repository.dart';
+import 'package:ref_assess/data/session_time.dart';
+import 'package:ref_assess/domain/rubric_default.dart';
+import 'package:ref_assess/export/report_exporter.dart';
+import 'package:ref_assess/features/live/live_screen.dart';
+import 'package:ref_assess/features/review/incident_editor_screen.dart';
+import 'package:ref_assess/domain/model.dart';
+import 'package:ref_assess/domain/category_presets.dart';
+import 'package:ref_assess/data/match_repository.dart';
+
+import 'package:ref_assess/core/i18n.dart';
+import 'package:ref_assess/features/evaluation/evaluation_screen.dart';
+import 'package:ref_assess/features/summary/report_summary_screen.dart';
+
+import '../data/evaluation_drift_test.dart' show incident;
+import '../export/fixture.dart' show ExportFixture, SeqIds, exportSchema, testFonts;
+
+class FakeMono implements MonotonicSource {
+  int ms = 50000;
+  @override
+  int nowMs() => ms;
+  @override
+  String bootId() => 'boot-test';
+}
+
+class NoHaptics implements Haptics {
+  @override
+  void incidentLogged() {}
+  @override
+  void refined() {}
+  @override
+  void undone() {}
+  @override
+  void clockChanged() {}
+  @override
+  void warning() {}
+}
+
+class FakeScreenAwake implements ScreenAwake {
+  bool on = false;
+  @override
+  Future<void> enable() async => on = true;
+  @override
+  Future<void> disable() async => on = false;
+}
+
+void main() {
+  late AppDatabase db;
+  late AppServices services;
+  late FakeScreenAwake awake;
+
+  setUp(() {
+    db = AppDatabase(NativeDatabase.memory());
+    final ids = SeqIds('app');
+    awake = FakeScreenAwake();
+    services = AppServices(
+      db: db,
+      ids: ids,
+      mono: FakeMono(),
+      haptics: NoHaptics(),
+      screenAwake: awake,
+      wallNow: () => DateTime.utc(2026, 10, 17, 15),
+      exporter: ReportExporter(
+        repository: DriftExportRepository(db),
+        rubric: kDefaultRubric,
+        schema: exportSchema(),
+        fonts: testFonts,
+        exportsDirectory: () async => Directory.systemTemp.createTempSync('refassess_app_'),
+        ids: ids,
+      ),
+    );
+  });
+  tearDown(() => db.close());
+
+  /// La base de datos es real: se deja correr el bucle de eventos hasta que aparezca [f].
+  Future<void> pumpUntil(WidgetTester tester, Finder f) async {
+    for (var i = 0; i < 100 && f.evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(f, findsWidgets);
+  }
+
+  /// Desplaza el resumen hasta [f].
+  Future<void> inSummary(WidgetTester tester, Finder f) async {
+    await tester.ensureVisible(f);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> enter(WidgetTester tester, String key, String text) async {
+    final f = find.byKey(ValueKey(key));
+    await tester.ensureVisible(f);
+    await tester.enterText(f, text);
+    await tester.pump();
+  }
+
+  testWidgets('inicio → nuevo partido → Comenzar partido → directo en ANTES DEL INICIO, 00:00 → inicio lo lista en curso', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(RefAssessApp(services: services, now: () => DateTime(2026, 10, 17, 16, 52)));
+    await pumpUntil(tester, find.text('Aún no hay partidos'));
+
+    await tester.tap(find.byKey(const ValueKey('new-match')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nuevo partido'), findsOneWidget);
+
+    final preset = find.byKey(const ValueKey('preset-M14'));
+    await tester.ensureVisible(preset);
+    await tester.tap(preset);
+    await tester.pump();
+    await enter(tester, 'home-team', 'Club Local RC');
+    await enter(tester, 'away-team', 'Visitante RT');
+    await enter(tester, 'referee', 'Ana Árbitro');
+    await enter(tester, 'assessor', 'Evaluadora');
+    await enter(tester, 'venue', 'Campo Municipal');
+    await tester.tap(find.byKey(const ValueKey('start-match')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ANTES DEL INICIO'), findsOneWidget);
+    expect(find.text('00:00'), findsOneWidget);
+    expect(awake.on, isTrue, reason: 'pantalla siempre encendida durante el directo');
+
+    final row = await tester.runAsync(() => db.select(db.assessment).getSingle());
+    expect(row!.status, 'READY');
+    expect(row.categoryCode, 'M14');
+    expect(row.homeTeam, 'Club Local RC');
+    expect(row.kickoffLocal, '2026-10-17T16:55');
+    final clockEvents = await tester.runAsync(() => db.select(db.clockEvent).get());
+    expect(clockEvents, isEmpty, reason: 'el reloj no arranca solo: lo inicia el evaluador');
+
+    // Atrás desde el directo (sin reloj en marcha) → inicio, no la preparación.
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('En curso · 1'));
+    expect(find.text('Nuevo partido'), findsOneWidget, reason: 'solo el botón: la preparación ya no está en la pila');
+    expect(find.text('Sin empezar'), findsOneWidget);
+    expect(awake.on, isFalse);
+
+    // Continuar: vuelve al mismo partido, todavía a 00:00.
+    await tester.tap(find.byKey(ValueKey('match-${row.id}')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    expect(find.text('ANTES DEL INICIO'), findsOneWidget);
+    expect(tester.widget<LiveScreen>(find.byType(LiveScreen)).controller.assessmentId, row.id);
+  });
+
+  testWidgets('informe finalizado: desde el inicio se abre el resumen (marcador, golpes, tarjetas, valoración) y se vuelve al menú', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final f = (await tester.runAsync(ExportFixture.create))!;
+    addTearDown(() => tester.runAsync(f.dispose));
+    final closed = AppServices(
+      db: f.db,
+      ids: SeqIds('app'),
+      mono: FakeMono(),
+      haptics: NoHaptics(),
+      screenAwake: awake,
+      exporter: f.exporter(),
+    );
+
+    await tester.pumpWidget(RefAssessApp(services: closed));
+    await pumpUntil(tester, find.text('Finalizados · 2'));
+    await tester.tap(find.byKey(ValueKey('match-${f.secondId}')));
+    await pumpUntil(tester, find.byKey(const ValueKey('summary-referee')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReportSummaryScreen), findsOneWidget);
+    expect(find.text('Árbitro Ejemplo'), findsWidgets);
+    expect(find.byKey(const ValueKey('summary-band')), findsOneWidget);
+    expect(find.textContaining('Mantener en partidos similares'), findsOneWidget);
+    expect(find.textContaining('Muy alta'), findsOneWidget, reason: 'dificultad real');
+    await inSummary(tester, find.byKey(const ValueKey('summary-scoreline')));
+    expect(find.text('Club Local RC  24 – 19  Visitante RT'), findsOneWidget);
+    await inSummary(tester, find.text('Golpes de castigo'));
+    expect(find.text('Tarjetas amarillas'), findsOneWidget);
+    await inSummary(tester, find.byKey(const ValueKey('share-pdf')));
+    expect(find.text('Exportar y enviar al comité'), findsOneWidget);
+
+    // Informe completo (solo lectura) y vuelta.
+    await inSummary(tester, find.byKey(const ValueKey('open-full-report')));
+    await tester.tap(find.byKey(const ValueKey('open-full-report')));
+    await pumpUntil(tester, find.byType(EvaluationScreen));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await inSummary(tester, find.byKey(const ValueKey('back-to-menu')));
+    await tester.tap(find.byKey(const ValueKey('back-to-menu')));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Finalizados · 2'));
+    expect(find.byType(ReportSummaryScreen), findsNothing);
+  });
+
+  testWidgets('cerrar el informe lleva al resumen del partido (sin rellenar nada obligatorio)', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final f = (await tester.runAsync(ExportFixture.create))!;
+    addTearDown(() => tester.runAsync(f.dispose));
+    final open = (await tester.runAsync(f.addOpenMatch))!;
+    // Una marca sin valorar: no impide cerrar ni exportar (el resumen se lee del documento exportado).
+    await tester.runAsync(() => DriftLiveSessionRepository(f.db).insertIncident(incident(open, 90, IncidentCategory.ruck, Verdict.pending, ImpactLevel.medium)));
+    final services = AppServices(db: f.db, ids: SeqIds('app'), mono: FakeMono(), haptics: NoHaptics(), screenAwake: awake, exporter: f.exporter());
+
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$open')));
+    await tester.tap(find.byKey(ValueKey('match-$open')));
+    // Con una marca pendiente también se pasa a la evaluación (botón al final de la lista).
+    await pumpUntil(tester, find.byKey(const ValueKey('review-filter')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('continue-to-rubric-anyway')), 200);
+    await tester.tap(find.byKey(const ValueKey('continue-to-rubric-anyway')));
+    await pumpUntil(tester, find.byType(EvaluationScreen));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tab-close')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('close-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('close-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirm-close')));
+    await pumpUntil(tester, find.byKey(const ValueKey('summary-referee')));
+    await tester.pumpAndSettle();
+    expect(find.byType(EvaluationScreen), findsNothing, reason: 'el resumen sustituye a la evaluación');
+    expect(find.textContaining('No se ha podido abrir'), findsNothing);
+    await inSummary(tester, find.byKey(const ValueKey('back-to-menu')));
+    await tester.tap(find.byKey(const ValueKey('back-to-menu')));
+    await pumpUntil(tester, find.text('Finalizados · 3'));
+  });
+
+  testWidgets('menú de inicio: cambiar a catalán se guarda y se recupera', (tester) async {
+    addTearDown(() => appLanguage.value = AppLanguage.es);
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(const ValueKey('home-menu')));
+    await tester.tap(find.byKey(const ValueKey('home-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('language-ca')));
+    await tester.pumpAndSettle();
+    expect(appLanguage.value, AppLanguage.ca);
+    expect(await tester.runAsync(() => services.settings.loadLanguage()), AppLanguage.ca);
+    await tester.tap(find.byKey(const ValueKey('home-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Català'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('language-es')));
+    await tester.pumpAndSettle();
+    expect(await tester.runAsync(() => services.settings.loadLanguage()), AppLanguage.es);
+  });
+
+  testWidgets('durante el partido: editar una marca al momento y abrir la lista de marcas, sin parar el reloj', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final id = (await tester.runAsync(() => services.matches.createMatch(MatchSetupInput(
+          category: categoryPreset('M16'),
+          homeTeam: 'Club Local RC',
+          awayTeam: 'Visitante RT',
+          refereeName: 'Ana Árbitro',
+          assessorName: 'Evaluadora',
+          kickoffLocal: DateTime(2026, 10, 17, 17),
+          venue: 'Campo Municipal',
+        ))))!;
+
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$id')));
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('primary-clock-action')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tag-ruck')));
+    await tester.pump();
+
+    // "Editar" en la tira abre el editor completo de esa marca.
+    await tester.tap(find.byKey(const ValueKey('edit-last')));
+    await pumpUntil(tester, find.byType(IncidentEditorScreen));
+    await tester.pumpAndSettle();
+    final correct = find.byKey(const ValueKey('verdict-correct'));
+    await tester.ensureVisible(correct);
+    await tester.tap(correct);
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar y volver al directo'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-incident')));
+    await pumpUntil(tester, find.textContaining('1 marca · 0 por revisar'));
+    expect(find.byType(LiveScreen), findsOneWidget, reason: 'de vuelta al directo');
+    expect(find.text('1ª PARTE · EN JUEGO'), findsOneWidget, reason: 'el reloj sigue en marcha');
+    final stored = await tester.runAsync(() => services.live.load(id));
+    expect(stored!.incidents.single.verdict, Verdict.correct);
+
+    // "Ver marcas": la lista de marcas, en modo directo.
+    await tester.tap(find.byKey(const ValueKey('open-marks')));
+    await pumpUntil(tester, find.text('Marcas del partido'));
+    expect(find.text('En directo: el reloj sigue corriendo'), findsOneWidget);
+    expect(find.byKey(const ValueKey('continue-to-rubric')), findsNothing);
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+    expect(find.byType(LiveScreen), findsOneWidget);
+  });
+
+  testWidgets('desde el partido se sale al menú principal (con el reloj en marcha) y se vuelve', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final id = (await tester.runAsync(() => services.matches.createMatch(MatchSetupInput(
+          category: categoryPreset('M16'),
+          homeTeam: 'Club Local RC',
+          awayTeam: 'Visitante RT',
+          refereeName: 'Ana Árbitro',
+          assessorName: 'Evaluadora',
+          kickoffLocal: DateTime(2026, 10, 17, 17),
+          venue: 'Campo Municipal',
+        ))))!;
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$id')));
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('primary-clock-action')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('clock-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Menú del partido'), findsOneWidget);
+    expect(find.text('El partido queda guardado y el reloj sigue contando. Vuelve desde «En curso».'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('exit-to-home')));
+    for (var i = 0; i < 50 && find.byType(LiveScreen).evaluate().isNotEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(LiveScreen), findsNothing, reason: 'en el menú principal, sin diálogo de confirmación');
+    expect(find.textContaining('En directo'), findsOneWidget);
+
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    expect(find.text('1ª PARTE · EN JUEGO'), findsOneWidget, reason: 'el reloj siguió contando');
+  });
+}

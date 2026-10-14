@@ -1,0 +1,1226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rugby-assessor:export:2.0",
+  "title": "Informe de evaluación arbitral — exportación",
+  "description": "Un archivo por evaluación (árbitro principal) y versión de informe. La evaluación visible es por bandas; los valores numéricos son internos y solo sirven para auditoría. Ver docs/ESPECIFICACION_EVALUADOR_ARBITRAL.md §3.2.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "exportedAt",
+    "generator",
+    "match",
+    "referee",
+    "assessor",
+    "rubric",
+    "report",
+    "incidents",
+    "integrity"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "rugby-referee-assessment"
+    },
+    "formatVersion": {
+      "enum": [
+        "2.0",
+        "2.1",
+        "2.2"
+      ],
+      "description": "2.1 añade matchStats (marcador y sanciones) e infraction en las incidencias. 2.2 (rúbrica CARC) añade la escala E/C/N/U, el nivel y los textos catalanes de las competencias, la dificultad real y la recomendación de nivel, y deja opcionales los textos del cierre. Un documento 2.0 o 2.1 sigue siendo válido."
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generator": {
+      "type": "object",
+      "required": [
+        "app",
+        "appVersion",
+        "rubricEngineVersion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "app": {
+          "type": "string"
+        },
+        "appVersion": {
+          "type": "string"
+        },
+        "rubricEngineVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "required": [
+        "assessmentId",
+        "competition",
+        "category",
+        "kickoff",
+        "venue",
+        "home",
+        "away",
+        "observationMode",
+        "refereeName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "assessmentId": {
+          "$ref": "#/$defs/id"
+        },
+        "competition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "round": {
+          "type": "string"
+        },
+        "category": {
+          "type": "object",
+          "required": [
+            "code",
+            "format",
+            "periodLengthMin",
+            "sinBinMin"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "format": {
+              "enum": [
+                "XV",
+                "SEVENS",
+                "TENS"
+              ]
+            },
+            "periodLengthMin": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "lawVariations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sinBinMin": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "kickoff": {
+          "type": "object",
+          "required": [
+            "local",
+            "tz"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "local": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$"
+            },
+            "tz": {
+              "type": "string"
+            }
+          }
+        },
+        "venue": {
+          "type": "string"
+        },
+        "home": {
+          "$ref": "#/$defs/team"
+        },
+        "away": {
+          "$ref": "#/$defs/team"
+        },
+        "finalScore": {
+          "type": "object",
+          "required": [
+            "home",
+            "away"
+          ],
+          "properties": {
+            "home": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "away": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "observationMode": {
+          "enum": [
+            "LIVE",
+            "VIDEO",
+            "LIVE_AND_VIDEO"
+          ]
+        },
+        "difficulty": {
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "VERY_HIGH"
+          ],
+          "description": "Dificultad ESTIMADA del partido (se indica al prepararlo). Solo contexto: no modifica la evaluación."
+        },
+        "conditions": {
+          "type": "object"
+        },
+        "refereeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assistants": {
+          "type": "object",
+          "description": "Solo descriptivo: los asistentes no se evalúan.",
+          "additionalProperties": false,
+          "properties": {
+            "ar1": {
+              "type": "string"
+            },
+            "ar2": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "assessor": {
+      "type": "object",
+      "required": [
+        "id",
+        "fullName"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "federationLicence": {
+          "type": "string"
+        }
+      }
+    },
+    "rubric": {
+      "type": "object",
+      "required": [
+        "id",
+        "code",
+        "version",
+        "bands",
+        "areas"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "areas": {
+          "description": "Copia de áreas, criterios y pesos usados: el receptor puede recalcular sin conocer la rúbrica.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "name",
+              "weight",
+              "criteria"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0
+              },
+              "criteria": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "name",
+                    "weight"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "weight": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "nameCa": {
+                      "type": "string"
+                    },
+                    "level": {
+                      "enum": [
+                        1,
+                        2,
+                        3
+                      ],
+                      "description": "Nivel de la competencia en el CARC (N1–N3)."
+                    }
+                  }
+                }
+              },
+              "nameCa": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "bands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "label"
+            ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "E",
+                  "C",
+                  "N",
+                  "U",
+                  "BELOW",
+                  "AT",
+                  "ABOVE"
+                ],
+                "description": "E/C/N/U desde la rúbrica CARC (3.0.0); BELOW/AT/ABOVE en informes de la rúbrica 2.0.0."
+              },
+              "label": {
+                "type": "string"
+              },
+              "labelCa": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "required": [
+        "version",
+        "status",
+        "criterionScores",
+        "areaScores",
+        "band",
+        "overallScore",
+        "keyDecisionAccuracy",
+        "summary",
+        "strengths",
+        "developmentAreas",
+        "actionPoints",
+        "previousActionPointReviews"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "FINALIZED",
+            "SUPERSEDED"
+          ]
+        },
+        "supersedesVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "amendmentReason": {
+          "type": "string"
+        },
+        "finalizedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "criterionScores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "criterionCode",
+              "suggestedBand",
+              "finalBand",
+              "notObserved",
+              "justification"
+            ],
+            "properties": {
+              "criterionCode": {
+                "type": "string"
+              },
+              "suggestedBand": {
+                "$ref": "#/$defs/bandOrNull"
+              },
+              "finalBand": {
+                "$ref": "#/$defs/bandOrNull"
+              },
+              "notObserved": {
+                "type": "boolean"
+              },
+              "justification": {
+                "type": "string",
+                "description": "Opcional desde 2.2 (puede estar vacía)."
+              },
+              "capBand": {
+                "$ref": "#/$defs/bandOrNull"
+              },
+              "suggested": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Interno."
+              },
+              "evidenceIncidentIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/id"
+                }
+              }
+            }
+          }
+        },
+        "areaScores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "areaCode",
+              "band"
+            ],
+            "properties": {
+              "areaCode": {
+                "type": "string"
+              },
+              "band": {
+                "$ref": "#/$defs/bandOrNull"
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Interno."
+              }
+            }
+          }
+        },
+        "overallScore": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Valor interno del motor, sin redondear. No se muestra en el PDF."
+        },
+        "band": {
+          "$ref": "#/$defs/bandOrNull"
+        },
+        "keyDecisionAccuracy": {
+          "type": "object",
+          "required": [
+            "correct",
+            "total",
+            "ratio"
+          ],
+          "properties": {
+            "correct": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ratio": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "summary": {
+          "type": "string",
+          "description": "Opcional desde 2.2 (puede estar vacío)."
+        },
+        "strengths": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "developmentAreas": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "actionPoints": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "criterionCode",
+              "text",
+              "successIndicator"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "criterionCode": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "successIndicator": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "previousActionPointReviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "actionPointId",
+              "text",
+              "status",
+              "comment"
+            ],
+            "properties": {
+              "actionPointId": {
+                "$ref": "#/$defs/id"
+              },
+              "text": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "ACHIEVED",
+                  "PARTIAL",
+                  "NOT_ACHIEVED",
+                  "NOT_OBSERVED"
+                ]
+              },
+              "comment": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "actualDifficulty": {
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "VERY_HIGH",
+            null
+          ],
+          "description": "Dificultad REAL del partido, valorada al cerrar el informe."
+        },
+        "levelRecommendation": {
+          "enum": [
+            "UP",
+            "SAME",
+            "DOWN",
+            null
+          ],
+          "description": "Recomendación del CARC: UP ↑ probar partidos de más exigencia · SAME = mantener en partidos similares · DOWN ↓ reducir la exigencia."
+        }
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "seq",
+          "matchClock",
+          "period",
+          "category",
+          "criterionCode",
+          "verdict",
+          "impact"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "matchClock": {
+            "type": "string",
+            "pattern": "^\\d{2,3}:\\d{2}$"
+          },
+          "period": {
+            "enum": [
+              "H1",
+              "H2",
+              "ET1",
+              "ET2",
+              "SD",
+              null
+            ]
+          },
+          "overtime": {
+            "type": "boolean"
+          },
+          "timeIntegrity": {
+            "enum": [
+              "OK",
+              "DEGRADED"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "criterionCode": {
+            "type": "string"
+          },
+          "gamePhase": {
+            "type": "string"
+          },
+          "fieldZone": {
+            "type": "string"
+          },
+          "decisionTaken": {
+            "$ref": "#/$defs/decision"
+          },
+          "decisionExpected": {
+            "$ref": "#/$defs/decision"
+          },
+          "verdict": {
+            "enum": [
+              "CORRECT",
+              "INCORRECT",
+              "MISSED",
+              "DEBATABLE",
+              "NOT_ASSESSABLE",
+              "PENDING"
+            ],
+            "description": "PENDING (desde 2.2): marca que se quedó sin valorar al cerrar; no cuenta en la valoración."
+          },
+          "impact": {
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "MATCH_DEFINING"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "VOICE_NOTE",
+                    "PHOTO",
+                    "VIDEO_CLIP",
+                    "VIDEO_LINK"
+                  ]
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "videoPositionMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "transcript": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "infraction": {
+            "$ref": "#/$defs/infraction"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "verdict": {
+                  "enum": [
+                    "INCORRECT",
+                    "MISSED"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "decisionExpected"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "matchStats": {
+      "description": "Datos del partido registrados por el evaluador (no forman parte del informe firmado). Cada bloque solo aparece si se registró algo.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "score": {
+          "type": "object",
+          "required": [
+            "home",
+            "away",
+            "events"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "home": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "away": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "seq",
+                  "team",
+                  "kind",
+                  "points",
+                  "matchClock",
+                  "period"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "team": {
+                    "enum": [
+                      "HOME",
+                      "AWAY"
+                    ]
+                  },
+                  "kind": {
+                    "enum": [
+                      "TRY",
+                      "CONVERSION",
+                      "PENALTY_GOAL",
+                      "DROP_GOAL"
+                    ]
+                  },
+                  "points": {
+                    "enum": [
+                      2,
+                      3,
+                      5
+                    ]
+                  },
+                  "matchClock": {
+                    "type": "string",
+                    "pattern": "^\\d{2,3}:\\d{2}$"
+                  },
+                  "period": {
+                    "enum": [
+                      "H1",
+                      "H2",
+                      "ET1",
+                      "ET2",
+                      "SD",
+                      null
+                    ]
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "TRY"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 5
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "CONVERSION"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 2
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "PENALTY_GOAL",
+                            "DROP_GOAL"
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "points": {
+                          "const": 3
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "sanctions": {
+          "type": "object",
+          "required": [
+            "totals",
+            "breakdown",
+            "events"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "totals": {
+              "type": "object",
+              "required": [
+                "home",
+                "away"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "home": {
+                  "type": "object",
+                  "required": [
+                    "PENALTY",
+                    "FREE_KICK",
+                    "YELLOW_CARD",
+                    "RED_CARD"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "PENALTY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "FREE_KICK": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "YELLOW_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "RED_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "away": {
+                  "type": "object",
+                  "required": [
+                    "PENALTY",
+                    "FREE_KICK",
+                    "YELLOW_CARD",
+                    "RED_CARD"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "PENALTY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "FREE_KICK": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "YELLOW_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "RED_CARD": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "breakdown": {
+              "type": "object",
+              "required": [
+                "home",
+                "away"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "home": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "penalties",
+                      "freeKicks"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "lawRef": {
+                        "type": "string"
+                      },
+                      "penalties": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "freeKicks": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "away": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "penalties",
+                      "freeKicks"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "lawRef": {
+                        "type": "string"
+                      },
+                      "penalties": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "freeKicks": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "seq",
+                  "team",
+                  "kind",
+                  "matchClock",
+                  "period"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "seq": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "team": {
+                    "enum": [
+                      "HOME",
+                      "AWAY"
+                    ]
+                  },
+                  "kind": {
+                    "enum": [
+                      "PENALTY",
+                      "FREE_KICK",
+                      "YELLOW_CARD",
+                      "RED_CARD"
+                    ]
+                  },
+                  "matchClock": {
+                    "type": "string",
+                    "pattern": "^\\d{2,3}:\\d{2}$"
+                  },
+                  "period": {
+                    "enum": [
+                      "H1",
+                      "H2",
+                      "ET1",
+                      "ET2",
+                      "SD",
+                      null
+                    ]
+                  },
+                  "infraction": {
+                    "$ref": "#/$defs/infraction"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "canonicalization",
+        "contentHash",
+        "hashedPointer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "canonicalization": {
+          "const": "sorted-keys-no-whitespace-v1"
+        },
+        "hashedPointer": {
+          "const": "/report",
+          "description": "El hash cubre el objeto /report canónico SIN la clave status (que pasa de FINALIZED a SUPERSEDED tras una enmienda sin alterar el contenido firmado)."
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "referee": {
+      "type": "object",
+      "required": [
+        "id",
+        "fullName"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "federationLicence": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "team": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "clubCode": {
+          "type": "string"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": [
+        "outcomes"
+      ],
+      "properties": {
+        "outcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "PLAY_ON",
+              "ADVANTAGE",
+              "PENALTY",
+              "FREE_KICK",
+              "SCRUM",
+              "LINEOUT",
+              "TRY",
+              "NO_TRY",
+              "PENALTY_TRY",
+              "YELLOW_CARD",
+              "RED_CARD_20",
+              "RED_CARD",
+              "WARNING",
+              "TMO_REFERRAL",
+              "NO_DECISION"
+            ]
+          }
+        },
+        "againstTeam": {
+          "enum": [
+            "HOME",
+            "AWAY"
+          ]
+        },
+        "lawRef": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "criterionCode",
+        "text"
+      ],
+      "properties": {
+        "criterionCode": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceIncidentIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "bandOrNull": {
+      "enum": [
+        "E",
+        "C",
+        "N",
+        "U",
+        "BELOW",
+        "AT",
+        "ABOVE",
+        null
+      ]
+    },
+    "infraction": {
+      "type": "object",
+      "required": [
+        "code",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Código del catálogo de la app, o CUSTOM si es texto libre del evaluador."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lawRef": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

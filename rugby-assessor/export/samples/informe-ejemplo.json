@@ -1,0 +1,983 @@
+{
+  "format": "rugby-referee-assessment",
+  "formatVersion": "2.1",
+  "exportedAt": "2026-10-18T09:30:00.000Z",
+  "generator": {
+    "app": "RefAssess",
+    "appVersion": "1.1.4",
+    "rubricEngineVersion": "2.0.0"
+  },
+  "match": {
+    "assessmentId": "m2-1",
+    "competition": "Liga DHCAT",
+    "round": "J5",
+    "category": {
+      "code": "SM_DHCAT_1_2_3",
+      "name": "Sénior masc. · DHCAT, 1ª, 2ª, 3ª",
+      "format": "XV",
+      "periodLengthMin": 40,
+      "sinBinMin": 10,
+      "lawVariations": []
+    },
+    "kickoff": {
+      "local": "2026-10-17T17:00",
+      "tz": "Europe/Madrid"
+    },
+    "venue": "Campo Municipal de La Foixarda",
+    "home": {
+      "name": "Club Local RC"
+    },
+    "away": {
+      "name": "Visitante RT"
+    },
+    "finalScore": {
+      "home": 24,
+      "away": 19
+    },
+    "observationMode": "LIVE",
+    "difficulty": "HIGH",
+    "refereeName": "Árbitro Ejemplo",
+    "assistants": {
+      "ar1": "Asistente Uno",
+      "ar2": "Asistente Dos"
+    }
+  },
+  "referee": {
+    "id": "m1-2",
+    "fullName": "Árbitro Ejemplo"
+  },
+  "assessor": {
+    "id": "m1-3",
+    "fullName": "Evaluadora Ejemplo"
+  },
+  "rubric": {
+    "id": "01929d6e-0000-7000-8000-000000000001",
+    "code": "RUGBY-XV-BASE",
+    "version": "2.0.0",
+    "bands": [
+      {
+        "code": "ABOVE",
+        "label": "Por encima del nivel"
+      },
+      {
+        "code": "AT",
+        "label": "En el nivel"
+      },
+      {
+        "code": "BELOW",
+        "label": "Por debajo del nivel"
+      }
+    ],
+    "areas": [
+      {
+        "code": "PHASES",
+        "name": "Gestión de fases de juego",
+        "weight": 35.0,
+        "criteria": [
+          {
+            "code": "A1_SCRUM",
+            "name": "Scrum",
+            "weight": 25.0
+          },
+          {
+            "code": "A2_LINEOUT_MAUL",
+            "name": "Touch y maul",
+            "weight": 20.0
+          },
+          {
+            "code": "A3_TACKLE_RUCK",
+            "name": "Placaje y ruck",
+            "weight": 35.0
+          },
+          {
+            "code": "A4_OFFSIDE_SPACE",
+            "name": "Espacio y fuera de juego",
+            "weight": 20.0
+          }
+        ]
+      },
+      {
+        "code": "MANAGEMENT",
+        "name": "Comunicación y gestión del partido",
+        "weight": 20.0,
+        "criteria": [
+          {
+            "code": "B1_VERBAL_CONTROL",
+            "name": "Control verbal y preventivo",
+            "weight": 30.0
+          },
+          {
+            "code": "B2_TONE_PRESENCE",
+            "name": "Tono, señalización y presencia",
+            "weight": 20.0
+          },
+          {
+            "code": "B3_CAPTAINS_PLAYERS",
+            "name": "Gestión de capitanes y jugadores",
+            "weight": 20.0
+          },
+          {
+            "code": "B4_ADVANTAGE",
+            "name": "Aplicación de la ventaja",
+            "weight": 30.0
+          }
+        ]
+      },
+      {
+        "code": "LAW_DISCIPLINE",
+        "name": "Aplicación de leyes y consistencia disciplinaria",
+        "weight": 30.0,
+        "criteria": [
+          {
+            "code": "C1_LAW_ACCURACY",
+            "name": "Exactitud en la aplicación de las leyes",
+            "weight": 50.0
+          },
+          {
+            "code": "C2_FOUL_PLAY",
+            "name": "Detección y sanción del juego desleal",
+            "weight": 30.0
+          },
+          {
+            "code": "C3_SANCTION_CONSISTENCY",
+            "name": "Consistencia disciplinaria",
+            "weight": 20.0
+          }
+        ]
+      },
+      {
+        "code": "FITNESS_POSITIONING",
+        "name": "Condición física, posicionamiento y líneas de carrera",
+        "weight": 15.0,
+        "criteria": [
+          {
+            "code": "D1_FITNESS",
+            "name": "Condición física",
+            "weight": 30.0
+          },
+          {
+            "code": "D2_POSITIONING",
+            "name": "Posicionamiento",
+            "weight": 40.0
+          },
+          {
+            "code": "D3_RUNNING_LINES",
+            "name": "Líneas de carrera",
+            "weight": 30.0
+          }
+        ]
+      }
+    ]
+  },
+  "report": {
+    "actionPoints": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "id": "m2-e-3",
+        "successIndicator": "Ningún colapso sin sancionar en 22 en el próximo partido.",
+        "text": "Situarse en el lado del pilar dominante en scrums dentro de 22."
+      }
+    ],
+    "areaScores": [
+      {
+        "areaCode": "PHASES",
+        "band": "AT",
+        "score": 6.375
+      },
+      {
+        "areaCode": "MANAGEMENT",
+        "band": "AT",
+        "score": 7.6
+      },
+      {
+        "areaCode": "LAW_DISCIPLINE",
+        "band": "AT",
+        "score": 7
+      },
+      {
+        "areaCode": "FITNESS_POSITIONING",
+        "band": "AT",
+        "score": 7
+      }
+    ],
+    "band": "AT",
+    "criterionScores": [
+      {
+        "capBand": "BELOW",
+        "criterionCode": "A1_SCRUM",
+        "evidenceIncidentIds": [
+          "m2-1-inc-30",
+          "m2-1-sanction-5"
+        ],
+        "finalBand": "BELOW",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 3.933333333333333,
+        "suggestedBand": "BELOW"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A2_LINEOUT_MAUL",
+        "evidenceIncidentIds": [],
+        "finalBand": null,
+        "justification": "Sin touchs disputadas en zona de influencia.",
+        "notObserved": true,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A3_TACKLE_RUCK",
+        "evidenceIncidentIds": [
+          "m2-1-inc-12",
+          "m2-1-sanction-2",
+          "m2-1-sanction-7"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 7.8,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "A4_OFFSIDE_SPACE",
+        "evidenceIncidentIds": [
+          "m2-1-sanction-1",
+          "m2-1-sanction-4",
+          "m2-1-sanction-6"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 7.666666666666667,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B1_VERBAL_CONTROL",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B2_TONE_PRESENCE",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B3_CAPTAINS_PLAYERS",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "B4_ADVANTAGE",
+        "evidenceIncidentIds": [
+          "m2-1-inc-65"
+        ],
+        "finalBand": "ABOVE",
+        "justification": "Ventajas largas, bien leídas y cerradas con claridad en todo el partido.",
+        "notObserved": false,
+        "suggested": 7.285714285714286,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C1_LAW_ACCURACY",
+        "evidenceIncidentIds": [
+          "m2-1-inc-52",
+          "m2-1-sanction-8",
+          "m2-1-sanction-9"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 8,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C2_FOUL_PLAY",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "C3_SANCTION_CONSISTENCY",
+        "evidenceIncidentIds": [
+          "m2-1-sanction-3"
+        ],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": 7.285714285714286,
+        "suggestedBand": "AT"
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D1_FITNESS",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D2_POSITIONING",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      },
+      {
+        "capBand": null,
+        "criterionCode": "D3_RUNNING_LINES",
+        "evidenceIncidentIds": [],
+        "finalBand": "AT",
+        "justification": "Acorde al nivel del partido.",
+        "notObserved": false,
+        "suggested": null,
+        "suggestedBand": null
+      }
+    ],
+    "developmentAreas": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "evidenceIncidentIds": [],
+        "text": "Colapsos de scrum cerca de la línea de marca."
+      }
+    ],
+    "finalizedAt": "2026-10-18T09:12:00.000Z",
+    "keyDecisionAccuracy": {
+      "correct": 1,
+      "ratio": 0.5,
+      "total": 2
+    },
+    "overallScore": 6.90125,
+    "previousActionPointReviews": [
+      {
+        "actionPointId": "m1-e-3",
+        "comment": "Mejor posición, un colapso sin ver al final.",
+        "status": "PARTIAL",
+        "text": "Situarse en el lado del pilar dominante en scrums dentro de 22."
+      }
+    ],
+    "strengths": [
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "evidenceIncidentIds": [],
+        "text": "Ventaja territorial bien leída."
+      }
+    ],
+    "summary": "Partido de alta exigencia bien gestionado en lo físico y en la ventaja; la prioridad es el scrum en zona de marca.",
+    "version": 1,
+    "status": "FINALIZED"
+  },
+  "incidents": [
+    {
+      "id": "m2-1-sanction-1",
+      "seq": 101,
+      "matchClock": "05:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OFFSIDE",
+      "criterionCode": "A4_OFFSIDE_SPACE",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "OFFSIDE_RUCK_MAUL",
+        "label": "Fuera de juego en ruck / maul",
+        "lawRef": "Leyes 15 y 16"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-2",
+      "seq": 102,
+      "matchClock": "11:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "RUCK",
+      "criterionCode": "A3_TACKLE_RUCK",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "SIDE_ENTRY",
+        "label": "Entrada lateral",
+        "lawRef": "Ley 15"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-12",
+      "seq": 12,
+      "matchClock": "12:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "TACKLE",
+      "criterionCode": "A3_TACKLE_RUCK",
+      "verdict": "CORRECT",
+      "impact": "MEDIUM",
+      "infraction": {
+        "code": "HIGH_TACKLE",
+        "label": "Placaje alto / contacto con la cabeza",
+        "lawRef": "Ley 9.13"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-3",
+      "seq": 103,
+      "matchClock": "12:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "CARD",
+      "criterionCode": "C3_SANCTION_CONSISTENCY",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY",
+          "YELLOW_CARD"
+        ],
+        "againstTeam": "AWAY"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "HIGH_TACKLE",
+        "label": "Placaje alto / contacto con la cabeza",
+        "lawRef": "Ley 9.13"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-4",
+      "seq": 104,
+      "matchClock": "25:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OFFSIDE",
+      "criterionCode": "A4_OFFSIDE_SPACE",
+      "decisionTaken": {
+        "outcomes": [
+          "FREE_KICK"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "OFFSIDE_RUCK_MAUL",
+        "label": "Fuera de juego en ruck / maul",
+        "lawRef": "Leyes 15 y 16"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-30",
+      "seq": 30,
+      "matchClock": "30:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "SCRUM",
+      "criterionCode": "A1_SCRUM",
+      "decisionTaken": {
+        "outcomes": [
+          "PLAY_ON"
+        ]
+      },
+      "decisionExpected": {
+        "outcomes": [
+          "PENALTY",
+          "YELLOW_CARD"
+        ],
+        "againstTeam": "AWAY",
+        "lawRef": "19.10"
+      },
+      "verdict": "MISSED",
+      "impact": "MATCH_DEFINING",
+      "infraction": {
+        "code": "SCRUM_COLLAPSING",
+        "label": "Derrumbar la melé",
+        "lawRef": "Ley 19"
+      },
+      "notes": "Colapso intencionado del pilar visitante a 5 m de su línea; no sancionado.",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-5",
+      "seq": 105,
+      "matchClock": "33:00",
+      "period": "H1",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "SCRUM",
+      "criterionCode": "A1_SCRUM",
+      "decisionTaken": {
+        "outcomes": [
+          "FREE_KICK"
+        ],
+        "againstTeam": "AWAY"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "SCRUM_EARLY_ENGAGEMENT",
+        "label": "Entrada antes de tiempo",
+        "lawRef": "Ley 19"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-6",
+      "seq": 106,
+      "matchClock": "47:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OFFSIDE",
+      "criterionCode": "A4_OFFSIDE_SPACE",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "OFFSIDE_RUCK_MAUL",
+        "label": "Fuera de juego en ruck / maul",
+        "lawRef": "Leyes 15 y 16"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-52",
+      "seq": 52,
+      "matchClock": "52:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "TRY_GROUNDING",
+      "criterionCode": "C1_LAW_ACCURACY",
+      "decisionTaken": {
+        "outcomes": [
+          "TRY"
+        ]
+      },
+      "verdict": "CORRECT",
+      "impact": "HIGH",
+      "notes": "Ensayo bien concedido: buena posición en la zona de ensayo.",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-7",
+      "seq": 107,
+      "matchClock": "58:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "RUCK",
+      "criterionCode": "A3_TACKLE_RUCK",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "SIDE_ENTRY",
+        "label": "Entrada lateral",
+        "lawRef": "Ley 15"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-inc-65",
+      "seq": 65,
+      "matchClock": "65:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "ADVANTAGE",
+      "criterionCode": "B4_ADVANTAGE",
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-8",
+      "seq": 108,
+      "matchClock": "66:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OTHER_LAW",
+      "criterionCode": "C1_LAW_ACCURACY",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "AWAY"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "infraction": {
+        "code": "CUSTOM",
+        "label": "Avance intencionado",
+        "lawRef": "Ley 11"
+      },
+      "attachments": []
+    },
+    {
+      "id": "m2-1-sanction-9",
+      "seq": 109,
+      "matchClock": "70:00",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OTHER_LAW",
+      "criterionCode": "C1_LAW_ACCURACY",
+      "decisionTaken": {
+        "outcomes": [
+          "PENALTY"
+        ],
+        "againstTeam": "HOME"
+      },
+      "verdict": "CORRECT",
+      "impact": "LOW",
+      "attachments": []
+    }
+  ],
+  "matchStats": {
+    "score": {
+      "home": 24,
+      "away": 19,
+      "events": [
+        {
+          "seq": 1,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "08:00",
+          "period": "H1"
+        },
+        {
+          "seq": 2,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "09:00",
+          "period": "H1"
+        },
+        {
+          "seq": 3,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "15:00",
+          "period": "H1"
+        },
+        {
+          "seq": 4,
+          "team": "AWAY",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "16:00",
+          "period": "H1"
+        },
+        {
+          "seq": 5,
+          "team": "HOME",
+          "kind": "PENALTY_GOAL",
+          "points": 3,
+          "matchClock": "22:00",
+          "period": "H1"
+        },
+        {
+          "seq": 7,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "44:00",
+          "period": "H2"
+        },
+        {
+          "seq": 8,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "51:00",
+          "period": "H2"
+        },
+        {
+          "seq": 9,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "52:00",
+          "period": "H2"
+        },
+        {
+          "seq": 10,
+          "team": "AWAY",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "60:00",
+          "period": "H2"
+        },
+        {
+          "seq": 11,
+          "team": "AWAY",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "61:00",
+          "period": "H2"
+        },
+        {
+          "seq": 12,
+          "team": "HOME",
+          "kind": "TRY",
+          "points": 5,
+          "matchClock": "72:00",
+          "period": "H2"
+        },
+        {
+          "seq": 13,
+          "team": "HOME",
+          "kind": "CONVERSION",
+          "points": 2,
+          "matchClock": "73:00",
+          "period": "H2"
+        }
+      ]
+    },
+    "sanctions": {
+      "totals": {
+        "home": {
+          "PENALTY": 5,
+          "FREE_KICK": 1,
+          "YELLOW_CARD": 0,
+          "RED_CARD": 0
+        },
+        "away": {
+          "PENALTY": 2,
+          "FREE_KICK": 1,
+          "YELLOW_CARD": 1,
+          "RED_CARD": 0
+        }
+      },
+      "breakdown": {
+        "home": [
+          {
+            "label": "Fuera de juego en ruck / maul",
+            "code": "OFFSIDE_RUCK_MAUL",
+            "lawRef": "Leyes 15 y 16",
+            "penalties": 2,
+            "freeKicks": 1
+          },
+          {
+            "label": "Entrada lateral",
+            "code": "SIDE_ENTRY",
+            "lawRef": "Ley 15",
+            "penalties": 2,
+            "freeKicks": 0
+          },
+          {
+            "label": "Sin especificar",
+            "penalties": 1,
+            "freeKicks": 0
+          }
+        ],
+        "away": [
+          {
+            "label": "Placaje alto / contacto con la cabeza",
+            "code": "HIGH_TACKLE",
+            "lawRef": "Ley 9.13",
+            "penalties": 1,
+            "freeKicks": 0
+          },
+          {
+            "label": "Entrada antes de tiempo",
+            "code": "SCRUM_EARLY_ENGAGEMENT",
+            "lawRef": "Ley 19",
+            "penalties": 0,
+            "freeKicks": 1
+          },
+          {
+            "label": "Avance intencionado",
+            "code": "CUSTOM",
+            "lawRef": "Ley 11",
+            "penalties": 1,
+            "freeKicks": 0
+          }
+        ]
+      },
+      "events": [
+        {
+          "seq": 101,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "05:00",
+          "period": "H1",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 102,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "11:00",
+          "period": "H1",
+          "infraction": {
+            "code": "SIDE_ENTRY",
+            "label": "Entrada lateral",
+            "lawRef": "Ley 15"
+          }
+        },
+        {
+          "seq": 103,
+          "team": "AWAY",
+          "kind": "PENALTY",
+          "matchClock": "12:00",
+          "period": "H1",
+          "infraction": {
+            "code": "HIGH_TACKLE",
+            "label": "Placaje alto / contacto con la cabeza",
+            "lawRef": "Ley 9.13"
+          }
+        },
+        {
+          "seq": 103,
+          "team": "AWAY",
+          "kind": "YELLOW_CARD",
+          "matchClock": "12:00",
+          "period": "H1",
+          "infraction": {
+            "code": "HIGH_TACKLE",
+            "label": "Placaje alto / contacto con la cabeza",
+            "lawRef": "Ley 9.13"
+          }
+        },
+        {
+          "seq": 104,
+          "team": "HOME",
+          "kind": "FREE_KICK",
+          "matchClock": "25:00",
+          "period": "H1",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 105,
+          "team": "AWAY",
+          "kind": "FREE_KICK",
+          "matchClock": "33:00",
+          "period": "H1",
+          "infraction": {
+            "code": "SCRUM_EARLY_ENGAGEMENT",
+            "label": "Entrada antes de tiempo",
+            "lawRef": "Ley 19"
+          }
+        },
+        {
+          "seq": 106,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "47:00",
+          "period": "H2",
+          "infraction": {
+            "code": "OFFSIDE_RUCK_MAUL",
+            "label": "Fuera de juego en ruck / maul",
+            "lawRef": "Leyes 15 y 16"
+          }
+        },
+        {
+          "seq": 107,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "58:00",
+          "period": "H2",
+          "infraction": {
+            "code": "SIDE_ENTRY",
+            "label": "Entrada lateral",
+            "lawRef": "Ley 15"
+          }
+        },
+        {
+          "seq": 108,
+          "team": "AWAY",
+          "kind": "PENALTY",
+          "matchClock": "66:00",
+          "period": "H2",
+          "infraction": {
+            "code": "CUSTOM",
+            "label": "Avance intencionado",
+            "lawRef": "Ley 11"
+          }
+        },
+        {
+          "seq": 109,
+          "team": "HOME",
+          "kind": "PENALTY",
+          "matchClock": "70:00",
+          "period": "H2"
+        }
+      ]
+    }
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "canonicalization": "sorted-keys-no-whitespace-v1",
+    "hashedPointer": "/report",
+    "contentHash": "31499df07fe924f7e8b0cd4470ee7b1b38a5f47f9bc55bf0eddf320dc14eeda8"
+  }
+}

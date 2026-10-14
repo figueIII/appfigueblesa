@@ -1,0 +1,9 @@
+{
+  "name": "rugby-assessor-domain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  }
+}

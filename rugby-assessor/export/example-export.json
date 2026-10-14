@@ -1,0 +1,671 @@
+{
+  "format": "rugby-referee-assessment",
+  "formatVersion": "2.2",
+  "exportedAt": "2026-10-18T09:13:05Z",
+  "generator": {
+    "app": "RefAssess",
+    "appVersion": "1.2.0",
+    "rubricEngineVersion": "3.0.0"
+  },
+  "match": {
+    "assessmentId": "0192a1b0-0000-7000-8000-000000000001",
+    "competition": "DHCAT",
+    "round": "J5",
+    "category": {
+      "code": "SM_DHCAT_1_2_3",
+      "name": "Sénior masculino — DHCAT, 1ª, 2ª, 3ª",
+      "format": "XV",
+      "periodLengthMin": 40,
+      "sinBinMin": 10,
+      "lawVariations": []
+    },
+    "kickoff": {
+      "local": "2026-10-17T17:00",
+      "tz": "Europe/Madrid"
+    },
+    "venue": "Campo Municipal",
+    "home": {
+      "name": "Club Local RC"
+    },
+    "away": {
+      "name": "Visitante RT"
+    },
+    "finalScore": {
+      "home": 24,
+      "away": 19
+    },
+    "observationMode": "LIVE",
+    "difficulty": "HIGH",
+    "refereeName": "Árbitro Ejemplo",
+    "assistants": {
+      "ar1": "Asistente Uno",
+      "ar2": "Asistente Dos"
+    }
+  },
+  "referee": {
+    "id": "0192a1b0-0000-7000-8000-0000000000f1",
+    "fullName": "Árbitro Ejemplo"
+  },
+  "assessor": {
+    "id": "0192a1b0-0000-7000-8000-0000000000e1",
+    "fullName": "Evaluador Ejemplo"
+  },
+  "rubric": {
+    "id": "01929d6e-0000-7000-8000-000000000003",
+    "code": "CARC-COMPETENCIES",
+    "version": "3.0.0",
+    "bands": [
+      {
+        "code": "E",
+        "label": "Excelente",
+        "labelCa": "Excel·lent"
+      },
+      {
+        "code": "C",
+        "label": "Competente",
+        "labelCa": "Competent"
+      },
+      {
+        "code": "N",
+        "label": "No competente todavía",
+        "labelCa": "No competent encara"
+      },
+      {
+        "code": "U",
+        "label": "Revisión urgente",
+        "labelCa": "Urgent revisar"
+      }
+    ],
+    "areas": [
+      {
+        "code": "POSITIONING",
+        "name": "Colocación",
+        "nameCa": "Col·locació",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "A1_STATIC_START",
+            "name": "El punto de partida en las fases estáticas es adecuado para seguir el juego",
+            "nameCa": "El punt de partida en les fases estàtiques és adequat per seguir el joc",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "A2_NO_INTERFERENCE",
+            "name": "Su posición no interfiere en el juego ni en los jugadores",
+            "nameCa": "La seva posició no interfereix en el joc o jugadors",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "A3_SEES_PLAY",
+            "name": "Puede ver el balón, los jugadores cercanos y los jugadores alejados",
+            "nameCa": "Pot veure la pilota, els jugadors a prop i els jugadors allunyats",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "A4_OPEN_PLAY_LINES",
+            "name": "Utiliza trayectorias adecuadas para seguir el juego abierto",
+            "nameCa": "Utilitza trajectòries adequades per seguir el joc obert",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "A5_REACHES_CONTACT",
+            "name": "Llega a los puntos de encuentro adecuadamente durante todo el partido",
+            "nameCa": "Arriba als punts d'encontre adequadament durant tot el partit",
+            "level": 3,
+            "weight": 1
+          },
+          {
+            "code": "A6_COMMUNICATES_FROM_POSITION",
+            "name": "Puede comunicarse eficazmente con los jugadores desde su posición",
+            "nameCa": "Pot comunicar-se efectivament amb els jugadors des de la seva posició",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "code": "COMMUNICATION",
+        "name": "Comunicación",
+        "nameCa": "Comunicació",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "B1_PRIMARY_SIGNAL_WHISTLE",
+            "name": "Usa correctamente la señal primaria y el silbato",
+            "nameCa": "Fa servir correctament la senyal primària i el xiulet",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "B2_SECONDARY_SIGNAL",
+            "name": "Identifica la falta claramente con la señal secundaria",
+            "nameCa": "Identifica la falta clarament amb la senyal secundària",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "B3_PLAYER_COMMUNICATION",
+            "name": "Establece una comunicación eficaz con los jugadores",
+            "nameCa": "Estableix una comunicació efectiva amb els jugadors",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "code": "CONTINUITY",
+        "name": "Continuidad",
+        "nameCa": "Continuïtat",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "C1_ADVANTAGE_SIGNAL",
+            "name": "Señaliza correctamente la ventaja y su final",
+            "nameCa": "Senyalitza correctament l'avantatge i la seva fi",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "C2_MATERIAL_EFFECT",
+            "name": "Sanciona solo las faltas con un efecto material en el juego",
+            "nameCa": "Sanciona només les faltes amb un efecte material en el joc",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "C3_ADVANTAGE_CONSISTENCY",
+            "name": "Aplica la ley de la ventaja con consistencia",
+            "nameCa": "Aplica la llei de l'avantatge amb consistència",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "code": "SET_PIECE",
+        "name": "Fases estáticas",
+        "nameCa": "Fases estàtiques",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "D1_ORDERED_SET_PIECE",
+            "name": "Consigue que la fase estática sea ordenada y la formación correcta",
+            "nameCa": "Aconsegueix que la fase estàtica sigui ordenada i la formació correcta",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "D2_SCRUM_SEQUENCE_SAFETY",
+            "name": "Aplica correctamente la secuencia de entrada y la seguridad básica en la melé",
+            "nameCa": "Aplica correctament la seqüència d'entrada i la seguretat bàsica a la melé",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "D3_DANGER_DETECTION",
+            "name": "Detecta las acciones peligrosas para la seguridad de los jugadores",
+            "nameCa": "Detecta accions perilloses per a la seguretat dels jugadors",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "D4_FAIR_CONTEST",
+            "name": "Garantiza la disputa justa en melé, touch y reinicios",
+            "nameCa": "Garanteix la disputa justa en melé, touch i reinicis",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "code": "DYNAMIC_PHASES",
+        "name": "Fases dinámicas",
+        "nameCa": "Fases dinàmiques",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "E1_PHASE_IDENTIFICATION",
+            "name": "Identifica los distintos tipos de fase (placaje, ruck, maul)",
+            "nameCa": "Identifica els diferents tipus de fases (placatge, ruck, mol)",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "E2_TACKLER_TACKLED",
+            "name": "Conoce y aplica las acciones del placador y del placado",
+            "nameCa": "Coneix i aplica les accions del placador i placat",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "E3_GATES_ENTRIES",
+            "name": "Garantiza que los jugadores usen las puertas y entradas correctas al ruck o maul",
+            "nameCa": "Garanteix que els jugadors usin les portes i entrades al ruck/mol correctes",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "E4_OFFSIDE_LINES",
+            "name": "Controla las líneas de fuera de juego en ruck y maul",
+            "nameCa": "Controla les línies de fora de joc en ruck/mol",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "E5_CONTEST_ON_FEET",
+            "name": "Consigue que la disputa del balón sea de pie",
+            "nameCa": "Aconsegueix que la disputa de la pilota sigui de peu",
+            "level": 3,
+            "weight": 1
+          },
+          {
+            "code": "E6_JACKLER",
+            "name": "Conoce y aplica las acciones del jugador que disputa el balón en el suelo («jackler»)",
+            "nameCa": "Coneix i aplica les accions del jugador pescador",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "code": "DISCIPLINE",
+        "name": "Disciplina",
+        "nameCa": "Disciplina",
+        "weight": 1,
+        "criteria": [
+          {
+            "code": "F1_DANGEROUS_PLAY",
+            "name": "Identifica y sanciona las acciones de juego peligroso",
+            "nameCa": "Identifica i sanciona les accions de joc perillós",
+            "level": 1,
+            "weight": 1
+          },
+          {
+            "code": "F2_FOUL_PLAY",
+            "name": "Sanciona adecuadamente las acciones de juego sucio",
+            "nameCa": "Sanciona adequadament les accions de Joc Brut",
+            "level": 2,
+            "weight": 1
+          },
+          {
+            "code": "F3_MATCH_CONTROL",
+            "name": "Es capaz de mantener el control del partido",
+            "nameCa": "És capaç de mantenir el control del partit",
+            "level": 3,
+            "weight": 1
+          }
+        ]
+      }
+    ]
+  },
+  "report": {
+    "version": 1,
+    "status": "FINALIZED",
+    "finalizedAt": "2026-10-18T09:12:00Z",
+    "criterionScores": [
+      {
+        "criterionCode": "A1_STATIC_START",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A2_NO_INTERFERENCE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A3_SEES_PLAY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A4_OPEN_PLAY_LINES",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A5_REACHES_CONTACT",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A6_COMMUNICATES_FROM_POSITION",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B1_PRIMARY_SIGNAL_WHISTLE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B2_SECONDARY_SIGNAL",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B3_PLAYER_COMMUNICATION",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C1_ADVANTAGE_SIGNAL",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C2_MATERIAL_EFFECT",
+        "suggestedBand": "N",
+        "suggested": 4.6,
+        "finalBand": "N",
+        "notObserved": false,
+        "justification": "No ofreció las opciones reglamentarias tras el saque de centro corto (52:14).",
+        "capBand": null,
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      },
+      {
+        "criterionCode": "C3_ADVANTAGE_CONSISTENCY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "E",
+        "notObserved": false,
+        "justification": "Ventajas largas y bien cerradas, con lectura territorial.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D1_ORDERED_SET_PIECE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D2_SCRUM_SEQUENCE_SAFETY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D3_DANGER_DETECTION",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D4_FAIR_CONTEST",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E1_PHASE_IDENTIFICATION",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E2_TACKLER_TACKLED",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E3_GATES_ENTRIES",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E4_OFFSIDE_LINES",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E5_CONTEST_ON_FEET",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "E6_JACKLER",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "F1_DANGEROUS_PLAY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "F2_FOUL_PLAY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "F3_MATCH_CONTROL",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "C",
+        "notObserved": false,
+        "justification": "",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      }
+    ],
+    "areaScores": [
+      {
+        "areaCode": "POSITIONING",
+        "score": 7,
+        "band": "C"
+      },
+      {
+        "areaCode": "COMMUNICATION",
+        "score": 7,
+        "band": "C"
+      },
+      {
+        "areaCode": "CONTINUITY",
+        "score": 7,
+        "band": "C"
+      },
+      {
+        "areaCode": "SET_PIECE",
+        "score": 7,
+        "band": "C"
+      },
+      {
+        "areaCode": "DYNAMIC_PHASES",
+        "score": 7,
+        "band": "C"
+      },
+      {
+        "areaCode": "DISCIPLINE",
+        "score": 7,
+        "band": "C"
+      }
+    ],
+    "band": "C",
+    "overallScore": 7,
+    "keyDecisionAccuracy": {
+      "correct": 0,
+      "total": 1,
+      "ratio": 0
+    },
+    "summary": "Partido bien gestionado en lo físico y en la ventaja; el conocimiento reglamentario en reinicios es la prioridad.",
+    "actualDifficulty": "VERY_HIGH",
+    "levelRecommendation": "SAME",
+    "strengths": [
+      {
+        "criterionCode": "C3_ADVANTAGE_CONSISTENCY",
+        "text": "Ventaja territorial bien leída y cerrada con claridad.",
+        "evidenceIncidentIds": []
+      }
+    ],
+    "developmentAreas": [
+      {
+        "criterionCode": "C2_MATERIAL_EFFECT",
+        "text": "Opciones del equipo no infractor en reinicios incorrectos.",
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      }
+    ],
+    "actionPoints": [
+      {
+        "id": "0192a1b0-0000-7000-8000-0000000000a1",
+        "criterionCode": "C2_MATERIAL_EFFECT",
+        "text": "Repasar la ley 12 (saque de centro y reinicios) y sus opciones.",
+        "successIndicator": "En la próxima evaluación, todas las infracciones en reinicios se resuelven con las opciones correctas."
+      }
+    ],
+    "previousActionPointReviews": []
+  },
+  "incidents": [
+    {
+      "id": "0192a1b0-0000-7000-8000-000000000012",
+      "seq": 12,
+      "matchClock": "52:14",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OTHER_LAW",
+      "criterionCode": "C2_MATERIAL_EFFECT",
+      "gamePhase": "RESTART",
+      "fieldZone": "OWN_22_TO_HALF",
+      "decisionTaken": {
+        "outcomes": [
+          "SCRUM"
+        ],
+        "againstTeam": "HOME",
+        "description": "Saque de centro que no recorre 10 m: scrum en el centro."
+      },
+      "decisionExpected": {
+        "outcomes": [
+          "FREE_KICK",
+          "SCRUM"
+        ],
+        "againstTeam": "HOME",
+        "lawRef": "12",
+        "description": "El equipo no infractor elige: lanzar de nuevo, scrum o puntapié libre (opción no ofrecida)."
+      },
+      "verdict": "INCORRECT",
+      "impact": "HIGH",
+      "notes": "Error de reglamento teórico: no ofreció las opciones al capitán.",
+      "attachments": []
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "canonicalization": "sorted-keys-no-whitespace-v1",
+    "hashedPointer": "/report",
+    "contentHash": "421fa129c48cdef94a848ca25a4c49a3c672dbd4c688bb2c1be3c6a02cbdd7a3"
+  }
+}

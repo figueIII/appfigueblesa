@@ -1,0 +1,416 @@
+{
+  "format": "rugby-referee-assessment",
+  "formatVersion": "2.0",
+  "exportedAt": "2026-10-18T09:13:05Z",
+  "generator": {
+    "app": "RefAssess",
+    "appVersion": "0.2.0",
+    "rubricEngineVersion": "2.0.0"
+  },
+  "match": {
+    "assessmentId": "0192a1b0-0000-7000-8000-000000000001",
+    "competition": "DHCAT",
+    "round": "J5",
+    "category": {
+      "code": "SM_DHCAT_1_2_3",
+      "name": "Sénior masculino — DHCAT, 1ª, 2ª, 3ª",
+      "format": "XV",
+      "periodLengthMin": 40,
+      "sinBinMin": 10,
+      "lawVariations": []
+    },
+    "kickoff": {
+      "local": "2026-10-17T17:00",
+      "tz": "Europe/Madrid"
+    },
+    "venue": "Campo Municipal",
+    "home": {
+      "name": "Club Local RC"
+    },
+    "away": {
+      "name": "Visitante RT"
+    },
+    "finalScore": {
+      "home": 24,
+      "away": 19
+    },
+    "observationMode": "LIVE",
+    "difficulty": "HIGH",
+    "refereeName": "Árbitro Ejemplo",
+    "assistants": {
+      "ar1": "Asistente Uno",
+      "ar2": "Asistente Dos"
+    }
+  },
+  "referee": {
+    "id": "0192a1b0-0000-7000-8000-0000000000f1",
+    "fullName": "Árbitro Ejemplo"
+  },
+  "assessor": {
+    "id": "0192a1b0-0000-7000-8000-0000000000e1",
+    "fullName": "Evaluador Ejemplo"
+  },
+  "rubric": {
+    "id": "01929d6e-0000-7000-8000-000000000001",
+    "code": "RUGBY-XV-BASE",
+    "version": "2.0.0",
+    "bands": [
+      {
+        "code": "ABOVE",
+        "label": "Por encima del nivel"
+      },
+      {
+        "code": "AT",
+        "label": "En el nivel"
+      },
+      {
+        "code": "BELOW",
+        "label": "Por debajo del nivel"
+      }
+    ],
+    "areas": [
+      {
+        "code": "PHASES",
+        "name": "Gestión de fases de juego",
+        "weight": 35,
+        "criteria": [
+          {
+            "code": "A1_SCRUM",
+            "name": "Scrum",
+            "weight": 25
+          },
+          {
+            "code": "A2_LINEOUT_MAUL",
+            "name": "Touch y maul",
+            "weight": 20
+          },
+          {
+            "code": "A3_TACKLE_RUCK",
+            "name": "Placaje y ruck",
+            "weight": 35
+          },
+          {
+            "code": "A4_OFFSIDE_SPACE",
+            "name": "Espacio y fuera de juego",
+            "weight": 20
+          }
+        ]
+      },
+      {
+        "code": "MANAGEMENT",
+        "name": "Comunicación y gestión del partido",
+        "weight": 20,
+        "criteria": [
+          {
+            "code": "B1_VERBAL_CONTROL",
+            "name": "Control verbal y preventivo",
+            "weight": 30
+          },
+          {
+            "code": "B2_TONE_PRESENCE",
+            "name": "Tono, señalización y presencia",
+            "weight": 20
+          },
+          {
+            "code": "B3_CAPTAINS_PLAYERS",
+            "name": "Gestión de capitanes y jugadores",
+            "weight": 20
+          },
+          {
+            "code": "B4_ADVANTAGE",
+            "name": "Aplicación de la ventaja",
+            "weight": 30
+          }
+        ]
+      },
+      {
+        "code": "LAW_DISCIPLINE",
+        "name": "Aplicación de leyes y consistencia disciplinaria",
+        "weight": 30,
+        "criteria": [
+          {
+            "code": "C1_LAW_ACCURACY",
+            "name": "Exactitud en la aplicación de las leyes",
+            "weight": 50
+          },
+          {
+            "code": "C2_FOUL_PLAY",
+            "name": "Detección y sanción del juego desleal",
+            "weight": 30
+          },
+          {
+            "code": "C3_SANCTION_CONSISTENCY",
+            "name": "Consistencia disciplinaria",
+            "weight": 20
+          }
+        ]
+      },
+      {
+        "code": "FITNESS_POSITIONING",
+        "name": "Condición física, posicionamiento y líneas de carrera",
+        "weight": 15,
+        "criteria": [
+          {
+            "code": "D1_FITNESS",
+            "name": "Condición física",
+            "weight": 30
+          },
+          {
+            "code": "D2_POSITIONING",
+            "name": "Posicionamiento",
+            "weight": 40
+          },
+          {
+            "code": "D3_RUNNING_LINES",
+            "name": "Líneas de carrera",
+            "weight": 30
+          }
+        ]
+      }
+    ]
+  },
+  "report": {
+    "version": 1,
+    "status": "FINALIZED",
+    "finalizedAt": "2026-10-18T09:12:00Z",
+    "criterionScores": [
+      {
+        "criterionCode": "A1_SCRUM",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A2_LINEOUT_MAUL",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A3_TACKLE_RUCK",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "A4_OFFSIDE_SPACE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B1_VERBAL_CONTROL",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B2_TONE_PRESENCE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B3_CAPTAINS_PLAYERS",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "ABOVE",
+        "notObserved": false,
+        "justification": "Ventajas largas y bien cerradas, con lectura territorial.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C1_LAW_ACCURACY",
+        "suggestedBand": "BELOW",
+        "suggested": 4.6,
+        "finalBand": "BELOW",
+        "notObserved": false,
+        "justification": "No ofreció las opciones reglamentarias tras el saque de centro corto (52:14).",
+        "capBand": null,
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      },
+      {
+        "criterionCode": "C2_FOUL_PLAY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "C3_SANCTION_CONSISTENCY",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D1_FITNESS",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D2_POSITIONING",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      },
+      {
+        "criterionCode": "D3_RUNNING_LINES",
+        "suggestedBand": null,
+        "suggested": null,
+        "finalBand": "AT",
+        "notObserved": false,
+        "justification": "Acorde al nivel del partido.",
+        "capBand": null,
+        "evidenceIncidentIds": []
+      }
+    ],
+    "areaScores": [
+      {
+        "areaCode": "PHASES",
+        "score": 7,
+        "band": "AT"
+      },
+      {
+        "areaCode": "MANAGEMENT",
+        "score": 7.6,
+        "band": "AT"
+      },
+      {
+        "areaCode": "LAW_DISCIPLINE",
+        "score": 6,
+        "band": "AT"
+      },
+      {
+        "areaCode": "FITNESS_POSITIONING",
+        "score": 7,
+        "band": "AT"
+      }
+    ],
+    "band": "AT",
+    "overallScore": 6.82,
+    "keyDecisionAccuracy": {
+      "correct": 0,
+      "total": 1,
+      "ratio": 0
+    },
+    "summary": "Partido bien gestionado en lo físico y en la ventaja; el conocimiento reglamentario en reinicios es la prioridad.",
+    "strengths": [
+      {
+        "criterionCode": "B4_ADVANTAGE",
+        "text": "Ventaja territorial bien leída y cerrada con claridad.",
+        "evidenceIncidentIds": []
+      }
+    ],
+    "developmentAreas": [
+      {
+        "criterionCode": "C1_LAW_ACCURACY",
+        "text": "Opciones del equipo no infractor en reinicios incorrectos.",
+        "evidenceIncidentIds": [
+          "0192a1b0-0000-7000-8000-000000000012"
+        ]
+      }
+    ],
+    "actionPoints": [
+      {
+        "id": "0192a1b0-0000-7000-8000-0000000000a1",
+        "criterionCode": "C1_LAW_ACCURACY",
+        "text": "Repasar la ley 12 (saque de centro y reinicios) y sus opciones.",
+        "successIndicator": "En la próxima evaluación, todas las infracciones en reinicios se resuelven con las opciones correctas."
+      }
+    ],
+    "previousActionPointReviews": []
+  },
+  "incidents": [
+    {
+      "id": "0192a1b0-0000-7000-8000-000000000012",
+      "seq": 12,
+      "matchClock": "52:14",
+      "period": "H2",
+      "overtime": false,
+      "timeIntegrity": "OK",
+      "category": "OTHER_LAW",
+      "criterionCode": "C1_LAW_ACCURACY",
+      "gamePhase": "RESTART",
+      "fieldZone": "OWN_22_TO_HALF",
+      "decisionTaken": {
+        "outcomes": [
+          "SCRUM"
+        ],
+        "againstTeam": "HOME",
+        "description": "Saque de centro que no recorre 10 m: scrum en el centro."
+      },
+      "decisionExpected": {
+        "outcomes": [
+          "FREE_KICK",
+          "SCRUM"
+        ],
+        "againstTeam": "HOME",
+        "lawRef": "12",
+        "description": "El equipo no infractor elige: lanzar de nuevo, scrum o puntapié libre (opción no ofrecida)."
+      },
+      "verdict": "INCORRECT",
+      "impact": "HIGH",
+      "notes": "Error de reglamento teórico: no ofreció las opciones al capitán.",
+      "attachments": []
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "canonicalization": "sorted-keys-no-whitespace-v1",
+    "hashedPointer": "/report",
+    "contentHash": "4d3347e4caa7e1256cda985205f169c2670af7437c198ea70f515382b63fc9d2"
+  }
+}
