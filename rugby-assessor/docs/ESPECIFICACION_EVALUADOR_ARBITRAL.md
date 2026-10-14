@@ -1,5 +1,7 @@
 # Evaluador arbitral de rugby: base técnica y lógica (sin UI)
 
+> **v1.2.0:** la rúbrica, la escala y las reglas de cierre han cambiado. Ver [`COMPETENCIAS_CARC.md`](COMPETENCIAS_CARC.md), que prevalece sobre este documento donde se contradigan.
+
 > **Ampliación v1.1:** marcador, sanciones del árbitro y ley de cada acción (esquema SQLite v3, exportación 2.1). Detalle en [MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md).
 
 > **Estado:** **v0.2: base técnica aceptada** con las resoluciones R1–R6 de la [sección 0](#0-registro-de-resoluciones-vinculantes), que prevalecen sobre el resto del texto. Lista para empezar la UI.

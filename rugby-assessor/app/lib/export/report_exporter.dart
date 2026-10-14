@@ -17,6 +17,7 @@ import 'package:share_plus/share_plus.dart';
 import '../core/platform_ports.dart';
 import '../data/drift_export_repository.dart';
 import '../domain/rubric.dart';
+import '../domain/rubrics.dart';
 import 'export_document.dart';
 import 'report_pdf.dart';
 
@@ -52,17 +53,20 @@ class SystemFileSharer implements FileSharer {
 class ReportExporter {
   ReportExporter({
     required this.repository,
-    required this.rubric,
+    this.rubric,
     required this.schema,
     required this.fonts,
     required this.exportsDirectory,
     required this.ids,
-    this.appVersion = '1.1.4', // = version de pubspec.yaml
+    this.appVersion = '1.2.0', // = version de pubspec.yaml
     DateTime Function()? now,
   }) : _now = now ?? (() => DateTime.now().toUtc());
 
   final ExportRepository repository;
-  final AssessmentRubric rubric;
+
+  /// Rúbrica fija (tests). Si es null, la de cada informe (la del CARC o la v2 de los antiguos).
+  final AssessmentRubric? rubric;
+  AssessmentRubric rubricOf(ExportSource s) => rubric ?? rubricById(s.rubricId);
   final JsonSchema schema;
   final Future<PdfFonts> Function() fonts;
   final Future<Directory> Function() exportsDirectory;
@@ -74,7 +78,7 @@ class ReportExporter {
   /// no cumple el esquema (con la ruta de cada error).
   Future<(ExportSource, Map<String, Object?>)> buildValidatedDocument(String assessmentId) async {
     final source = await repository.loadExportSource(assessmentId);
-    final doc = buildExportDocument(source, rubric, exportedAt: _now(), appVersion: appVersion);
+    final doc = buildExportDocument(source, rubricOf(source), exportedAt: _now(), appVersion: appVersion);
     // Ida y vuelta por JSON: se valida exactamente lo que se escribirá.
     final result = schema.validate(jsonDecode(jsonEncode(doc)));
     if (!result.isValid) {
@@ -88,7 +92,7 @@ class ReportExporter {
     final (source, doc) = await buildValidatedDocument(assessmentId);
     final Uint8List bytes = switch (format) {
       ExportFormat.json => Uint8List.fromList(utf8.encode(const JsonEncoder.withIndent('  ').convert(doc))),
-      ExportFormat.pdf => await buildReportPdf(doc, rubric, await fonts(), includeIncidentAnnex: includeIncidentAnnex),
+      ExportFormat.pdf => await buildReportPdf(doc, rubricOf(source), await fonts(), includeIncidentAnnex: includeIncidentAnnex),
     };
     return RenderedExport(
       source: source,

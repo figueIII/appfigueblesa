@@ -106,6 +106,18 @@ void main() {
     expect(find.text('Recomendado: notas (impacto alto)'), findsOneWidget, reason: 'scrum: sugerencia, no error');
   });
 
+  testWidgets('con marcas pendientes también se puede pasar a la evaluación (valorarlas es opcional)', (tester) async {
+    final h = Harness();
+    await h.pump(tester);
+    final go = find.byKey(const ValueKey('continue-to-rubric-anyway'));
+    await tester.scrollUntilVisible(go, 200);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('sin valorar no cuentan'), findsOneWidget);
+    await tester.tap(go);
+    await tester.pumpAndSettle();
+    expect(h.continued, 1);
+  });
+
   testWidgets('"Todas" muestra todo en orden cronológico', (tester) async {
     final h = Harness();
     await h.pump(tester);
@@ -187,12 +199,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('criterion-row')));
     await tester.pumpAndSettle();
-    await tapVisible(tester, find.byKey(const ValueKey('criterion-D2_POSITIONING')));
-    expect(find.text('D2 · Posicionamiento'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('criterion-A3_SEES_PLAY')));
+    expect(find.text('A3 · Puede ver el balón, los jugadores cercanos y los jugadores alejados'), findsOneWidget);
     await tapVisible(tester, find.byKey(const ValueKey('verdict-correct')));
     await tester.tap(find.byKey(const ValueKey('save-incident')));
     await tester.pumpAndSettle();
-    expect(h.stored('ruck').criterionCode, 'D2_POSITIONING');
+    expect(h.stored('ruck').criterionCode, 'A3_SEES_PLAY');
   });
 
   testWidgets('asignar la ley de una acción correcta y verla en la cola', (tester) async {

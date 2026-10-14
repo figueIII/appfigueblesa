@@ -39,26 +39,26 @@ enum IncidentCategory {
   runningLine,
 }
 
-/// Mapa categoría → criterio de la rúbrica v2.0.0 (rubric-default.ts, categoryToCriterion).
+/// Mapa categoría → competencia de la rúbrica CARC v3.0.0 (rubric-default.ts, categoryToCriterion).
 const Map<IncidentCategory, String> kCategoryToCriterion = {
-  IncidentCategory.scrum: 'A1_SCRUM',
-  IncidentCategory.lineout: 'A2_LINEOUT_MAUL',
-  IncidentCategory.maul: 'A2_LINEOUT_MAUL',
-  IncidentCategory.tackle: 'A3_TACKLE_RUCK',
-  IncidentCategory.ruck: 'A3_TACKLE_RUCK',
-  IncidentCategory.offside: 'A4_OFFSIDE_SPACE',
-  IncidentCategory.communication: 'B1_VERBAL_CONTROL',
-  IncidentCategory.captainMgmt: 'B3_CAPTAINS_PLAYERS',
-  IncidentCategory.advantage: 'B4_ADVANTAGE',
-  IncidentCategory.tryGrounding: 'C1_LAW_ACCURACY',
-  IncidentCategory.knockOnForwardPass: 'C1_LAW_ACCURACY',
-  IncidentCategory.otherLaw: 'C1_LAW_ACCURACY',
-  IncidentCategory.foulPlay: 'C2_FOUL_PLAY',
-  IncidentCategory.tmoProcess: 'C2_FOUL_PLAY',
-  IncidentCategory.card: 'C3_SANCTION_CONSISTENCY',
-  IncidentCategory.fitness: 'D1_FITNESS',
-  IncidentCategory.positioning: 'D2_POSITIONING',
-  IncidentCategory.runningLine: 'D3_RUNNING_LINES',
+  IncidentCategory.scrum: 'D2_SCRUM_SEQUENCE_SAFETY',
+  IncidentCategory.lineout: 'D4_FAIR_CONTEST',
+  IncidentCategory.maul: 'E3_GATES_ENTRIES',
+  IncidentCategory.tackle: 'E2_TACKLER_TACKLED',
+  IncidentCategory.ruck: 'E3_GATES_ENTRIES',
+  IncidentCategory.offside: 'E4_OFFSIDE_LINES',
+  IncidentCategory.communication: 'B3_PLAYER_COMMUNICATION',
+  IncidentCategory.captainMgmt: 'F3_MATCH_CONTROL',
+  IncidentCategory.advantage: 'C3_ADVANTAGE_CONSISTENCY',
+  IncidentCategory.tryGrounding: 'A3_SEES_PLAY',
+  IncidentCategory.knockOnForwardPass: 'C2_MATERIAL_EFFECT',
+  IncidentCategory.otherLaw: 'C2_MATERIAL_EFFECT',
+  IncidentCategory.foulPlay: 'F1_DANGEROUS_PLAY',
+  IncidentCategory.tmoProcess: 'F2_FOUL_PLAY',
+  IncidentCategory.card: 'F2_FOUL_PLAY',
+  IncidentCategory.fitness: 'A5_REACHES_CONTACT',
+  IncidentCategory.positioning: 'A3_SEES_PLAY',
+  IncidentCategory.runningLine: 'A4_OPEN_PLAY_LINES',
 };
 
 class ExtraTimeConfig {

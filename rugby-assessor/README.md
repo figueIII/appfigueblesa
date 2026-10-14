@@ -3,7 +3,9 @@
 App móvil, sin conexión, para que un evaluador valore al **árbitro principal** de un partido de rugby (XV y 7s):
 - **Captura en directo** de un toque por incidencia, con **marcador**, **contador de sanciones** (GC, GF y tarjetas por equipo) y la **ley** de cada acción.
 - **Revisión** después del partido.
-- **Evaluación por bandas cualitativas**: Por debajo, En el nivel o Por encima del nivel, sin notas numéricas visibles.
+- **Evaluación por competencias del CARC** (6 áreas, 25 competencias con nivel N1–N3) con la escala E / C / N / U, sin notas numéricas visibles. Todo es opcional al cerrar. Ver `docs/COMPETENCIAS_CARC.md`.
+- **Resumen del partido tras cerrar el informe**: marcador, golpes, tarjetas, valoración, dificultad estimada y real, recomendación de nivel y vuelta al menú.
+- **Castellano o catalán** (menú de inicio).
 - **Informe firmado** (SHA-256) que se exporta en PDF y JSON.
 
 **Estado:** versión **1.1.3** (marcador, sanciones valorables como marcas, leyes y edición durante el partido, sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).

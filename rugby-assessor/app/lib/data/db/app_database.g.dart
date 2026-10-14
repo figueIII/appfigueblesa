@@ -1839,7 +1839,7 @@ class AssessmentData extends DataClass implements Insertable<AssessmentData> {
   final String observationMode;
   final String? difficulty;
 
-  /// solo contexto (R3)
+  /// estimada; solo contexto (R3)
   final String categoryCode;
 
   /// preset elegido (R6)
@@ -6923,7 +6923,7 @@ class Report extends Table with TableInfo<Report, ReportData> {
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints: 'CHECK (band IN (\'BELOW\', \'AT\', \'ABOVE\'))',
+    $customConstraints: 'CHECK (band IN (\'E\', \'C\', \'N\', \'U\', \'BELOW\', \'AT\', \'ABOVE\'))',
   );
   static const VerificationMeta _overallScoreMeta = const VerificationMeta(
     'overallScore',
@@ -7005,6 +7005,29 @@ class Report extends Table with TableInfo<Report, ReportData> {
     requiredDuringInsert: false,
     $customConstraints: '',
   );
+  static const VerificationMeta _actualDifficultyMeta = const VerificationMeta(
+    'actualDifficulty',
+  );
+  late final GeneratedColumn<String> actualDifficulty = GeneratedColumn<String>(
+    'actual_difficulty',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'CHECK (actual_difficulty IN (\'LOW\', \'MEDIUM\', \'HIGH\', \'VERY_HIGH\'))',
+  );
+  static const VerificationMeta _levelRecommendationMeta =
+      const VerificationMeta('levelRecommendation');
+  late final GeneratedColumn<String> levelRecommendation =
+      GeneratedColumn<String>(
+        'level_recommendation',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints:
+            'CHECK (level_recommendation IN (\'UP\', \'SAME\', \'DOWN\'))',
+      );
   @override
   List<GeneratedColumn> get $columns => [
     assessmentId,
@@ -7021,6 +7044,8 @@ class Report extends Table with TableInfo<Report, ReportData> {
     finalizedAt,
     canonicalJson,
     contentHash,
+    actualDifficulty,
+    levelRecommendation,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7146,6 +7171,24 @@ class Report extends Table with TableInfo<Report, ReportData> {
         ),
       );
     }
+    if (data.containsKey('actual_difficulty')) {
+      context.handle(
+        _actualDifficultyMeta,
+        actualDifficulty.isAcceptableOrUnknown(
+          data['actual_difficulty']!,
+          _actualDifficultyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('level_recommendation')) {
+      context.handle(
+        _levelRecommendationMeta,
+        levelRecommendation.isAcceptableOrUnknown(
+          data['level_recommendation']!,
+          _levelRecommendationMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7211,6 +7254,14 @@ class Report extends Table with TableInfo<Report, ReportData> {
         DriftSqlType.string,
         data['${effectivePrefix}content_hash'],
       ),
+      actualDifficulty: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actual_difficulty'],
+      ),
+      levelRecommendation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level_recommendation'],
+      ),
     );
   }
 
@@ -7240,7 +7291,7 @@ class ReportData extends DataClass implements Insertable<ReportData> {
   final String summary;
   final String? band;
 
-  /// resultado visible
+  /// resultado visible (v2: BELOW/AT/ABOVE)
   final double? overallScore;
 
   /// interno (auditoría)
@@ -7250,6 +7301,10 @@ class ReportData extends DataClass implements Insertable<ReportData> {
   final String? finalizedAt;
   final String? canonicalJson;
   final String? contentHash;
+
+  /// v5: dificultad real del partido (la estimada está en assessment.difficulty) y recomendación del CARC
+  final String? actualDifficulty;
+  final String? levelRecommendation;
   const ReportData({
     required this.assessmentId,
     required this.version,
@@ -7265,6 +7320,8 @@ class ReportData extends DataClass implements Insertable<ReportData> {
     this.finalizedAt,
     this.canonicalJson,
     this.contentHash,
+    this.actualDifficulty,
+    this.levelRecommendation,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7295,6 +7352,12 @@ class ReportData extends DataClass implements Insertable<ReportData> {
     if (!nullToAbsent || contentHash != null) {
       map['content_hash'] = Variable<String>(contentHash);
     }
+    if (!nullToAbsent || actualDifficulty != null) {
+      map['actual_difficulty'] = Variable<String>(actualDifficulty);
+    }
+    if (!nullToAbsent || levelRecommendation != null) {
+      map['level_recommendation'] = Variable<String>(levelRecommendation);
+    }
     return map;
   }
 
@@ -7324,6 +7387,12 @@ class ReportData extends DataClass implements Insertable<ReportData> {
       contentHash: contentHash == null && nullToAbsent
           ? const Value.absent()
           : Value(contentHash),
+      actualDifficulty: actualDifficulty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actualDifficulty),
+      levelRecommendation: levelRecommendation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(levelRecommendation),
     );
   }
 
@@ -7347,6 +7416,10 @@ class ReportData extends DataClass implements Insertable<ReportData> {
       finalizedAt: serializer.fromJson<String?>(json['finalized_at']),
       canonicalJson: serializer.fromJson<String?>(json['canonical_json']),
       contentHash: serializer.fromJson<String?>(json['content_hash']),
+      actualDifficulty: serializer.fromJson<String?>(json['actual_difficulty']),
+      levelRecommendation: serializer.fromJson<String?>(
+        json['level_recommendation'],
+      ),
     );
   }
   @override
@@ -7367,6 +7440,8 @@ class ReportData extends DataClass implements Insertable<ReportData> {
       'finalized_at': serializer.toJson<String?>(finalizedAt),
       'canonical_json': serializer.toJson<String?>(canonicalJson),
       'content_hash': serializer.toJson<String?>(contentHash),
+      'actual_difficulty': serializer.toJson<String?>(actualDifficulty),
+      'level_recommendation': serializer.toJson<String?>(levelRecommendation),
     };
   }
 
@@ -7385,6 +7460,8 @@ class ReportData extends DataClass implements Insertable<ReportData> {
     Value<String?> finalizedAt = const Value.absent(),
     Value<String?> canonicalJson = const Value.absent(),
     Value<String?> contentHash = const Value.absent(),
+    Value<String?> actualDifficulty = const Value.absent(),
+    Value<String?> levelRecommendation = const Value.absent(),
   }) => ReportData(
     assessmentId: assessmentId ?? this.assessmentId,
     version: version ?? this.version,
@@ -7404,6 +7481,12 @@ class ReportData extends DataClass implements Insertable<ReportData> {
         ? canonicalJson.value
         : this.canonicalJson,
     contentHash: contentHash.present ? contentHash.value : this.contentHash,
+    actualDifficulty: actualDifficulty.present
+        ? actualDifficulty.value
+        : this.actualDifficulty,
+    levelRecommendation: levelRecommendation.present
+        ? levelRecommendation.value
+        : this.levelRecommendation,
   );
   ReportData copyWithCompanion(ReportCompanion data) {
     return ReportData(
@@ -7435,6 +7518,12 @@ class ReportData extends DataClass implements Insertable<ReportData> {
       contentHash: data.contentHash.present
           ? data.contentHash.value
           : this.contentHash,
+      actualDifficulty: data.actualDifficulty.present
+          ? data.actualDifficulty.value
+          : this.actualDifficulty,
+      levelRecommendation: data.levelRecommendation.present
+          ? data.levelRecommendation.value
+          : this.levelRecommendation,
     );
   }
 
@@ -7454,7 +7543,9 @@ class ReportData extends DataClass implements Insertable<ReportData> {
           ..write('amendmentReason: $amendmentReason, ')
           ..write('finalizedAt: $finalizedAt, ')
           ..write('canonicalJson: $canonicalJson, ')
-          ..write('contentHash: $contentHash')
+          ..write('contentHash: $contentHash, ')
+          ..write('actualDifficulty: $actualDifficulty, ')
+          ..write('levelRecommendation: $levelRecommendation')
           ..write(')'))
         .toString();
   }
@@ -7475,6 +7566,8 @@ class ReportData extends DataClass implements Insertable<ReportData> {
     finalizedAt,
     canonicalJson,
     contentHash,
+    actualDifficulty,
+    levelRecommendation,
   );
   @override
   bool operator ==(Object other) =>
@@ -7493,7 +7586,9 @@ class ReportData extends DataClass implements Insertable<ReportData> {
           other.amendmentReason == this.amendmentReason &&
           other.finalizedAt == this.finalizedAt &&
           other.canonicalJson == this.canonicalJson &&
-          other.contentHash == this.contentHash);
+          other.contentHash == this.contentHash &&
+          other.actualDifficulty == this.actualDifficulty &&
+          other.levelRecommendation == this.levelRecommendation);
 }
 
 class ReportCompanion extends UpdateCompanion<ReportData> {
@@ -7511,6 +7606,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
   final Value<String?> finalizedAt;
   final Value<String?> canonicalJson;
   final Value<String?> contentHash;
+  final Value<String?> actualDifficulty;
+  final Value<String?> levelRecommendation;
   final Value<int> rowid;
   const ReportCompanion({
     this.assessmentId = const Value.absent(),
@@ -7527,6 +7624,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
     this.finalizedAt = const Value.absent(),
     this.canonicalJson = const Value.absent(),
     this.contentHash = const Value.absent(),
+    this.actualDifficulty = const Value.absent(),
+    this.levelRecommendation = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReportCompanion.insert({
@@ -7544,6 +7643,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
     this.finalizedAt = const Value.absent(),
     this.canonicalJson = const Value.absent(),
     this.contentHash = const Value.absent(),
+    this.actualDifficulty = const Value.absent(),
+    this.levelRecommendation = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : assessmentId = Value(assessmentId),
        version = Value(version),
@@ -7565,6 +7666,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
     Expression<String>? finalizedAt,
     Expression<String>? canonicalJson,
     Expression<String>? contentHash,
+    Expression<String>? actualDifficulty,
+    Expression<String>? levelRecommendation,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7582,6 +7685,9 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
       if (finalizedAt != null) 'finalized_at': finalizedAt,
       if (canonicalJson != null) 'canonical_json': canonicalJson,
       if (contentHash != null) 'content_hash': contentHash,
+      if (actualDifficulty != null) 'actual_difficulty': actualDifficulty,
+      if (levelRecommendation != null)
+        'level_recommendation': levelRecommendation,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7601,6 +7707,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
     Value<String?>? finalizedAt,
     Value<String?>? canonicalJson,
     Value<String?>? contentHash,
+    Value<String?>? actualDifficulty,
+    Value<String?>? levelRecommendation,
     Value<int>? rowid,
   }) {
     return ReportCompanion(
@@ -7618,6 +7726,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
       finalizedAt: finalizedAt ?? this.finalizedAt,
       canonicalJson: canonicalJson ?? this.canonicalJson,
       contentHash: contentHash ?? this.contentHash,
+      actualDifficulty: actualDifficulty ?? this.actualDifficulty,
+      levelRecommendation: levelRecommendation ?? this.levelRecommendation,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7667,6 +7777,12 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
     if (contentHash.present) {
       map['content_hash'] = Variable<String>(contentHash.value);
     }
+    if (actualDifficulty.present) {
+      map['actual_difficulty'] = Variable<String>(actualDifficulty.value);
+    }
+    if (levelRecommendation.present) {
+      map['level_recommendation'] = Variable<String>(levelRecommendation.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7690,6 +7806,8 @@ class ReportCompanion extends UpdateCompanion<ReportData> {
           ..write('finalizedAt: $finalizedAt, ')
           ..write('canonicalJson: $canonicalJson, ')
           ..write('contentHash: $contentHash, ')
+          ..write('actualDifficulty: $actualDifficulty, ')
+          ..write('levelRecommendation: $levelRecommendation, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7744,8 +7862,7 @@ class CriterionScore extends Table
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints:
-        'CHECK (suggested_band IN (\'BELOW\', \'AT\', \'ABOVE\'))',
+    $customConstraints: 'CHECK (suggested_band IN (\'E\', \'C\', \'N\', \'U\', \'BELOW\', \'AT\', \'ABOVE\'))',
   );
   static const VerificationMeta _suggestedMeta = const VerificationMeta(
     'suggested',
@@ -7767,7 +7884,7 @@ class CriterionScore extends Table
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints: 'CHECK (final_band IN (\'BELOW\', \'AT\', \'ABOVE\'))',
+    $customConstraints: 'CHECK (final_band IN (\'E\', \'C\', \'N\', \'U\', \'BELOW\', \'AT\', \'ABOVE\'))',
   );
   static const VerificationMeta _notObservedMeta = const VerificationMeta(
     'notObserved',
@@ -7802,7 +7919,7 @@ class CriterionScore extends Table
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints: 'CHECK (cap_band IN (\'BELOW\', \'AT\', \'ABOVE\'))',
+    $customConstraints: 'CHECK (cap_band IN (\'E\', \'C\', \'N\', \'U\', \'BELOW\', \'AT\', \'ABOVE\'))',
   );
   static const VerificationMeta _evidenceJsonMeta = const VerificationMeta(
     'evidenceJson',
@@ -9998,6 +10115,218 @@ class ActionPointReviewCompanion
   }
 }
 
+class AppSetting extends Table with TableInfo<AppSetting, AppSettingData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  AppSetting(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'PRIMARY KEY',
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [name, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_setting';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppSettingData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {name};
+  @override
+  AppSettingData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppSettingData(
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  AppSetting createAlias(String alias) {
+    return AppSetting(attachedDatabase, alias);
+  }
+
+  @override
+  bool get isStrict => true;
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class AppSettingData extends DataClass implements Insertable<AppSettingData> {
+  final String name;
+  final String value;
+  const AppSettingData({required this.name, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['name'] = Variable<String>(name);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  AppSettingCompanion toCompanion(bool nullToAbsent) {
+    return AppSettingCompanion(name: Value(name), value: Value(value));
+  }
+
+  factory AppSettingData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppSettingData(
+      name: serializer.fromJson<String>(json['name']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'name': serializer.toJson<String>(name),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  AppSettingData copyWith({String? name, String? value}) =>
+      AppSettingData(name: name ?? this.name, value: value ?? this.value);
+  AppSettingData copyWithCompanion(AppSettingCompanion data) {
+    return AppSettingData(
+      name: data.name.present ? data.name.value : this.name,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSettingData(')
+          ..write('name: $name, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(name, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppSettingData &&
+          other.name == this.name &&
+          other.value == this.value);
+}
+
+class AppSettingCompanion extends UpdateCompanion<AppSettingData> {
+  final Value<String> name;
+  final Value<String> value;
+  final Value<int> rowid;
+  const AppSettingCompanion({
+    this.name = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppSettingCompanion.insert({
+    required String name,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : name = Value(name),
+       value = Value(value);
+  static Insertable<AppSettingData> custom({
+    Expression<String>? name,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (name != null) 'name': name,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppSettingCompanion copyWith({
+    Value<String>? name,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return AppSettingCompanion(
+      name: name ?? this.name,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSettingCompanion(')
+          ..write('name: $name, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class Outbox extends Table with TableInfo<Outbox, OutboxData> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -10964,6 +11293,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'CREATE INDEX action_point_open ON action_point (referee_id) WHERE status = \'OPEN\'',
   );
   late final ActionPointReview actionPointReview = ActionPointReview(this);
+  late final AppSetting appSetting = AppSetting(this);
   late final Outbox outbox = Outbox(this);
   late final ExportLog exportLog = ExportLog(this);
   @override
@@ -11002,6 +11332,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     actionPoint,
     actionPointOpen,
     actionPointReview,
+    appSetting,
     outbox,
     exportLog,
   ];
@@ -16669,6 +17000,8 @@ typedef $ReportCreateCompanionBuilder = ReportCompanion Function({
   Value<String?> finalizedAt,
   Value<String?> canonicalJson,
   Value<String?> contentHash,
+  Value<String?> actualDifficulty,
+  Value<String?> levelRecommendation,
   Value<int> rowid,
 });
 typedef $ReportUpdateCompanionBuilder = ReportCompanion Function({
@@ -16686,6 +17019,8 @@ typedef $ReportUpdateCompanionBuilder = ReportCompanion Function({
   Value<String?> finalizedAt,
   Value<String?> canonicalJson,
   Value<String?> contentHash,
+  Value<String?> actualDifficulty,
+  Value<String?> levelRecommendation,
   Value<int> rowid,
 });
 
@@ -16805,6 +17140,16 @@ class $ReportFilterComposer extends Composer<_$AppDatabase, Report> {
 
   ColumnFilters<String> get contentHash => $composableBuilder(
     column: $table.contentHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actualDifficulty => $composableBuilder(
+    column: $table.actualDifficulty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get levelRecommendation => $composableBuilder(
+    column: $table.levelRecommendation,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16941,6 +17286,16 @@ class $ReportOrderingComposer extends Composer<_$AppDatabase, Report> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get actualDifficulty => $composableBuilder(
+    column: $table.actualDifficulty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get levelRecommendation => $composableBuilder(
+    column: $table.levelRecommendation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $AssessmentOrderingComposer get assessmentId {
     final $AssessmentOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17064,6 +17419,16 @@ class $ReportAnnotationComposer extends Composer<_$AppDatabase, Report> {
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get actualDifficulty => $composableBuilder(
+    column: $table.actualDifficulty,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get levelRecommendation => $composableBuilder(
+    column: $table.levelRecommendation,
+    builder: (column) => column,
+  );
+
   $AssessmentAnnotationComposer get assessmentId {
     final $AssessmentAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -17180,6 +17545,8 @@ class $ReportTableManager
                 Value<String?> finalizedAt = const Value.absent(),
                 Value<String?> canonicalJson = const Value.absent(),
                 Value<String?> contentHash = const Value.absent(),
+                Value<String?> actualDifficulty = const Value.absent(),
+                Value<String?> levelRecommendation = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReportCompanion(
                 assessmentId: assessmentId,
@@ -17196,6 +17563,8 @@ class $ReportTableManager
                 finalizedAt: finalizedAt,
                 canonicalJson: canonicalJson,
                 contentHash: contentHash,
+                actualDifficulty: actualDifficulty,
+                levelRecommendation: levelRecommendation,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17214,6 +17583,8 @@ class $ReportTableManager
                 Value<String?> finalizedAt = const Value.absent(),
                 Value<String?> canonicalJson = const Value.absent(),
                 Value<String?> contentHash = const Value.absent(),
+                Value<String?> actualDifficulty = const Value.absent(),
+                Value<String?> levelRecommendation = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReportCompanion.insert(
                 assessmentId: assessmentId,
@@ -17230,6 +17601,8 @@ class $ReportTableManager
                 finalizedAt: finalizedAt,
                 canonicalJson: canonicalJson,
                 contentHash: contentHash,
+                actualDifficulty: actualDifficulty,
+                levelRecommendation: levelRecommendation,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -18937,6 +19310,149 @@ typedef $ActionPointReviewProcessedTableManager =
       ActionPointReviewData,
       PrefetchHooks Function({bool actionPointId})
     >;
+typedef $AppSettingCreateCompanionBuilder = AppSettingCompanion Function({
+  required String name,
+  required String value,
+  Value<int> rowid,
+});
+typedef $AppSettingUpdateCompanionBuilder = AppSettingCompanion Function({
+  Value<String> name,
+  Value<String> value,
+  Value<int> rowid,
+});
+
+class $AppSettingFilterComposer extends Composer<_$AppDatabase, AppSetting> {
+  $AppSettingFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $AppSettingOrderingComposer extends Composer<_$AppDatabase, AppSetting> {
+  $AppSettingOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $AppSettingAnnotationComposer
+    extends Composer<_$AppDatabase, AppSetting> {
+  $AppSettingAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $AppSettingTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          AppSetting,
+          AppSettingData,
+          $AppSettingFilterComposer,
+          $AppSettingOrderingComposer,
+          $AppSettingAnnotationComposer,
+          $AppSettingCreateCompanionBuilder,
+          $AppSettingUpdateCompanionBuilder,
+          (
+            AppSettingData,
+            BaseReferences<_$AppDatabase, AppSetting, AppSettingData>,
+          ),
+          AppSettingData,
+          PrefetchHooks Function()
+        > {
+  $AppSettingTableManager(_$AppDatabase db, AppSetting table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $AppSettingFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $AppSettingOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $AppSettingAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> name = const Value.absent(),
+            Value<String> value = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => AppSettingCompanion(name: name, value: value, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String name,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => AppSettingCompanion.insert(
+                name: name,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<AppSetting, AppSettingData>(table),
+                  BaseReferences<_$AppDatabase, AppSetting, AppSettingData>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $AppSettingProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      AppSetting,
+      AppSettingData,
+      $AppSettingFilterComposer,
+      $AppSettingOrderingComposer,
+      $AppSettingAnnotationComposer,
+      $AppSettingCreateCompanionBuilder,
+      $AppSettingUpdateCompanionBuilder,
+      (
+        AppSettingData,
+        BaseReferences<_$AppDatabase, AppSetting, AppSettingData>,
+      ),
+      AppSettingData,
+      PrefetchHooks Function()
+    >;
 typedef $OutboxCreateCompanionBuilder = OutboxCompanion Function({
   Value<int> id,
   required String aggregateId,
@@ -19533,6 +20049,8 @@ class $AppDatabaseManager {
       $ActionPointTableManager(_db, _db.actionPoint);
   $ActionPointReviewTableManager get actionPointReview =>
       $ActionPointReviewTableManager(_db, _db.actionPointReview);
+  $AppSettingTableManager get appSetting =>
+      $AppSettingTableManager(_db, _db.appSetting);
   $OutboxTableManager get outbox => $OutboxTableManager(_db, _db.outbox);
   $ExportLogTableManager get exportLog =>
       $ExportLogTableManager(_db, _db.exportLog);

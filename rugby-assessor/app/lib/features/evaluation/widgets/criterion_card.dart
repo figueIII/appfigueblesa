@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design_system/theme.dart';
 import '../../../core/design_system/tokens.dart';
+import '../../../core/i18n.dart';
 import '../../../domain/clock.dart';
 import '../../../domain/model.dart';
 import '../../../domain/report.dart';
@@ -9,11 +10,10 @@ import '../../../domain/rubric.dart';
 import '../../live/live_labels.dart';
 import '../../review/review_labels.dart';
 import '../evaluation_controller.dart';
-import '../evaluation_labels.dart';
 import 'band_widgets.dart';
 
-/// Tarjeta de un criterio. De arriba abajo: qué se evalúa → qué sugiere la app y por qué
-/// (marcas del partido y topes) → banda elegida → justificación → estado.
+/// Tarjeta de una competencia. De arriba abajo: qué se evalúa (con su nivel N1–N3) → qué sugiere
+/// la app y por qué (marcas del partido y topes) → valoración E/C/N/U → justificación (opcional).
 class CriterionCard extends StatefulWidget {
   const CriterionCard({super.key, required this.controller, required this.criterion});
   final EvaluationController controller;
@@ -42,12 +42,9 @@ class _CriterionCardState extends State<CriterionCard> {
     final rubric = ctl.rubric;
     final s = ctl.suggestions[crit.code]!;
     final e = ctl.evaluationOf(crit.code);
-    final issues = ctl.issuesFor(crit.code);
-    final complete = issues.isEmpty;
+    final complete = ctl.isComplete(crit.code);
     final readOnly = ctl.isFinalized;
     final longNeeded = needsLongJustification(e, s);
-    final minChars = rubric.scoring.minJustificationChars;
-    final missingChars = (minChars - (e?.justification.trim().length ?? 0)).clamp(0, minChars);
     final evidence = [for (final id in s.evidenceIncidentIds) ctl.incidents.firstWhere((i) => i.id == id)];
 
     return Material(
@@ -65,12 +62,24 @@ class _CriterionCardState extends State<CriterionCard> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (crit.levelLabel != null) ...[
+                  Container(
+                    key: ValueKey('level-${crit.code}'),
+                    padding: const EdgeInsets.symmetric(horizontal: RefSpace.s, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(RefRadius.pill),
+                      border: Border.all(color: c.outline, width: 1.5),
+                    ),
+                    child: Text(crit.levelLabel!, style: RefType.caption.copyWith(color: c.onSurface, fontSize: 13)),
+                  ),
+                  const SizedBox(width: RefSpace.s),
+                ],
                 Expanded(
                   child: Semantics(
                     header: true,
                     child: Text(
-                      '${crit.code.substring(0, 2)} · ${crit.name}',
-                      style: RefType.control.copyWith(color: c.onSurface),
+                      '${crit.code.substring(0, 2)} · ${crit.label}',
+                      style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -78,15 +87,17 @@ class _CriterionCardState extends State<CriterionCard> {
                 Icon(
                   complete ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                   color: complete ? c.positive : c.onSurfaceMuted,
-                  semanticLabel: complete ? 'Criterio completo' : 'Criterio pendiente',
+                  semanticLabel: complete ? tr('Competencia valorada', 'Competència valorada') : tr('Sin valorar', 'Sense valorar'),
                 ),
               ],
             ),
-            const SizedBox(height: RefSpace.xs),
-            Text(
-              crit.description,
-              style: RefType.caption.copyWith(color: c.onSurfaceMuted, fontWeight: FontWeight.w500),
-            ),
+            if (crit.description.isNotEmpty) ...[
+              const SizedBox(height: RefSpace.xs),
+              Text(
+                crit.description,
+                style: RefType.caption.copyWith(color: c.onSurfaceMuted, fontWeight: FontWeight.w500),
+              ),
+            ],
 
             // ─── Sugerencia ───
             const SizedBox(height: RefSpace.m),
@@ -101,12 +112,12 @@ class _CriterionCardState extends State<CriterionCard> {
                     spacing: RefSpace.s,
                     runSpacing: RefSpace.xs,
                     children: [
-                      Text('Sugerencia de la app', style: RefType.caption.copyWith(color: c.onSurface)),
+                      Text(tr('Sugerencia de la app', "Suggeriment de l'app"), style: RefType.caption.copyWith(color: c.onSurface)),
                       if (s.suggestedBand != null)
                         BandBadge(key: ValueKey('suggested-${crit.code}'), band: s.suggestedBand, rubric: rubric)
                       else
                         Text(
-                          'sin marcas valoradas: elige según lo observado',
+                          tr('sin marcas valoradas: elige según lo observado', 'sense marques valorades: tria segons el que has vist'),
                           style: RefType.caption.copyWith(color: c.onSurfaceMuted),
                         ),
                     ],
@@ -120,7 +131,8 @@ class _CriterionCardState extends State<CriterionCard> {
                         const SizedBox(width: RefSpace.xs),
                         Expanded(
                           child: Text(
-                            'Tope automático: error grave en este criterio. Máximo «${rubric.band(s.capBand!).label}».',
+                            tr('Tope automático: error grave en esta competencia. Máximo «${bandFullLabel(rubric, s.capBand!)}».',
+                                'Topall automàtic: error greu en aquesta competència. Màxim «${bandFullLabel(rubric, s.capBand!)}».'),
                             key: ValueKey('cap-${crit.code}'),
                             style: RefType.caption.copyWith(color: c.onSurface),
                           ),
@@ -130,7 +142,7 @@ class _CriterionCardState extends State<CriterionCard> {
                   ],
                   if (evidence.isNotEmpty) ...[
                     const SizedBox(height: RefSpace.s),
-                    Text('Basada en:', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+                    Text(tr('Basada en:', 'Basat en:'), style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
                     const SizedBox(height: RefSpace.xs),
                     Wrap(
                       spacing: RefSpace.xs,
@@ -144,7 +156,7 @@ class _CriterionCardState extends State<CriterionCard> {
 
             // ─── Banda elegida ───
             const SizedBox(height: RefSpace.l),
-            Text('Tu valoración', style: RefType.status.copyWith(color: c.onSurface)),
+            Text(tr('Tu valoración · opcional', 'La teva valoració · opcional'), style: RefType.status.copyWith(color: c.onSurface)),
             const SizedBox(height: RefSpace.s),
             Opacity(
               opacity: e?.notObserved == true ? 0.45 : 1,
@@ -155,7 +167,8 @@ class _CriterionCardState extends State<CriterionCard> {
                 suggested: s.suggestedBand,
                 capBand: s.capBand,
                 enabled: !readOnly,
-                onSelected: (b) => ctl.setBand(crit.code, b),
+                // Tocar la elegida otra vez la quita (sin valorar no cuenta).
+                onSelected: (b) => e?.finalBand == b ? ctl.clearBand(crit.code) : ctl.setBand(crit.code, b),
               ),
             ),
             const SizedBox(height: RefSpace.xs),
@@ -167,9 +180,9 @@ class _CriterionCardState extends State<CriterionCard> {
                 visualDensity: VisualDensity.standard,
                 value: e?.notObserved ?? false,
                 onChanged: readOnly ? null : (v) => ctl.setNotObserved(crit.code, v ?? false),
-                title: Text('No se observó en este partido', style: RefType.body.copyWith(color: c.onSurface)),
+                title: Text(tr('No se observó en este partido', "No es va observar en aquest partit"), style: RefType.body.copyWith(color: c.onSurface)),
                 subtitle: Text(
-                  'Su peso se reparte entre los demás criterios del área.',
+                  tr('No cuenta en la valoración del área.', "No compta en la valoració de l'àrea."),
                   style: RefType.caption.copyWith(color: c.onSurfaceMuted),
                 ),
               ),
@@ -187,38 +200,16 @@ class _CriterionCardState extends State<CriterionCard> {
               style: RefType.body.copyWith(color: c.onSurface),
               onChanged: (v) => ctl.setJustification(crit.code, v),
               decoration: InputDecoration(
-                labelText: 'Justificación · obligatoria',
+                labelText: tr('Justificación · opcional', 'Justificació · opcional'),
                 border: const OutlineInputBorder(),
                 helperMaxLines: 3,
                 helperText: longNeeded
-                    ? (missingChars > 0
-                          ? 'Tu banda no coincide con la sugerencia: explica por qué (faltan $missingChars caracteres).'
-                          : 'Justificación suficiente.')
-                    : 'Qué viste para valorarlo así.',
+                    ? tr('Tu valoración no coincide con la sugerencia: conviene explicar por qué.',
+                        'La teva valoració no coincideix amb el suggeriment: convé explicar per què.')
+                    : tr('Qué viste para valorarlo así.', 'Què vas veure per valorar-ho així.'),
               ),
             ),
 
-            // ─── Estado ───
-            const SizedBox(height: RefSpace.s),
-            Semantics(
-              liveRegion: true,
-              child: Row(
-                children: [
-                  Icon(
-                    complete ? Icons.check_rounded : Icons.error_outline_rounded,
-                    size: 20,
-                    color: complete ? c.positive : c.onSurface,
-                  ),
-                  const SizedBox(width: RefSpace.xs),
-                  Expanded(
-                    child: Text(
-                      complete ? 'Criterio completo' : closeIssueText(issues.first, rubric),
-                      style: RefType.caption.copyWith(color: c.onSurface),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

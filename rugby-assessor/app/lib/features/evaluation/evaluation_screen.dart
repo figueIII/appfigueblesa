@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/design_system/theme.dart';
 import '../../core/design_system/tokens.dart';
+import '../../core/i18n.dart';
 import '../../domain/rubric.dart';
 import 'evaluation_controller.dart';
 import 'export_controller.dart';
@@ -9,16 +10,19 @@ import 'widgets/band_widgets.dart';
 import 'widgets/closing_tab.dart';
 import 'widgets/criterion_card.dart';
 
-/// Pantalla 3 · Evaluación por criterios y bandas cualitativas.
+/// Pantalla 3 · Evaluación por competencias del CARC (escala E / C / N / U).
 ///
-/// Una pestaña por área (A · B · C · D) y una de cierre. Cada área muestra su banda (calculada
-/// a partir de las bandas elegidas) y sus criterios; el cierre, la banda global, el texto del
-/// informe y la comprobación previa. En toda la pantalla no aparece ninguna puntuación: solo
-/// "Por debajo del nivel", "En el nivel" y "Por encima del nivel".
+/// Una pestaña por área (A–F) y una de cierre. Cada área muestra su valoración (calculada a partir
+/// de las competencias valoradas) y sus competencias con su nivel (N1–N3); el cierre, la valoración
+/// global, la dificultad real, la recomendación de nivel y el texto del informe. Nada es
+/// obligatorio. En toda la pantalla no aparece ninguna puntuación numérica.
 class EvaluationScreen extends StatefulWidget {
-  const EvaluationScreen({super.key, required this.controller, required this.onOpenReview, this.createExport});
+  const EvaluationScreen({super.key, required this.controller, required this.onOpenReview, this.createExport, this.onFinalized});
   final EvaluationController controller;
   final VoidCallback onOpenReview;
+
+  /// Tras cerrar el informe (la app abre el resumen del partido).
+  final VoidCallback? onFinalized;
 
   /// Crea el controlador de exportación cuando el informe está cerrado (equipos ya cargados).
   final ExportController Function(String homeTeam, String awayTeam)? createExport;
@@ -77,7 +81,7 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Evaluación por criterios'),
+                Text(tr('Evaluación por competencias', 'Avaluació per competències')),
                 if (_ctl.refereeName.isNotEmpty)
                   Text(
                     '${_ctl.refereeName} · ${_ctl.homeTeam} – ${_ctl.awayTeam}',
@@ -102,6 +106,7 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
                     onGoToCriterion: goToCriterion,
                     onOpenReview: widget.onOpenReview,
                     export: _exportController(),
+                    onFinalized: widget.onFinalized,
                   ),
                 ],
               ),
@@ -129,8 +134,10 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
             key: ValueKey('tab-${area.letter}'),
             height: 56,
             child: Semantics(
-              label:
-                  'Área ${area.letter}, ${area.name}, ${_ctl.completedIn(area) == area.criteria.length ? 'completa' : 'pendiente'}',
+              label: tr(
+                'Área ${area.letter}, ${area.label}, ${_ctl.completedIn(area) == area.criteria.length ? 'valorada' : 'sin valorar del todo'}',
+                'Àrea ${area.letter}, ${area.label}, ${_ctl.completedIn(area) == area.criteria.length ? 'valorada' : 'sense valorar del tot'}',
+              ),
               excludeSemantics: true,
               // FittedBox: con texto del sistema grande, la pestaña se reduce en vez de desbordar.
               child: FittedBox(
@@ -153,7 +160,7 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
         Tab(
           key: const ValueKey('tab-close'),
           height: 56,
-          child: const FittedBox(child: Text('Cierre')),
+          child: FittedBox(child: Text(tr('Cierre', 'Tancament'))),
         ),
       ],
     );
@@ -171,7 +178,7 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
         children: [
           Semantics(
             header: true,
-            child: Text('${area.letter} · ${area.name}', style: RefType.control.copyWith(color: c.onSurface, fontSize: 22)),
+            child: Text('${area.letter} · ${area.label}', style: RefType.control.copyWith(color: c.onSurface, fontSize: 22)),
           ),
           const SizedBox(height: RefSpace.s),
           Wrap(
@@ -179,9 +186,15 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
             spacing: RefSpace.s,
             runSpacing: RefSpace.xs,
             children: [
-              Text('Banda del área:', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+              Text(tr('Valoración del área:', "Valoració de l'àrea:"), style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
               BandBadge(key: ValueKey('area-band-${area.code}'), band: agg.areas[index].band, rubric: _ctl.rubric),
             ],
+          ),
+          const SizedBox(height: RefSpace.s),
+          Text(
+            tr('Valora cada competencia con la escala del CARC. Todo es opcional: lo que no valores no cuenta.',
+                "Valora cada competència amb l'escala del CARC. Tot és opcional: el que no valoris no compta."),
+            style: RefType.caption.copyWith(color: c.onSurfaceMuted),
           ),
           const SizedBox(height: RefSpace.l),
           for (final crit in area.criteria) ...[
@@ -197,7 +210,7 @@ class _EvaluationScreenState extends State<EvaluationScreen> with SingleTickerPr
               key: ValueKey('next-from-${area.letter}'),
               onPressed: () => _tabs.animateTo(index + 1, duration: RefMotion.sheet),
               icon: const Icon(Icons.arrow_forward_rounded),
-              label: Text(next == null ? 'Ir al cierre' : 'Siguiente: área ${next.letter}'),
+              label: Text(next == null ? tr('Ir al cierre', 'Anar al tancament') : tr('Siguiente: área ${next.letter}', 'Següent: àrea ${next.letter}')),
               style: FilledButton.styleFrom(
                 backgroundColor: c.primary,
                 foregroundColor: c.onPrimary,
@@ -228,7 +241,7 @@ class _Failed extends StatelessWidget {
             Icon(Icons.storage_rounded, size: 56, color: c.onSurface),
             const SizedBox(height: RefSpace.l),
             Text(
-              'No se ha podido abrir la evaluación',
+              tr('No se ha podido abrir la evaluación', "No s'ha pogut obrir l'avaluació"),
               textAlign: TextAlign.center,
               style: RefType.control.copyWith(color: c.onSurface),
             ),
@@ -238,7 +251,7 @@ class _Failed extends StatelessWidget {
               child: FilledButton(
                 onPressed: onRetry,
                 style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onPrimary),
-                child: const Text('Reintentar'),
+                child: Text(tr('Reintentar', 'Reintentar')),
               ),
             ),
           ],

@@ -117,20 +117,20 @@ export function quickTagDefaults(polarity: QuickPolarity, severity?: ImpactLevel
   };
 }
 
-/** Comprueba que un informe se puede finalizar. Devuelve [] si es válido. */
+/** Avisos antes de finalizar un informe. Desde v3 (CARC) NADA bloquea el cierre: todo son
+ *  avisos (severity WARNING) que la app enseña para que el evaluador decida. Devuelve [] si no
+ *  hay nada que avisar. Las competencias sin valorar y las marcas sin veredicto no cuentan. */
 export function validateForFinalization(
   report: FinalReport, incidents: readonly Incident[], openPreviousActionPointIds: readonly Id[],
   params: { minJustificationChars: number },
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const err = (code: string, path: string) => issues.push({ code, path, severity: 'ERROR' });
   const warn = (code: string, path: string) => issues.push({ code, path, severity: 'WARNING' });
 
   incidents.forEach((i, k) => {
     if (i.status === 'VOID') return;
     const p = `incidents[${k}]`;
-    if (i.verdict === 'PENDING') err('INCIDENT_VERDICT_PENDING', `${p}.verdict`);
-    // Recomendado, no obligatorio (v1.1.2): solo el veredicto bloquea el cierre.
+    if (i.verdict === 'PENDING') warn('INCIDENT_VERDICT_PENDING', `${p}.verdict`);
     if (i.verdict === 'INCORRECT' || i.verdict === 'MISSED') {
       if (!i.decisionExpected) warn('INCIDENT_EXPECTED_DECISION_REQUIRED', `${p}.decisionExpected`);
       if (!i.impactConfirmed) warn('INCIDENT_IMPACT_NOT_CONFIRMED', `${p}.impact`);
@@ -142,27 +142,22 @@ export function validateForFinalization(
 
   report.criterionScores.forEach((s, k) => {
     const p = `criterionScores[${k}]`;
-    if (!s.notObserved && s.finalBand === null) err('CRITERION_BAND_MISSING', `${p}.finalBand`);
-    if (!s.justification.trim()) err('CRITERION_JUSTIFICATION_REQUIRED', `${p}.justification`);
-    // Justificación larga si la banda elegida no coincide con la sugerida o supera el tope.
+    if (!s.notObserved && s.finalBand === null) warn('CRITERION_BAND_MISSING', `${p}.finalBand`);
+    // Justificación recomendada si la banda elegida no coincide con la sugerida o supera el tope.
     const deviates = s.finalBand !== null && s.suggestedBand !== null && s.finalBand !== s.suggestedBand;
     const overCap = s.finalBand !== null && s.capBand !== null && bandRank(s.finalBand) > bandRank(s.capBand);
     if ((deviates || overCap) && s.justification.trim().length < params.minJustificationChars) {
-      err(overCap ? 'CAP_OVERRIDE_JUSTIFICATION_TOO_SHORT' : 'DEVIATION_JUSTIFICATION_TOO_SHORT', `${p}.justification`);
+      warn(overCap ? 'CAP_OVERRIDE_JUSTIFICATION_TOO_SHORT' : 'DEVIATION_JUSTIFICATION_TOO_SHORT', `${p}.justification`);
     }
   });
 
-  if (report.strengths.length < 1 || report.strengths.length > 3) err('STRENGTHS_COUNT_1_TO_3', 'strengths');
-  if (report.developmentAreas.length < 1 || report.developmentAreas.length > 3) err('DEVELOPMENT_COUNT_1_TO_3', 'developmentAreas');
-  if (report.actionPoints.length < 1 || report.actionPoints.length > 3) err('ACTION_POINTS_COUNT_1_TO_3', 'actionPoints');
-  report.actionPoints.forEach((a, k) => {
-    if (!a.successIndicator.trim()) err('ACTION_POINT_INDICATOR_REQUIRED', `actionPoints[${k}].successIndicator`);
-  });
+  if (report.strengths.length > 3) warn('STRENGTHS_MAX_3', 'strengths');
+  if (report.developmentAreas.length > 3) warn('DEVELOPMENT_MAX_3', 'developmentAreas');
+  if (report.actionPoints.length > 3) warn('ACTION_POINTS_MAX_3', 'actionPoints');
   const reviewed = new Set(report.previousActionPointReviews.map((r) => r.actionPointId));
   openPreviousActionPointIds.forEach((id) => {
-    if (!reviewed.has(id)) err('PREVIOUS_ACTION_POINT_NOT_REVIEWED', `previousActionPointReviews[${id}]`);
+    if (!reviewed.has(id)) warn('PREVIOUS_ACTION_POINT_NOT_REVIEWED', `previousActionPointReviews[${id}]`);
   });
-  if (!report.summary.trim()) err('SUMMARY_REQUIRED', 'summary');
   return issues;
 }
 

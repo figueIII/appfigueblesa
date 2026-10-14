@@ -141,12 +141,7 @@ class DriftMatchRepository implements MatchRepository {
           venue: r.read<String>('venue'),
           refereeName: r.read<String>('referee'),
           markCount: r.read<int>('marks'),
-          band: switch (r.readNullable<String>('band')) {
-            'BELOW' => BandCode.below,
-            'AT' => BandCode.at,
-            'ABOVE' => BandCode.above,
-            _ => null,
-          },
+          band: decodeBand(r.readNullable<String>('band')),
         ),
     ];
   }

@@ -17,108 +17,123 @@ function inc(criterionCode: CriterionCode, verdict: Verdict, impact: ImpactLevel
 }
 const times = (k: number, f: () => Incident) => Array.from({ length: k }, f);
 
-test('rúbrica v2: pesos de áreas y criterios (R1)', () => {
-  const w = Object.fromEntries(R.areas.map((a) => [a.code, a.weight]));
-  assert.deepEqual(w, { PHASES: 35, MANAGEMENT: 20, LAW_DISCIPLINE: 30, FITNESS_POSITIONING: 15 });
-  const c = R.areas.find((a) => a.code === 'LAW_DISCIPLINE')!.criteria.map((x) => [x.code, x.weight]);
-  assert.deepEqual(c, [['C1_LAW_ACCURACY', 50], ['C2_FOUL_PLAY', 30], ['C3_SANCTION_CONSISTENCY', 20]]);
-  assert.equal(R.areas.reduce((s, a) => s + a.weight, 0), 100);
-  for (const a of R.areas) assert.equal(a.criteria.reduce((s, x) => s + x.weight, 0), 100, a.code);
-  assert.deepEqual(R.bands.map((b) => b.code), ['ABOVE', 'AT', 'BELOW']);
+test('rúbrica v3 (CARC): 6 áreas, 25 competencias con nivel, pesos iguales y escala E/C/N/U', () => {
+  assert.deepEqual(R.areas.map((a) => [a.code, a.criteria.length]), [
+    ['POSITIONING', 6], ['COMMUNICATION', 3], ['CONTINUITY', 3], ['SET_PIECE', 4], ['DYNAMIC_PHASES', 6], ['DISCIPLINE', 3],
+  ]);
+  const all = R.areas.flatMap((a) => a.criteria);
+  assert.equal(all.length, 25);
+  assert.equal(new Set(all.map((c) => c.code)).size, 25);
+  for (const a of R.areas) {
+    assert.equal(a.weight, 1, a.code);
+    assert.ok(a.nameCa, a.code);
+    for (const c of a.criteria) {
+      assert.equal(c.weight, 1, c.code);
+      assert.ok(c.level && c.level >= 1 && c.level <= 3, c.code);
+      assert.ok(c.nameCa && c.name, c.code);
+    }
+  }
+  assert.deepEqual(R.areas.find((a) => a.code === 'DYNAMIC_PHASES')!.criteria.map((c) => c.level), [1, 1, 2, 2, 3, 3]);
+  assert.deepEqual(R.bands.map((b) => b.code), ['E', 'C', 'N', 'U']);
+  assert.deepEqual(R.bands.map((b) => b.labelCa), ['Excel·lent', 'Competent', 'No competent encara', 'Urgent revisar']);
+  // Todas las categorías del tap rápido alimentan una competencia que existe.
+  for (const code of Object.values(R.categoryToCriterion)) assert.ok(all.some((c) => c.code === code), code);
 });
 
-test('límites de banda: los empates exactos caen en "En el nivel"', () => {
-  assert.equal(toBand(8.0, R), 'AT');
-  assert.equal(toBand(8.0 + 1e-12, R), 'AT');     // ruido de coma flotante
-  assert.equal(toBand(8.01, R), 'ABOVE');
-  assert.equal(toBand(6.0, R), 'AT');
-  assert.equal(toBand(6.0 - 1e-12, R), 'AT');
-  assert.equal(toBand(5.99, R), 'BELOW');
-  assert.equal(toBand(1, R), 'BELOW');
+test('límites de banda: los empates exactos caen en la banda conservadora', () => {
+  assert.equal(toBand(8.0, R), 'C');
+  assert.equal(toBand(8.0 + 1e-12, R), 'C');     // ruido de coma flotante
+  assert.equal(toBand(8.01, R), 'E');
+  assert.equal(toBand(6.0, R), 'C');
+  assert.equal(toBand(6.0 - 1e-12, R), 'C');
+  assert.equal(toBand(5.99, R), 'N');
+  assert.equal(toBand(4.0, R), 'N');
+  assert.equal(toBand(3.99, R), 'U');
+  assert.equal(toBand(1, R), 'U');
 });
 
-test('ejemplo resuelto §2.3.3: placaje/ruck con un error HIGH ⇒ sugerencia "Por debajo"', () => {
+test('ejemplo resuelto §2.3.3: placaje con un error HIGH ⇒ sugerencia "No competente todavía"', () => {
   const list = [
-    inc('A3_TACKLE_RUCK', 'CORRECT', 'MEDIUM'), inc('A3_TACKLE_RUCK', 'CORRECT', 'LOW'),
-    inc('A3_TACKLE_RUCK', 'INCORRECT', 'HIGH'), inc('A3_TACKLE_RUCK', 'DEBATABLE', 'MEDIUM'),
-    inc('A3_TACKLE_RUCK', 'CORRECT', 'MEDIUM'), inc('A3_TACKLE_RUCK', 'PENDING', 'HIGH'),
-    inc('A3_TACKLE_RUCK', 'INCORRECT', 'HIGH', { status: 'VOID' }),
+    inc('E2_TACKLER_TACKLED', 'CORRECT', 'MEDIUM'), inc('E2_TACKLER_TACKLED', 'CORRECT', 'LOW'),
+    inc('E2_TACKLER_TACKLED', 'INCORRECT', 'HIGH'), inc('E2_TACKLER_TACKLED', 'DEBATABLE', 'MEDIUM'),
+    inc('E2_TACKLER_TACKLED', 'CORRECT', 'MEDIUM'), inc('E2_TACKLER_TACKLED', 'PENDING', 'HIGH'),
+    inc('E2_TACKLER_TACKLED', 'INCORRECT', 'HIGH', { status: 'VOID' }),
   ];
-  const s = suggestCriterionScore('A3_TACKLE_RUCK', list, R);
+  const s = suggestCriterionScore('E2_TACKLER_TACKLED', list, R);
   assert.equal(s.evidenceWeight, 11);
   assert.ok(Math.abs(s.accuracy! - 6 / 11) < 1e-12);
   assert.ok(Math.abs(s.raw! - 50.5 / 8.5) < 1e-12);   // 5,941…
-  assert.equal(s.suggestedBand, 'BELOW');
+  assert.equal(s.suggestedBand, 'N');
   assert.equal(s.capBand, null);
   assert.equal(s.evidenceIncidentIds.length, 5);       // ni PENDING ni VOID
 });
 
-test('tope R4: un error MATCH_DEFINING limita SOLO su criterio a "Por debajo"', () => {
-  const list = [...times(10, () => inc('A1_SCRUM', 'CORRECT', 'HIGH')), inc('A1_SCRUM', 'MISSED', 'MATCH_DEFINING'),
-    ...times(6, () => inc('A3_TACKLE_RUCK', 'CORRECT', 'HIGH'))];
-  const scrum = suggestCriterionScore('A1_SCRUM', list, R);
-  assert.ok(Math.abs(scrum.raw! - 205 / 27) < 1e-12);  // sin tope: 7,59 ⇒ "En el nivel"
-  assert.equal(scrum.capBand, 'BELOW');
+test('tope R4: un error MATCH_DEFINING limita SOLO su competencia a "No competente todavía"', () => {
+  const list = [...times(10, () => inc('D2_SCRUM_SEQUENCE_SAFETY', 'CORRECT', 'HIGH')), inc('D2_SCRUM_SEQUENCE_SAFETY', 'MISSED', 'MATCH_DEFINING'),
+    ...times(6, () => inc('E3_GATES_ENTRIES', 'CORRECT', 'HIGH'))];
+  const scrum = suggestCriterionScore('D2_SCRUM_SEQUENCE_SAFETY', list, R);
+  assert.ok(Math.abs(scrum.raw! - 205 / 27) < 1e-12);  // sin tope: 7,59 ⇒ "Competente"
+  assert.equal(scrum.capBand, 'N');
   assert.equal(scrum.suggested, 5);
-  assert.equal(scrum.suggestedBand, 'BELOW');
-  const ruck = suggestCriterionScore('A3_TACKLE_RUCK', list, R);
-  assert.equal(ruck.capBand, null);                     // el tope no contamina otros criterios
+  assert.equal(scrum.suggestedBand, 'N');
+  const ruck = suggestCriterionScore('E3_GATES_ENTRIES', list, R);
+  assert.equal(ruck.capBand, null);                     // el tope no contamina otras competencias
   assert.ok(Math.abs(ruck.suggested! - 129 / 15) < 1e-12); // 8,6
-  assert.equal(ruck.suggestedBand, 'ABOVE');
+  assert.equal(ruck.suggestedBand, 'E');
 });
 
-test('dos errores HIGH en el mismo criterio también lo limitan a "Por debajo"', () => {
-  const s = suggestCriterionScore('C1_LAW_ACCURACY',
-    [...times(8, () => inc('C1_LAW_ACCURACY', 'CORRECT', 'HIGH')), ...times(2, () => inc('C1_LAW_ACCURACY', 'INCORRECT', 'HIGH'))], R);
+test('dos errores HIGH en la misma competencia también la limitan a "No competente todavía"', () => {
+  const s = suggestCriterionScore('C2_MATERIAL_EFFECT',
+    [...times(8, () => inc('C2_MATERIAL_EFFECT', 'CORRECT', 'HIGH')), ...times(2, () => inc('C2_MATERIAL_EFFECT', 'INCORRECT', 'HIGH'))], R);
   assert.ok(s.raw! > 6);                                // 7,26 sin tope
-  assert.equal(s.suggestedBand, 'BELOW');
+  assert.equal(s.suggestedBand, 'N');
 });
 
-test('poca evidencia ⇒ la sugerencia se queda "En el nivel"', () => {
-  const s = suggestCriterionScore('B4_ADVANTAGE', [inc('B4_ADVANTAGE', 'CORRECT', 'LOW')], R);
+test('muchos errores ⇒ "Revisión urgente"; poca evidencia ⇒ "Competente"', () => {
+  const bad = suggestCriterionScore('F1_DANGEROUS_PLAY', times(6, () => inc('F1_DANGEROUS_PLAY', 'INCORRECT', 'MEDIUM')), R);
+  assert.ok(Math.abs(bad.raw! - 27 / 9) < 1e-12);      // (3·7 + 6·1)/(3 + 6) = 3
+  assert.equal(bad.suggestedBand, 'U');
+  const s = suggestCriterionScore('C3_ADVANTAGE_CONSISTENCY', [inc('C3_ADVANTAGE_CONSISTENCY', 'CORRECT', 'LOW')], R);
   assert.ok(Math.abs(s.raw! - 25.5 / 3.5) < 1e-12);    // 7,29
-  assert.equal(s.suggestedBand, 'AT');
-  assert.equal(suggestCriterionScore('D1_FITNESS', [], R).suggestedBand, null);
+  assert.equal(s.suggestedBand, 'C');
+  assert.equal(suggestCriterionScore('A5_REACHES_CONTACT', [], R).suggestedBand, null);
 });
 
-function scores(map: Partial<Record<CriterionCode, BandCode | 'NO'>>): CriterionScore[] {
+function scores(map: Partial<Record<CriterionCode, BandCode | 'NO' | 'NONE'>>): CriterionScore[] {
   return R.areas.flatMap((a) => a.criteria).map((c) => {
-    const v = map[c.code] ?? 'AT';
+    const v = map[c.code] ?? 'C';
     return {
-      criterionCode: c.code, suggestedBand: null, suggested: null, finalBand: v === 'NO' ? null : v, final: null,
-      notObserved: v === 'NO', justification: 'ok', evidenceIncidentIds: [], capBand: null,
+      criterionCode: c.code, suggestedBand: null, suggested: null, finalBand: v === 'NO' || v === 'NONE' ? null : v, final: null,
+      notObserved: v === 'NO', justification: '', evidenceIncidentIds: [], capBand: null,
     };
   });
 }
 
-test('agregación por bandas con los pesos v2 y redistribución de "no observado"', () => {
-  const r = aggregate(R, scores({ A1_SCRUM: 'BELOW', B4_ADVANTAGE: 'ABOVE', C1_LAW_ACCURACY: 'BELOW', C2_FOUL_PLAY: 'NO', D2_POSITIONING: 'ABOVE' }));
-  // A = (25·5 + 75·7)/100 = 6,5 · B = (70·7 + 30·9)/100 = 7,6
-  // C = (50·5 + 20·7)/70 = 5,571 (C2 fuera) · D = (60·7 + 40·9)/100 = 7,8
-  // Global = (35·6,5 + 20·7,6 + 30·5,571 + 15·7,8)/100 = 6,636
-  assert.deepEqual(r.areaScores.map((a) => a.band), ['AT', 'AT', 'BELOW', 'AT']);
-  assert.ok(Math.abs(r.areaScores[2].score! - 39 / 7) < 1e-12);
-  assert.ok(Math.abs(r.overallScore! - (35 * 6.5 + 20 * 7.6 + 30 * 39 / 7 + 15 * 7.8) / 100) < 1e-12);
-  assert.equal(r.band, 'AT');
-});
-
-test('el reglamento pesa: C1 y C3 por debajo hunden el área C y la global', () => {
-  // C = (50·5 + 30·7 + 20·5)/100 = 5,6 ⇒ BELOW. Global = 0,30·5,6 + 0,70·7 = 6,58 ⇒ AT (justo).
-  const r1 = aggregate(R, scores({ C1_LAW_ACCURACY: 'BELOW', C3_SANCTION_CONSISTENCY: 'BELOW' }));
-  assert.equal(r1.areaScores[2].band, 'BELOW');
-  assert.equal(r1.band, 'AT');
-  // Para caer "Por debajo" en global hace falta más: scrum, touch y ruck (A = 5,4) y ventaja (B = 6,4).
-  // Global = 0,35·5,4 + 0,20·6,4 + 0,30·5,6 + 0,15·7 = 5,90 ⇒ BELOW.
-  const r2 = aggregate(R, scores({
-    C1_LAW_ACCURACY: 'BELOW', C3_SANCTION_CONSISTENCY: 'BELOW',
-    A1_SCRUM: 'BELOW', A2_LINEOUT_MAUL: 'BELOW', A3_TACKLE_RUCK: 'BELOW', B4_ADVANTAGE: 'BELOW',
+test('agregación E/C/N/U con pesos iguales; "no observado" y "sin valorar" no cuentan', () => {
+  const r = aggregate(R, scores({
+    A1_STATIC_START: 'E', A2_NO_INTERFERENCE: 'N',
+    B1_PRIMARY_SIGNAL_WHISTLE: 'U', B2_SECONDARY_SIGNAL: 'NO',
+    D1_ORDERED_SET_PIECE: 'E', D2_SCRUM_SEQUENCE_SAFETY: 'E', D3_DANGER_DETECTION: 'E', D4_FAIR_CONTEST: 'E',
+    F1_DANGEROUS_PLAY: 'U', F2_FOUL_PLAY: 'U', F3_MATCH_CONTROL: 'N',
+    E6_JACKLER: 'NONE',
   }));
-  assert.ok(Math.abs(r2.overallScore! - 5.9) < 1e-12);
-  assert.equal(r2.band, 'BELOW');
+  // A = (9 + 5 + 4·7)/6 = 7 · B = (3 + 7)/2 = 5 · C = 7 · D = 9 · E = 7 (E6 sin valorar) · F = 11/3
+  assert.deepEqual(r.areaScores.map((a) => a.band), ['C', 'N', 'C', 'E', 'C', 'U']);
+  assert.ok(Math.abs(r.areaScores[5].score! - 11 / 3) < 1e-12);
+  assert.ok(Math.abs(r.overallScore! - (7 + 5 + 7 + 9 + 7 + 11 / 3) / 6) < 1e-12); // 6,44
+  assert.equal(r.band, 'C');
+  // Un área entera sin valorar sale de la media global.
+  const only = aggregate(R, R.areas.flatMap((a) => a.criteria).map((c) => ({
+    criterionCode: c.code, suggestedBand: null, suggested: null, finalBand: c.code.startsWith('F') ? 'U' : null, final: null,
+    notObserved: false, justification: '', evidenceIncidentIds: [], capBand: null,
+  }) as CriterionScore));
+  assert.equal(only.overallScore, 3);
+  assert.equal(only.band, 'U');
+  assert.equal(only.areaScores[0].band, null);
 });
 
 test('precisión en decisiones clave', () => {
-  const k = keyDecisionAccuracy([inc('A1_SCRUM', 'CORRECT', 'HIGH'), inc('A1_SCRUM', 'INCORRECT', 'MATCH_DEFINING'), inc('A1_SCRUM', 'CORRECT', 'LOW')]);
+  const k = keyDecisionAccuracy([inc('D1_ORDERED_SET_PIECE', 'CORRECT', 'HIGH'), inc('D1_ORDERED_SET_PIECE', 'INCORRECT', 'MATCH_DEFINING'), inc('D1_ORDERED_SET_PIECE', 'CORRECT', 'LOW')]);
   assert.deepEqual(k, { correct: 1, total: 2, ratio: 0.5 });
 });
 
@@ -132,36 +147,34 @@ function baseReport(criterionScores: CriterionScore[]): FinalReport {
   return {
     assessmentId: 'a1', refereeId: 'o1', rubric: { id: R.id, code: R.code, version: R.version },
     criterionScores, areaScores: [], band: null, overallScore: null, keyDecisionAccuracy: { correct: 0, total: 0, ratio: null },
-    summary: 'Resumen', strengths: [], developmentAreas: [], actionPoints: [], previousActionPointReviews: [],
+    summary: '', strengths: [], developmentAreas: [], actionPoints: [], previousActionPointReviews: [],
     status: 'DRAFT', version: 1,
   };
 }
 const cs = (o: Partial<CriterionScore>): CriterionScore => ({
-  criterionCode: 'A1_SCRUM', suggestedBand: null, suggested: null, finalBand: 'AT', final: null, notObserved: false,
-  justification: 'ok', evidenceIncidentIds: [], capBand: null, ...o,
+  criterionCode: 'D2_SCRUM_SEQUENCE_SAFETY', suggestedBand: null, suggested: null, finalBand: 'C', final: null, notObserved: false,
+  justification: '', evidenceIncidentIds: [], capBand: null, ...o,
 });
 
-test('validación de cierre: bloquea marcas sin veredicto, superar el tope sin justificar y action points sin revisar', () => {
-  const report = baseReport([cs({ suggestedBand: 'BELOW', finalBand: 'AT', capBand: 'BELOW', justification: 'Visto en vídeo' })]);
-  const issues = validateForFinalization(report, [inc('A1_SCRUM', 'PENDING', 'MEDIUM'), inc('A1_SCRUM', 'MISSED', 'HIGH', { impactConfirmed: false })], ['ap-prev'], R.scoring);
-  const codes = issues.filter((i) => i.severity === 'ERROR').map((i) => i.code).sort();
-  assert.deepEqual(codes, [
-    'ACTION_POINTS_COUNT_1_TO_3', 'CAP_OVERRIDE_JUSTIFICATION_TOO_SHORT', 'DEVELOPMENT_COUNT_1_TO_3',
-    'INCIDENT_VERDICT_PENDING', 'PREVIOUS_ACTION_POINT_NOT_REVIEWED', 'STRENGTHS_COUNT_1_TO_3',
+test('cierre v3: nada es obligatorio; todo lo que falta son avisos', () => {
+  const report = baseReport([cs({ suggestedBand: 'N', finalBand: 'C', capBand: 'N', justification: 'Visto en vídeo' }), cs({ finalBand: null })]);
+  const issues = validateForFinalization(report,
+    [inc('D2_SCRUM_SEQUENCE_SAFETY', 'PENDING', 'MEDIUM'), inc('D2_SCRUM_SEQUENCE_SAFETY', 'MISSED', 'HIGH', { impactConfirmed: false })], ['ap-prev'], R.scoring);
+  assert.deepEqual(issues.filter((i) => i.severity === 'ERROR'), []);
+  assert.deepEqual(issues.map((i) => i.code).sort(), [
+    'CAP_OVERRIDE_JUSTIFICATION_TOO_SHORT', 'CRITERION_BAND_MISSING', 'INCIDENT_EXPECTED_DECISION_REQUIRED',
+    'INCIDENT_IMPACT_NOT_CONFIRMED', 'INCIDENT_VERDICT_PENDING', 'KEY_INCIDENT_NOTES_REQUIRED', 'PREVIOUS_ACTION_POINT_NOT_REVIEWED',
   ]);
-  // Decisión esperada, impacto confirmado y notas de las clave: recomendados, no bloquean.
-  const warnings = issues.filter((i) => i.severity === 'WARNING').map((i) => i.code).sort();
-  assert.deepEqual(warnings, ['INCIDENT_EXPECTED_DECISION_REQUIRED', 'INCIDENT_IMPACT_NOT_CONFIRMED', 'KEY_INCIDENT_NOTES_REQUIRED']);
+  // Sin resumen, sin fortalezas, sin áreas de mejora y sin recomendaciones: nada que avisar.
+  assert.deepEqual(validateForFinalization(baseReport([cs({})]), [], [], R.scoring), []);
 });
 
-test('validación por bandas: elegir otra banda que la sugerida exige justificación larga', () => {
+test('justificación: sin texto no pasa nada; solo se avisa si contradice la sugerencia con un texto corto', () => {
   const codesFor = (o: Partial<CriterionScore>) =>
-    validateForFinalization(baseReport([cs(o)]), [], [], R.scoring).map((i) => i.code)
-      .filter((c) => c.includes('JUSTIFICATION') || c.includes('BAND'));
-  assert.deepEqual(codesFor({ suggestedBand: 'AT', finalBand: 'ABOVE', justification: 'corta' }), ['DEVIATION_JUSTIFICATION_TOO_SHORT']);
-  assert.deepEqual(codesFor({ suggestedBand: 'AT', finalBand: 'AT', justification: 'corta' }), []);
-  assert.deepEqual(codesFor({ suggestedBand: 'AT', finalBand: 'ABOVE', justification: 'x'.repeat(40) }), []);
-  assert.deepEqual(codesFor({ finalBand: null }), ['CRITERION_BAND_MISSING']);
+    validateForFinalization(baseReport([cs(o)]), [], [], R.scoring).map((i) => i.code);
+  assert.deepEqual(codesFor({ suggestedBand: 'C', finalBand: 'E', justification: 'corta' }), ['DEVIATION_JUSTIFICATION_TOO_SHORT']);
+  assert.deepEqual(codesFor({ suggestedBand: 'C', finalBand: 'C', justification: '' }), []);
+  assert.deepEqual(codesFor({ suggestedBand: 'C', finalBand: 'E', justification: 'x'.repeat(40) }), []);
   assert.deepEqual(codesFor({ finalBand: null, notObserved: true }), []);
 });
 

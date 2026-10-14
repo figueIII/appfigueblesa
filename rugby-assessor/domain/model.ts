@@ -69,24 +69,32 @@ export interface MatchMetadata {
   assistants?: { ar1?: string; ar2?: string };
   assessorId: Id;
   observationMode: ObservationMode;
-  difficulty?: MatchDifficulty;       // SOLO descriptivo: nunca modifica la puntuación (decisión R3)
+  difficulty?: MatchDifficulty;       // dificultad ESTIMADA. Solo descriptiva: nunca modifica la puntuación (R3)
   conditions?: { weather?: string; pitch?: string };
   finalScore?: { home: number; away: number };
 }
 
 // ───────────────────────── 2. AssessmentRubric ─────────────────────────
 
-export type AreaCode = 'PHASES' | 'MANAGEMENT' | 'LAW_DISCIPLINE' | 'FITNESS_POSITIONING';
+/** Áreas de competencias del CARC (v3). */
+export type AreaCode = 'POSITIONING' | 'COMMUNICATION' | 'CONTINUITY' | 'SET_PIECE' | 'DYNAMIC_PHASES' | 'DISCIPLINE';
 
+/** Competencias del CARC. La cifra es el orden dentro del área; el nivel (N1–N3) va aparte. */
 export type CriterionCode =
-  // A · Gestión de fases de juego
-  | 'A1_SCRUM' | 'A2_LINEOUT_MAUL' | 'A3_TACKLE_RUCK' | 'A4_OFFSIDE_SPACE'
-  // B · Comunicación y gestión del partido
-  | 'B1_VERBAL_CONTROL' | 'B2_TONE_PRESENCE' | 'B3_CAPTAINS_PLAYERS' | 'B4_ADVANTAGE'
-  // C · Aplicación de leyes y consistencia disciplinaria
-  | 'C1_LAW_ACCURACY' | 'C2_FOUL_PLAY' | 'C3_SANCTION_CONSISTENCY'
-  // D · Condición física, posicionamiento y líneas de carrera
-  | 'D1_FITNESS' | 'D2_POSITIONING' | 'D3_RUNNING_LINES';
+  // A · Colocación
+  | 'A1_STATIC_START' | 'A2_NO_INTERFERENCE' | 'A3_SEES_PLAY' | 'A4_OPEN_PLAY_LINES' | 'A5_REACHES_CONTACT'
+  | 'A6_COMMUNICATES_FROM_POSITION'
+  // B · Comunicación
+  | 'B1_PRIMARY_SIGNAL_WHISTLE' | 'B2_SECONDARY_SIGNAL' | 'B3_PLAYER_COMMUNICATION'
+  // C · Continuidad
+  | 'C1_ADVANTAGE_SIGNAL' | 'C2_MATERIAL_EFFECT' | 'C3_ADVANTAGE_CONSISTENCY'
+  // D · Fases estáticas
+  | 'D1_ORDERED_SET_PIECE' | 'D2_SCRUM_SEQUENCE_SAFETY' | 'D3_DANGER_DETECTION' | 'D4_FAIR_CONTEST'
+  // E · Fases dinámicas
+  | 'E1_PHASE_IDENTIFICATION' | 'E2_TACKLER_TACKLED' | 'E3_GATES_ENTRIES' | 'E4_OFFSIDE_LINES'
+  | 'E5_CONTEST_ON_FEET' | 'E6_JACKLER'
+  // F · Disciplina
+  | 'F1_DANGEROUS_PLAY' | 'F2_FOUL_PLAY' | 'F3_MATCH_CONTROL';
 
 /** Etiquetas de registro rápido (un tap). Cada una alimenta exactamente un criterio. */
 export type IncidentCategory =
@@ -99,24 +107,30 @@ export type IncidentCategory =
 /** Escala numérica INTERNA del motor. Nunca se muestra al evaluador ni en el informe. */
 export interface ScoreScale { min: number; max: number }   // 1–10
 
-/** Bandas cualitativas: la única cara visible de la evaluación (decisión R2).
- *  Siempre relativas al nivel del partido evaluado. */
-export type BandCode = 'BELOW' | 'AT' | 'ABOVE';
+/** Escala de valoración del CARC: la única cara visible de la evaluación (decisión R2).
+ *  E – Excelente · C – Competente · N – No competente todavía · U – Revisión urgente.
+ *  (Los informes cerrados con la rúbrica v2 guardan BELOW / AT / ABOVE: se leen como N / C / E.) */
+export type BandCode = 'E' | 'C' | 'N' | 'U';
 
 export interface PerformanceBand {
   code: BandCode;
-  label: string;            // "Por debajo del nivel", "En el nivel", "Por encima del nivel"
+  label: string;            // "Excelente", "Competente"… (castellano)
+  labelCa?: string;         // "Excel·lent", "Competent"… (catalán, texto original del CARC)
   description: string;      // texto de ayuda para el evaluador
-  representative: number;   // valor interno cuando el evaluador elige esta banda (5 / 7 / 9)
-  /** Límite inferior en la escala interna. ABOVE es estricto (> 8,0) y BELOW también (< 6,0):
-   *  los empates exactos caen en AT, la opción conservadora. */
+  descriptionCa?: string;
+  representative: number;   // valor interno cuando el evaluador elige esta banda (9 / 7 / 5 / 3)
+  /** Límite inferior en la escala interna. E es estricto (> 8,0): los empates exactos caen en
+   *  la banda inferior más cercana a "Competente", la opción conservadora. */
   lower: number;
   lowerInclusive: boolean;
 }
 
 export interface Criterion {
   code: CriterionCode;
-  name: string;
+  name: string;                         // castellano
+  nameCa?: string;                      // catalán (texto original del CARC)
+  /** Nivel de la competencia en el CARC: 1 (básico), 2 o 3 (avanzado). */
+  level?: 1 | 2 | 3;
   description: string;
   weight: number;                       // peso dentro del área (se normaliza)
   /** Descriptores por banda para guiar al evaluador (texto de ayuda, no lógica). */
@@ -126,6 +140,7 @@ export interface Criterion {
 export interface RubricArea {
   code: AreaCode;
   name: string;
+  nameCa?: string;
   weight: number;                       // peso en la nota global (se normaliza)
   criteria: Criterion[];
 }
@@ -139,11 +154,11 @@ export interface ScoringParams {
   impactWeights: Record<ImpactLevel, number>;     // LOW 1 · MEDIUM 2 · HIGH 4 · MATCH_DEFINING 8
   verdictCredit: Record<AssessedVerdict, number>; // CORRECT 1 · DEBATABLE 0,5 · INCORRECT 0 · MISSED 0
   accuracyToScore: { atZero: number; atOne: number }; // recta p → nota: 1 + 8p
-  baseline: number;                     // nota "estándar del nivel" (prior), 7,0
+  baseline: number;                     // nota "Competente" (prior), 7,0
   priorStrength: number;                // k, en incidencias MEDIUM equivalentes, 3
   capRules: CapRule[];
-  /** Longitud mínima de la justificación cuando la banda final difiere de la sugerida
-   *  o supera un tope. */
+  /** Longitud recomendada de la justificación cuando la banda final difiere de la sugerida
+   *  o supera un tope (solo aviso: desde v3 nada del cierre es obligatorio). */
   minJustificationChars: number;        // 40
 }
 
@@ -154,7 +169,7 @@ export interface AssessmentRubric {
   name: string;
   appliesTo: { formats: GameFormat[] };
   scale: ScoreScale;
-  bands: PerformanceBand[];             // ordenadas de mayor a menor (ABOVE, AT, BELOW)
+  bands: PerformanceBand[];             // ordenadas de mayor a menor (E, C, N, U)
   areas: RubricArea[];
   /** Qué criterio alimenta cada etiqueta rápida. Total: todas las categorías mapeadas. */
   categoryToCriterion: Record<IncidentCategory, CriterionCode>;
@@ -237,7 +252,7 @@ export interface CriterionScore {
   criterionCode: CriterionCode;
   suggestedBand: BandCode | null;       // lo que ve el evaluador; null = sin incidencias evaluadas
   suggested: number | null;             // interno
-  finalBand: BandCode | null;           // lo que ELIGE el evaluador; null solo si notObserved
+  finalBand: BandCode | null;           // lo que ELIGE el evaluador; null = no observado o sin valorar
   final: number | null;                 // interno = representative de finalBand
   notObserved: boolean;                 // p. ej. ningún scrum disputado ⇒ el peso se redistribuye
   justification: string;
@@ -274,6 +289,9 @@ export interface ActionPointReview {
   evidenceIncidentIds: Id[];
 }
 
+/** ↑ probar partidos de más exigencia · = mantener en partidos similares · ↓ reducir la exigencia. */
+export type LevelRecommendation = 'UP' | 'SAME' | 'DOWN';
+
 export type ReportStatus = 'DRAFT' | 'READY' | 'FINALIZED' | 'SUPERSEDED';
 
 export interface FinalReport {
@@ -286,9 +304,13 @@ export interface FinalReport {
   overallScore: number | null;          // interno, sin redondear; solo auditoría y exportación técnica
   keyDecisionAccuracy: { correct: number; total: number; ratio: number | null }; // impacto ≥ HIGH
   summary: string;
-  strengths: Finding[];                 // 1–3
-  developmentAreas: Finding[];          // 1–3
-  actionPoints: ActionPoint[];          // ≥ 1, máx. 3
+  /** Dificultad real del partido, valorada al cerrar (la estimada está en MatchMetadata). */
+  actualDifficulty?: MatchDifficulty | null;
+  /** Recomendación del CARC sobre el nivel de los próximos partidos. */
+  levelRecommendation?: LevelRecommendation | null;
+  strengths: Finding[];                 // 0–3 (opcional)
+  developmentAreas: Finding[];          // 0–3 (opcional)
+  actionPoints: ActionPoint[];          // 0–3 (opcional)
   previousActionPointReviews: ActionPointReview[]; // todas las OPEN del árbitro
   status: ReportStatus;
   version: number;                      // 1, 2… (enmiendas)

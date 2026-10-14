@@ -75,7 +75,7 @@ void main() {
 
   void completeAll(EvaluationController c) {
     for (final crit in kDefaultRubric.criteria) {
-      c.setBand(crit.code, c.suggestions[crit.code]!.suggestedBand ?? BandCode.at);
+      c.setBand(crit.code, c.suggestions[crit.code]!.suggestedBand ?? BandCode.competent);
       c.setJustification(crit.code, 'Acorde a lo observado.');
     }
     c.setSummary('Resumen del partido.');
@@ -90,9 +90,9 @@ void main() {
     final id = await seedMatch(db);
     var c = controllerFor(db, id);
     await c.load();
-    c.setBand('A1_SCRUM', BandCode.above);
-    c.setJustification('A1_SCRUM', 'Visto en vídeo: el colapso lo provocó el pilar local.');
-    c.setNotObserved('A2_LINEOUT_MAUL', true);
+    c.setBand('D2_SCRUM_SEQUENCE_SAFETY', BandCode.excellent);
+    c.setJustification('D2_SCRUM_SEQUENCE_SAFETY', 'Visto en vídeo: el colapso lo provocó el pilar local.');
+    c.setNotObserved('D4_FAIR_CONTEST', true);
     c.setSummary('Borrador');
     c.updateFinding(c.addFinding(FindingKind.strength)!.id, text: 'Ventaja');
     await c.flush();
@@ -102,14 +102,14 @@ void main() {
     db = AppDatabase(NativeDatabase(file));
     c = controllerFor(db, id);
     await c.load();
-    expect(c.evaluationOf('A1_SCRUM')!.finalBand, BandCode.above);
-    expect(c.evaluationOf('A1_SCRUM')!.justification, startsWith('Visto en vídeo'));
-    expect(c.evaluationOf('A2_LINEOUT_MAUL')!.notObserved, isTrue);
+    expect(c.evaluationOf('D2_SCRUM_SEQUENCE_SAFETY')!.finalBand, BandCode.excellent);
+    expect(c.evaluationOf('D2_SCRUM_SEQUENCE_SAFETY')!.justification, startsWith('Visto en vídeo'));
+    expect(c.evaluationOf('D4_FAIR_CONTEST')!.notObserved, isTrue);
     expect(c.summary, 'Borrador');
     expect(c.findingsOf(FindingKind.strength).single.text, 'Ventaja');
-    expect(c.suggestions['A1_SCRUM']!.capBand, BandCode.below, reason: 'la sugerencia se recalcula de las incidencias guardadas');
-    final row = await (db.select(db.criterionScore)..where((t) => t.criterionCode.equals('A1_SCRUM'))).getSingle();
-    expect((row.suggestedBand, row.finalBand, row.capBand), ('BELOW', 'ABOVE', 'BELOW'));
+    expect(c.suggestions['D2_SCRUM_SEQUENCE_SAFETY']!.capBand, BandCode.notYet, reason: 'la sugerencia se recalcula de las incidencias guardadas');
+    final row = await (db.select(db.criterionScore)..where((t) => t.criterionCode.equals('D2_SCRUM_SEQUENCE_SAFETY'))).getSingle();
+    expect((row.suggestedBand, row.finalBand, row.capBand), ('U', 'E', 'N')); // 25/7 = 3,57 ⇒ U (por debajo del tope)
     await db.close();
   });
 
@@ -119,7 +119,9 @@ void main() {
     final c = controllerFor(db, id);
     await c.load();
     completeAll(c);
-    expect(await c.finalize(), isEmpty);
+    c.setActualDifficulty('VERY_HIGH');
+    c.setLevelRecommendation(LevelRecommendation.same);
+    await c.finalize();
 
     final report = await (db.select(db.report)..where((t) => t.assessmentId.equals(id))).getSingle();
     expect(report.status, 'FINALIZED');
@@ -127,8 +129,10 @@ void main() {
     expect(report.contentHash, c.finalized!.contentHash);
     final signed = jsonDecode(report.canonicalJson!) as Map<String, dynamic>;
     expect(signed['band'], report.band);
-    expect((signed['criterionScores'] as List).firstWhere((s) => s['criterionCode'] == 'A1_SCRUM')['capBand'], 'BELOW');
-    expect(await db.select(db.criterionScore).get(), hasLength(14));
+    expect((signed['criterionScores'] as List).firstWhere((s) => s['criterionCode'] == 'D2_SCRUM_SEQUENCE_SAFETY')['capBand'], 'N');
+    expect((signed['actualDifficulty'], signed['levelRecommendation']), ('VERY_HIGH', 'SAME'));
+    expect((report.actualDifficulty, report.levelRecommendation), ('VERY_HIGH', 'SAME'));
+    expect(await db.select(db.criterionScore).get(), hasLength(25));
 
     final aps = await db.select(db.actionPoint).get();
     expect(aps.single.status, 'OPEN');
@@ -137,7 +141,8 @@ void main() {
 
     await expectLater(db.customStatement("UPDATE report SET summary = 'cambio'"), throwsA(predicate((e) => '$e'.contains('REPORT_LOCKED'))));
     await expectLater(db.customStatement("UPDATE incident SET notes = 'cambio'"), throwsA(predicate((e) => '$e'.contains('ASSESSMENT_LOCKED'))));
-    expect(await c.finalize(), isEmpty, reason: 'cerrar dos veces no hace nada');
+    await c.finalize(); // cerrar dos veces no hace nada
+    expect((await (db.select(db.report)..where((t) => t.assessmentId.equals(id))).getSingle()).contentHash, report.contentHash);
 
     // Siguiente partido del MISMO árbitro: la recomendación aparece pendiente de revisar.
     final next = await seedMatch(db, 'n');
@@ -146,14 +151,35 @@ void main() {
     await c2.load();
     expect(c2.openPrevious.single.text, 'Mejorar la lectura del scrum.');
     completeAll(c2);
-    expect(c2.closeIssues.single.code, CloseIssueCode.previousActionPointNotReviewed);
+    expect(c2.closeWarningsList.single.code, CloseIssueCode.previousActionPointNotReviewed);
     c2.setPreviousReview(c2.openPrevious.single.id, status: ActionPointReviewStatus.achieved);
     c2.setPreviousReview(c2.openPrevious.single.id, comment: 'Corregido.');
-    expect(await c2.finalize(), isEmpty);
+    await c2.finalize();
     final closed = await (db.select(db.actionPoint)..where((t) => t.id.equals(aps.single.id))).getSingle();
     expect((closed.status, closed.closedByAssessmentId), ('CLOSED', next));
     final review = await db.select(db.actionPointReview).getSingle();
     expect((review.status, review.comment), ('ACHIEVED', 'Corregido.'));
+    await db.close();
+  });
+
+  test('se puede cerrar sin valorar nada: sin justificaciones, sin resumen, sin fortalezas ni recomendaciones', () async {
+    final db = AppDatabase(NativeDatabase(file));
+    final id = await seedMatch(db);
+    final c = controllerFor(db, id);
+    await c.load();
+    c.setBand('E2_TACKLER_TACKLED', BandCode.competent); // una sola competencia, sin justificar
+    c.addFinding(FindingKind.strength); // hueco vacío: se descarta al cerrar
+    c.addActionPoint();
+    await c.finalize();
+    expect(c.isFinalized, isTrue);
+    final report = await (db.select(db.report)..where((t) => t.assessmentId.equals(id))).getSingle();
+    final signed = jsonDecode(report.canonicalJson!) as Map<String, dynamic>;
+    expect((report.status, report.band, signed['summary']), ('FINALIZED', 'C', ''));
+    expect(signed['strengths'] as List, isEmpty);
+    expect(signed['actionPoints'] as List, isEmpty);
+    expect(await db.select(db.finding).get(), isEmpty);
+    expect(await db.select(db.actionPoint).get(), isEmpty);
+    expect((signed['actualDifficulty'], signed['levelRecommendation']), (null, null));
     await db.close();
   });
 }

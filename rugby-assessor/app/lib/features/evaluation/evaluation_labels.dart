@@ -1,64 +1,75 @@
-// Textos e iconos de la evaluación por criterios (es-ES). Las bandas son la única cara visible:
-// ningún texto de esta pantalla muestra puntuaciones ni valores internos.
+// Textos e iconos de la evaluación por competencias (castellano / catalán, ver core/i18n.dart).
+// La escala E / C / N / U es la única cara visible: ningún texto de esta pantalla muestra
+// puntuaciones ni valores internos.
 
 import 'package:flutter/material.dart';
 
 import '../../core/design_system/tokens.dart';
+import '../../core/i18n.dart';
 import '../../domain/report.dart';
 import '../../domain/rubric.dart';
 
+/// Orden en pantalla: el del CARC (E, C, N, U).
+const List<BandCode> kBandsInDisplayOrder = [BandCode.excellent, BandCode.competent, BandCode.notYet, BandCode.urgent];
+
 IconData bandIcon(BandCode b) => switch (b) {
-  BandCode.below => Icons.trending_down_rounded,
-  BandCode.at => Icons.trending_flat_rounded,
-  BandCode.above => Icons.trending_up_rounded,
-};
+      BandCode.excellent => Icons.star_rounded,
+      BandCode.competent => Icons.check_circle_outline_rounded,
+      BandCode.notYet => Icons.trending_up_rounded,
+      BandCode.urgent => Icons.priority_high_rounded,
+    };
 
-/// Texto corto para botones: "Por debajo" / "En el nivel" / "Por encima".
+/// Texto corto para los botones del selector.
 String bandShort(BandCode b) => switch (b) {
-  BandCode.below => 'Por debajo',
-  BandCode.at => 'En el nivel',
-  BandCode.above => 'Por encima',
-};
+      BandCode.excellent => tr('Excelente', 'Excel·lent'),
+      BandCode.competent => tr('Competente', 'Competent'),
+      BandCode.notYet => tr('Aún no', 'Encara no'),
+      BandCode.urgent => tr('Urgente', 'Urgent'),
+    };
 
-/// (fondo, texto) de una banda. "Por debajo" NO usa el rojo de error: es una valoración, no un
-/// fallo de la app. Siempre va con icono y texto.
+/// (fondo, texto) de una banda. Siempre va con letra, icono y texto (nunca solo color).
 (Color, Color) bandColors(BandCode b, RefColors c) => switch (b) {
-  BandCode.below => (c.review, c.onReview),
-  BandCode.at => (c.onSurface, c.background),
-  BandCode.above => (c.positive, c.onPositive),
-};
+      BandCode.excellent => (c.positive, c.onPositive),
+      BandCode.competent => (c.onSurface, c.background),
+      BandCode.notYet => (c.review, c.onReview),
+      BandCode.urgent => (c.negative, c.onNegative),
+    };
 
 String reviewStatusLabel(ActionPointReviewStatus s) => switch (s) {
-  ActionPointReviewStatus.achieved => 'Lograda',
-  ActionPointReviewStatus.partial => 'Parcial',
-  ActionPointReviewStatus.notAchieved => 'No lograda',
-  ActionPointReviewStatus.notObserved => 'No observada',
-};
+      ActionPointReviewStatus.achieved => tr('Lograda', 'Assolida'),
+      ActionPointReviewStatus.partial => tr('Parcial', 'Parcial'),
+      ActionPointReviewStatus.notAchieved => tr('No lograda', 'No assolida'),
+      ActionPointReviewStatus.notObserved => tr('No observada', 'No observada'),
+    };
 
-String closeIssueText(CloseIssue i, AssessmentRubric rubric) {
-  String crit() {
-    final c = rubric.criteria.firstWhere((x) => x.code == i.criterionCode);
-    return '${c.code.substring(0, 2)} · ${c.name}';
-  }
+/// Recomendación de nivel del CARC: (símbolo, texto).
+(String, String) levelRecommendationLabel(LevelRecommendation r) => switch (r) {
+      LevelRecommendation.up => ('↑', tr('Probar partidos de más exigencia', 'Provar partits de més exigència')),
+      LevelRecommendation.same => ('=', tr('Mantener en partidos similares', 'Mantenir en partits similars')),
+      LevelRecommendation.down => ('↓', tr('Reducir la exigencia de los partidos', "Reduir l'exigència dels partits")),
+    };
 
-  return switch (i.code) {
-    CloseIssueCode.criterionBandMissing => '${crit()}: falta elegir la banda',
-    CloseIssueCode.criterionJustificationRequired => '${crit()}: falta la justificación',
-    CloseIssueCode.deviationJustificationTooShort => '${crit()}: justifica por qué no sigues la sugerencia',
-    CloseIssueCode.capOverrideJustificationTooShort => '${crit()}: justifica por qué superas el tope',
-    CloseIssueCode.summaryRequired => 'Falta el resumen del partido',
-    CloseIssueCode.strengthsCount => 'Añade entre una y tres fortalezas',
-    CloseIssueCode.developmentCount => 'Añade entre una y tres áreas de mejora',
-    CloseIssueCode.actionPointsCount => 'Añade entre una y tres recomendaciones',
-    CloseIssueCode.findingTextRequired => 'Hay una fortaleza o área de mejora sin texto',
-    CloseIssueCode.actionPointTextRequired => 'Hay una recomendación sin texto',
-    CloseIssueCode.actionPointIndicatorRequired => 'Hay una recomendación sin indicador de logro',
-    CloseIssueCode.previousActionPointNotReviewed => 'Revisa las recomendaciones del informe anterior',
-    CloseIssueCode.incidentVerdictPending ||
-    CloseIssueCode.keyIncidentNotesRequired ||
-    CloseIssueCode.incidentExpectedDecisionRequired ||
-    CloseIssueCode.incidentImpactNotConfirmed => 'Quedan marcas por revisar',
-  };
+/// Dificultad del partido (estimada o real).
+String difficultyText(String code) => switch (code) {
+      'LOW' => tr('Baja', 'Baixa'),
+      'MEDIUM' => tr('Media', 'Mitjana'),
+      'HIGH' => tr('Alta', 'Alta'),
+      'VERY_HIGH' => tr('Muy alta', 'Molt alta'),
+      _ => code,
+    };
+
+/// "B2 · Identifica la falta…" (o el código si la competencia no es de esta rúbrica).
+String criterionTitle(AssessmentRubric rubric, String code) {
+  final c = rubric.criterionOrNull(code);
+  return c == null ? code : '${c.code.substring(0, 2)} · ${c.label}';
 }
+
+String closeIssueText(CloseIssue i, AssessmentRubric rubric) => switch (i.code) {
+      CloseIssueCode.criterionBandMissing => tr('${criterionTitle(rubric, i.criterionCode!)}: sin valorar',
+          '${criterionTitle(rubric, i.criterionCode!)}: sense valorar'),
+      CloseIssueCode.previousActionPointNotReviewed =>
+        tr('Hay recomendaciones del informe anterior sin revisar', "Hi ha recomanacions de l'informe anterior sense revisar"),
+      CloseIssueCode.incidentVerdictPending => tr('Quedan marcas sin valorar', 'Queden marques sense valorar'),
+    };
 
 bool isIncidentIssue(CloseIssue i) => i.incidentId != null;

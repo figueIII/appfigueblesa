@@ -1,5 +1,7 @@
 # Pantalla 3: evaluación por criterios y bandas cualitativas
 
+> **v1.2.0:** la rúbrica, la escala y las reglas de cierre han cambiado. Ver [`COMPETENCIAS_CARC.md`](COMPETENCIAS_CARC.md), que prevalece sobre este documento donde se contradigan.
+
 > **Estado:** v0.1 implementada en Flutter (`app/lib/features/evaluation/`) sobre Drift.
 > **Comprobado:**
 > - `flutter analyze` sin incidencias.

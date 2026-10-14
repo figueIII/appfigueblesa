@@ -178,6 +178,9 @@ class ExportFixture {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   }
 
+  /// Un tercer partido del mismo árbitro, terminado pero con el informe SIN cerrar.
+  Future<String> addOpenMatch() => _match(db, 'm3', finalize: false, reviewPrevious: false, sameRefereeAs: firstId);
+
   static Future<String> _match(AppDatabase db, String p, {required bool finalize, required bool reviewPrevious, String? sameRefereeAs}) async {
     final id = await AssessmentSetup(db, SeqIds(p)).createLiveAssessment(
       category: categoryPreset('SM_DHCAT_1_2_3'),
@@ -222,17 +225,22 @@ class ExportFixture {
     );
     await c.load();
     for (final crit in kDefaultRubric.criteria) {
-      if (crit.code == 'A2_LINEOUT_MAUL') {
+      if (crit.code == 'D4_FAIR_CONTEST') {
         c.setNotObserved(crit.code, true);
         c.setJustification(crit.code, 'Sin touchs disputadas en zona de influencia.');
         continue;
       }
-      c.setBand(crit.code, crit.code == 'B4_ADVANTAGE' ? BandCode.above : c.suggestions[crit.code]!.suggestedBand ?? BandCode.at);
-      c.setJustification(
+      c.setBand(
         crit.code,
-        crit.code == 'B4_ADVANTAGE' ? 'Ventajas largas, bien leídas y cerradas con claridad en todo el partido.' : 'Acorde al nivel del partido.',
+        crit.code == 'C3_ADVANTAGE_CONSISTENCY' ? BandCode.excellent : c.suggestions[crit.code]!.suggestedBand ?? BandCode.competent,
       );
+      // La justificación es opcional: solo se escribe donde aporta.
+      if (crit.code == 'C3_ADVANTAGE_CONSISTENCY') {
+        c.setJustification(crit.code, 'Ventajas largas, bien leídas y cerradas con claridad en todo el partido.');
+      }
     }
+    c.setActualDifficulty('VERY_HIGH');
+    c.setLevelRecommendation(LevelRecommendation.same);
     c.setSummary('Partido de alta exigencia bien gestionado en lo físico y en la ventaja; la prioridad es el scrum en zona de marca.');
     c.updateFinding(c.addFinding(FindingKind.strength)!.id, text: 'Ventaja territorial bien leída.');
     c.updateFinding(c.addFinding(FindingKind.development)!.id, text: 'Colapsos de scrum cerca de la línea de marca.');
@@ -245,8 +253,8 @@ class ExportFixture {
       }
     }
     if (finalize) {
-      final issues = await c.finalize();
-      if (issues.isNotEmpty) throw StateError('Fixture no cerrable: $issues');
+      await c.finalize();
+      if (!c.isFinalized) throw StateError('Fixture no cerrable');
     }
     return id;
   }

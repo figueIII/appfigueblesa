@@ -1,4 +1,4 @@
-// Documento de exportación (formato 2.1, export/assessment-export.schema.json). PURO: recibe los
+// Documento de exportación (formato 2.2, export/assessment-export.schema.json). PURO: recibe los
 // datos del informe cerrado y devuelve el mapa JSON. El PDF se genera a partir de ESTE mismo
 // documento, así que el PDF y el JSON nunca pueden contar cosas distintas.
 
@@ -44,6 +44,7 @@ class ExportSource {
     this.refereeLicence,
     this.refereeGrade,
     this.assessorLicence,
+    this.rubricId,
   });
 
   final String assessmentId;
@@ -68,6 +69,9 @@ class ExportSource {
   final String assessorId;
   final String assessorName;
   final String? assessorLicence;
+
+  /// Rúbrica con la que se cerró el informe (null = la de por defecto).
+  final String? rubricId;
   final int reportVersion;
   final String reportStatus; // FINALIZED | SUPERSEDED
   final String? canonicalJson; // el JSON firmado, tal y como se guardó al cerrar
@@ -214,7 +218,7 @@ Map<String, Object?> buildExportDocument(
   ]..sort((a, b) => a.sessionMs.compareTo(b.sessionMs));
   return {
     'format': 'rugby-referee-assessment',
-    'formatVersion': '2.1',
+    'formatVersion': '2.2',
     'exportedAt': exportedAt.toUtc().toIso8601String(),
     'generator': {'app': 'RefAssess', 'appVersion': appVersion, 'rubricEngineVersion': rubric.version},
     'match': {
@@ -257,16 +261,18 @@ Map<String, Object?> buildExportDocument(
       'code': rubric.code,
       'version': rubric.version,
       'bands': [
-        for (final b in rubric.bands) {'code': b.code.name.toUpperCase(), 'label': b.label},
+        for (final b in rubric.bands) {'code': bandWireCode(b.code), 'label': b.label, 'labelCa': ?b.labelCa},
       ],
       'areas': [
         for (final a in rubric.areas)
           {
             'code': a.code,
             'name': a.name,
+            'nameCa': ?a.nameCa,
             'weight': a.weight,
             'criteria': [
-              for (final c in a.criteria) {'code': c.code, 'name': c.name, 'weight': c.weight},
+              for (final c in a.criteria)
+                {'code': c.code, 'name': c.name, 'nameCa': ?c.nameCa, 'level': ?c.level, 'weight': c.weight},
             ],
           },
       ],

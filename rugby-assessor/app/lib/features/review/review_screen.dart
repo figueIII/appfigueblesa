@@ -16,7 +16,8 @@ import 'review_labels.dart';
 /// Arriba, el progreso ("7 de 12 resueltas"). Debajo, la cola de lo pendiente ordenada por
 /// urgencia e IMPACTO (domain/review.dart), o todas las marcas en orden cronológico.
 /// Cada tarjeta dice qué le falta; al tocarla se abre el editor, que al guardar salta a la
-/// siguiente pendiente. Cuando la cola se vacía, se ofrece pasar a la evaluación por criterios.
+/// siguiente pendiente. Cuando la cola se vacía, se ofrece pasar a la evaluación por criterios; con
+/// marcas pendientes también se puede pasar (botón al final de la lista): valorarlas es opcional.
 ///
 /// Con [duringMatch], es la misma lista abierta desde el directo: el partido sigue (el reloj no se
 /// detiene) y no se ofrece pasar a la evaluación, que llega al final.
@@ -81,6 +82,33 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  Widget _continueAnyway(BuildContext context, ReviewProgress p) {
+    final c = context.refColors;
+    return Padding(
+      padding: const EdgeInsets.only(top: RefSpace.s),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: RefTouch.control),
+        child: OutlinedButton.icon(
+          key: const ValueKey('continue-to-rubric-anyway'),
+          onPressed: widget.onContinueToRubric,
+          icon: const Icon(Icons.arrow_forward_rounded),
+          label: Text(
+            p.remaining == 0
+                ? 'Ir a la evaluación'
+                : 'Ir a la evaluación (${p.remaining} sin valorar no ${p.remaining == 1 ? 'cuenta' : 'cuentan'})',
+            textAlign: TextAlign.center,
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: c.onSurface,
+            side: BorderSide(color: c.outline, width: 2),
+            textStyle: context.refText(RefType.control.copyWith(fontSize: 16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RefRadius.control)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _ready(BuildContext context) {
     final c = context.refColors;
     final p = _ctl.progress;
@@ -134,28 +162,31 @@ class _ReviewScreenState extends State<ReviewScreen> {
         Expanded(
           child: list.isEmpty
               ? (widget.duringMatch
-                  ? _Centered(
-                      icon: Icons.task_alt_rounded,
-                      title: 'Todo al día',
-                      body: 'Las ${p.total} marcas están completas. Vuelve al directo para seguir.',
-                    )
-                  : _Centered(
-                      icon: Icons.task_alt_rounded,
-                      title: 'Revisión completa',
-                      body: 'Las ${p.total} marcas tienen veredicto, y las que lo necesitan, impacto, decisión esperada y notas.',
-                      action: ('Ir a la evaluación por criterios', widget.onContinueToRubric),
-                      actionKey: const ValueKey('continue-to-rubric'),
-                    ))
+                    ? _Centered(
+                        icon: Icons.task_alt_rounded,
+                        title: 'Todo al día',
+                        body: 'Las ${p.total} marcas están completas. Vuelve al directo para seguir.',
+                      )
+                    : _Centered(
+                        icon: Icons.task_alt_rounded,
+                        title: 'Revisión completa',
+                        body: 'Las ${p.total} marcas tienen veredicto, y las que lo necesitan, impacto, decisión esperada y notas.',
+                        action: ('Ir a la evaluación por criterios', widget.onContinueToRubric),
+                        actionKey: const ValueKey('continue-to-rubric'),
+                      ))
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(RefSpace.l, RefSpace.xs, RefSpace.l, RefSpace.xxl),
-                  itemCount: list.length,
+                  // Al final, el paso a la evaluación: valorar las marcas es opcional (las pendientes no cuentan).
+                  itemCount: list.length + (widget.duringMatch ? 0 : 1),
                   separatorBuilder: (_, _) => const SizedBox(height: RefTouch.gap),
-                  itemBuilder: (context, index) => _IncidentCard(
-                    incident: list[index],
-                    headline: incidentHeadline(list[index], (t) => t == TeamSide.home ? _ctl.homeTeam : _ctl.awayTeam),
-                    position: _ctl.filter == ReviewFilter.pending ? index + 1 : null,
-                    onTap: () => _open(list[index]),
-                  ),
+                  itemBuilder: (context, index) => index == list.length
+                      ? _continueAnyway(context, p)
+                      : _IncidentCard(
+                          incident: list[index],
+                          headline: incidentHeadline(list[index], (t) => t == TeamSide.home ? _ctl.homeTeam : _ctl.awayTeam),
+                          position: _ctl.filter == ReviewFilter.pending ? index + 1 : null,
+                          onTap: () => _open(list[index]),
+                        ),
                 ),
         ),
       ],

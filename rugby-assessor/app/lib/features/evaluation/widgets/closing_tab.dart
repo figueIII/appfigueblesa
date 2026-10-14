@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design_system/theme.dart';
 import '../../../core/design_system/tokens.dart';
+import '../../../core/i18n.dart';
 import '../../../domain/report.dart';
 import '../../../domain/rubric.dart';
 import '../../review/widgets/choice_controls.dart';
@@ -11,10 +12,18 @@ import '../export_controller.dart';
 import 'export_section.dart';
 import 'band_widgets.dart';
 
-/// Pestaña "Cierre": banda global, resumen, fortalezas, áreas de mejora, recomendaciones,
-/// seguimiento de las recomendaciones anteriores y comprobación previa al cierre.
+/// Pestaña "Cierre": valoración global, dificultad real, recomendación de nivel, resumen,
+/// fortalezas, áreas de mejora, recomendaciones, seguimiento de las anteriores y cierre.
+/// NADA es obligatorio: la lista "Antes de cerrar" solo avisa de lo que falta.
 class ClosingTab extends StatefulWidget {
-  const ClosingTab({super.key, required this.controller, required this.onGoToCriterion, required this.onOpenReview, this.export});
+  const ClosingTab({
+    super.key,
+    required this.controller,
+    required this.onGoToCriterion,
+    required this.onOpenReview,
+    this.export,
+    this.onFinalized,
+  });
 
   final EvaluationController controller;
   final ValueChanged<String> onGoToCriterion;
@@ -23,6 +32,9 @@ class ClosingTab extends StatefulWidget {
   /// Exportación (solo con el informe cerrado). Null en contextos sin exportación (tests, demos).
   final ExportController? export;
 
+  /// Tras cerrar el informe (la app abre el resumen del partido).
+  final VoidCallback? onFinalized;
+
   @override
   State<ClosingTab> createState() => _ClosingTabState();
 }
@@ -30,11 +42,14 @@ class ClosingTab extends StatefulWidget {
 class _ClosingTabState extends State<ClosingTab> {
   EvaluationController get controller => widget.controller;
 
-  final _summaryKey = GlobalKey();
-  final _strengthsKey = GlobalKey();
-  final _developmentKey = GlobalKey();
-  final _actionPointsKey = GlobalKey();
+  final _scroll = ScrollController();
   final _previousKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   void _goTo(GlobalKey key) {
     final ctx = key.currentContext;
@@ -44,20 +59,23 @@ class _ClosingTabState extends State<ClosingTab> {
   void _handleIssue(CloseIssue i) {
     if (isIncidentIssue(i)) return widget.onOpenReview();
     if (i.criterionCode != null) return widget.onGoToCriterion(i.criterionCode!);
-    _goTo(switch (i.code) {
-      CloseIssueCode.summaryRequired => _summaryKey,
-      CloseIssueCode.strengthsCount => _strengthsKey,
-      CloseIssueCode.developmentCount || CloseIssueCode.findingTextRequired => _developmentKey,
-      CloseIssueCode.previousActionPointNotReviewed => _previousKey,
-      _ => _actionPointsKey,
-    });
+    _goTo(_previousKey);
+  }
+
+  /// Al cerrar, lo nuevo (aviso de informe cerrado y exportación) aparece ARRIBA: se vuelve al
+  /// principio para que se vea, y la app pasa al resumen del partido.
+  void _afterClose() {
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    widget.onFinalized?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final ctl = controller;
     final readOnly = ctl.isFinalized;
+    final optional = tr('Opcional.', 'Opcional.');
     return SingleChildScrollView(
+      controller: _scroll,
       padding: const EdgeInsets.fromLTRB(RefSpace.l, RefSpace.l, RefSpace.l, RefSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,31 +86,65 @@ class _ClosingTabState extends State<ClosingTab> {
             const SizedBox(height: RefSpace.l),
           ],
           _GlobalBandPanel(controller: ctl),
-          _Header(key: _summaryKey, title: 'Resumen del partido', required: true),
+          _Header(
+            title: tr('Dificultad real del partido', 'Dificultat real del partit'),
+            subtitle: [
+              tr('Estimada al preparar el partido: ', "Estimada en preparar el partit: ") +
+                  (ctl.estimatedDifficulty == null ? tr('no indicada', 'no indicada') : difficultyText(ctl.estimatedDifficulty!)),
+              optional,
+            ].join(' · '),
+          ),
+          ChoiceGrid<String>(
+            keyPrefix: 'actual-difficulty',
+            options: [for (final d in kDifficultyCodes) ChoiceOption(value: d, label: difficultyText(d))],
+            selected: ctl.actualDifficulty,
+            onSelected: (v) => readOnly ? null : ctl.setActualDifficulty(ctl.actualDifficulty == v ? null : v),
+          ),
+          _Header(
+            title: tr('Recomendación', 'Recomanació'),
+            subtitle: '${tr('Nivel de los próximos partidos del árbitro.', "Nivell dels propers partits de l'àrbitre.")} $optional',
+          ),
+          ChoiceGrid<LevelRecommendation>(
+            keyPrefix: 'level-rec',
+            columns: 1,
+            options: [
+              for (final r in LevelRecommendation.values)
+                ChoiceOption(value: r, label: '${levelRecommendationLabel(r).$1}  ${levelRecommendationLabel(r).$2}'),
+            ],
+            selected: ctl.levelRecommendation,
+            onSelected: (v) => readOnly ? null : ctl.setLevelRecommendation(ctl.levelRecommendation == v ? null : v),
+          ),
+          _Header(title: tr('Resumen del partido', 'Resum del partit'), subtitle: optional),
           _SyncedTextField(
             fieldKey: const ValueKey('summary'),
             initial: ctl.summary,
             enabled: !readOnly,
-            hint: 'Contexto del partido y valoración general en dos o tres frases.',
+            hint: tr('Contexto del partido y valoración general en dos o tres frases.',
+                'Context del partit i valoració general en dues o tres frases.'),
             minLines: 3,
             onChanged: ctl.setSummary,
           ),
-          _Header(key: _strengthsKey, title: 'Fortalezas', required: true, subtitle: 'Entre una y tres.'),
+          _Header(title: tr('Fortalezas', 'Fortaleses'), subtitle: tr('Opcional, hasta tres.', 'Opcional, fins a tres.')),
           _FindingsList(controller: ctl, kind: FindingKind.strength),
-          _Header(key: _developmentKey, title: 'Áreas de mejora', required: true, subtitle: 'Entre una y tres.'),
+          _Header(title: tr('Áreas de mejora', 'Àrees de millora'), subtitle: tr('Opcional, hasta tres.', 'Opcional, fins a tres.')),
           _FindingsList(controller: ctl, kind: FindingKind.development),
           _Header(
-            key: _actionPointsKey,
-            title: 'Recomendaciones para el próximo informe',
-            required: true,
-            subtitle: 'Entre una y tres. El próximo evaluador las revisará con su indicador de logro.',
+            title: tr('Recomendaciones para el próximo informe', "Recomanacions per al proper informe"),
+            subtitle: tr('Opcional, hasta tres. El próximo evaluador las revisará.', "Opcional, fins a tres. El proper avaluador les revisarà."),
           ),
           _ActionPointsList(controller: ctl),
           if (ctl.openPrevious.isNotEmpty) ...[
-            _Header(key: _previousKey, title: 'Recomendaciones del informe anterior', required: true),
+            _Header(
+              key: _previousKey,
+              title: tr('Recomendaciones del informe anterior', "Recomanacions de l'informe anterior"),
+              subtitle: optional,
+            ),
             _PreviousReviews(controller: ctl),
           ],
-          if (!readOnly) ...[const _Header(title: 'Antes de cerrar'), _Checklist(controller: ctl, onIssue: _handleIssue)],
+          if (!readOnly) ...[
+            _Header(title: tr('Antes de cerrar', 'Abans de tancar')),
+            _Checklist(controller: ctl, onIssue: _handleIssue, onClosed: _afterClose),
+          ],
         ],
       ),
     );
@@ -100,13 +152,12 @@ class _ClosingTabState extends State<ClosingTab> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({super.key, required this.title, this.required = false, this.subtitle});
+  const _Header({super.key, required this.title, this.subtitle});
   final String title;
-  final bool required;
   final String? subtitle;
 
   @override
-  Widget build(BuildContext context) => SectionHeader(title: title, required: required, subtitle: subtitle);
+  Widget build(BuildContext context) => SectionHeader(title: title, subtitle: subtitle);
 }
 
 class _GlobalBandPanel extends StatelessWidget {
@@ -131,7 +182,7 @@ class _GlobalBandPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Banda global del partido', style: RefType.status.copyWith(color: c.onSurfaceMuted)),
+          Text(tr('Valoración global', 'Valoració global'), style: RefType.status.copyWith(color: c.onSurfaceMuted)),
           const SizedBox(height: RefSpace.s),
           Semantics(
             liveRegion: true,
@@ -139,13 +190,18 @@ class _GlobalBandPanel extends StatelessWidget {
           ),
           const SizedBox(height: RefSpace.s),
           Text(
-            agg.band == null ? 'Aparecerá en cuanto valores criterios.' : rubric.band(agg.band!).description,
+            agg.band == null
+                ? tr('Aparecerá en cuanto valores competencias.', 'Apareixerà quan valoris competències.')
+                : rubric.band(agg.band!).help,
             style: RefType.body.copyWith(color: c.onSurface),
           ),
           if (ctl.completedCount < total)
             Padding(
               padding: const EdgeInsets.only(top: RefSpace.xs),
-              child: Text('Provisional: hay criterios sin completar.', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+              child: Text(
+                tr('Las competencias sin valorar no cuentan.', 'Les competències sense valorar no compten.'),
+                style: RefType.caption.copyWith(color: c.onSurfaceMuted),
+              ),
             ),
           const SizedBox(height: RefSpace.l),
           for (final (idx, area) in rubric.areas.indexed)
@@ -156,7 +212,7 @@ class _GlobalBandPanel extends StatelessWidget {
                 spacing: RefSpace.s,
                 runSpacing: RefSpace.xs,
                 children: [
-                  Text('${area.letter} · ${area.name}', style: RefType.caption.copyWith(color: c.onSurface)),
+                  Text('${area.letter} · ${area.label}', style: RefType.caption.copyWith(color: c.onSurface)),
                   BandBadge(band: agg.areas[idx].band, rubric: rubric, prefix: ''),
                 ],
               ),
@@ -169,15 +225,18 @@ class _GlobalBandPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   keys.total == 0
-                      ? 'Sin decisiones clave (impacto alto o decisivo) valoradas.'
-                      : 'Decisiones clave acertadas: ${keys.correct} de ${keys.total}.',
+                      ? tr('Sin decisiones clave (impacto alto o decisivo) valoradas.', 'Sense decisions clau (impacte alt o decisiu) valorades.')
+                      : tr('Decisiones clave acertadas: ${keys.correct} de ${keys.total}.', 'Decisions clau encertades: ${keys.correct} de ${keys.total}.'),
                   style: RefType.caption.copyWith(color: c.onSurface),
                 ),
               ),
             ],
           ),
           const SizedBox(height: RefSpace.xs),
-          Text('Criterios completos: ${ctl.completedCount} de $total.', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+          Text(
+            tr('Competencias valoradas: ${ctl.completedCount} de $total.', 'Competències valorades: ${ctl.completedCount} de $total.'),
+            style: RefType.caption.copyWith(color: c.onSurfaceMuted),
+          ),
         ],
       ),
     );
@@ -193,7 +252,7 @@ class _FindingsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctl = controller;
     final items = ctl.findingsOf(kind);
-    final label = kind == FindingKind.strength ? 'fortaleza' : 'área de mejora';
+    final label = kind == FindingKind.strength ? tr('fortaleza', 'fortalesa') : tr('área de mejora', 'àrea de millora');
     final prefix = kind == FindingKind.strength ? 'strength' : 'development';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,13 +265,13 @@ class _FindingsList extends StatelessWidget {
             enabled: !ctl.isFinalized,
             onCriterion: (code) => ctl.updateFinding(f.id, criterionCode: code),
             onRemove: () => ctl.removeFinding(f.id),
-            removeLabel: 'Quitar $label',
+            removeLabel: '${tr('Quitar', 'Treure')} $label',
             fields: [
               _SyncedTextField(
                 fieldKey: ValueKey('$prefix-text-${f.id}'),
                 initial: f.text,
                 enabled: !ctl.isFinalized,
-                label: kind == FindingKind.strength ? 'Qué hizo bien' : 'Qué debe mejorar',
+                label: kind == FindingKind.strength ? tr('Qué hizo bien', 'Què va fer bé') : tr('Qué debe mejorar', 'Què ha de millorar'),
                 onChanged: (v) => ctl.updateFinding(f.id, text: v),
               ),
             ],
@@ -220,7 +279,7 @@ class _FindingsList extends StatelessWidget {
           const SizedBox(height: RefTouch.gap),
         ],
         if (!ctl.isFinalized && items.length < 3)
-          _AddButton(key: ValueKey('add-$prefix'), label: 'Añadir $label', onPressed: () => ctl.addFinding(kind)),
+          _AddButton(key: ValueKey('add-$prefix'), label: '${tr('Añadir', 'Afegir')} $label', onPressed: () => ctl.addFinding(kind)),
       ],
     );
   }
@@ -244,13 +303,13 @@ class _ActionPointsList extends StatelessWidget {
             enabled: !ctl.isFinalized,
             onCriterion: (code) => ctl.updateActionPoint(a.id, criterionCode: code),
             onRemove: () => ctl.removeActionPoint(a.id),
-            removeLabel: 'Quitar recomendación',
+            removeLabel: tr('Quitar recomendación', 'Treure recomanació'),
             fields: [
               _SyncedTextField(
                 fieldKey: ValueKey('ap-text-${a.id}'),
                 initial: a.text,
                 enabled: !ctl.isFinalized,
-                label: 'Qué debe hacer',
+                label: tr('Qué debe hacer', 'Què ha de fer'),
                 onChanged: (v) => ctl.updateActionPoint(a.id, text: v),
               ),
               const SizedBox(height: RefSpace.s),
@@ -258,8 +317,8 @@ class _ActionPointsList extends StatelessWidget {
                 fieldKey: ValueKey('ap-indicator-${a.id}'),
                 initial: a.successIndicator,
                 enabled: !ctl.isFinalized,
-                label: 'Cómo se verá que lo ha logrado',
-                hint: 'Algo observable en el próximo partido.',
+                label: tr('Cómo se verá que lo ha logrado (opcional)', "Com es veurà que ho ha assolit (opcional)"),
+                hint: tr('Algo observable en el próximo partido.', 'Alguna cosa observable al proper partit.'),
                 onChanged: (v) => ctl.updateActionPoint(a.id, successIndicator: v),
               ),
             ],
@@ -267,7 +326,7 @@ class _ActionPointsList extends StatelessWidget {
           const SizedBox(height: RefTouch.gap),
         ],
         if (!ctl.isFinalized && ctl.actionPoints.length < 3)
-          _AddButton(key: const ValueKey('add-ap'), label: 'Añadir recomendación', onPressed: ctl.addActionPoint),
+          _AddButton(key: const ValueKey('add-ap'), label: tr('Añadir recomendación', 'Afegir recomanació'), onPressed: ctl.addActionPoint),
       ],
     );
   }
@@ -295,7 +354,8 @@ class _PreviousReviews extends StatelessWidget {
                   p.text,
                   style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
                 ),
-                Text('Indicador: ${p.successIndicator}', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+                if (p.successIndicator.trim().isNotEmpty)
+                  Text('${tr('Indicador', 'Indicador')}: ${p.successIndicator}', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
                 const SizedBox(height: RefSpace.s),
                 ChoiceGrid<ActionPointReviewStatus>(
                   keyPrefix: 'prev-${p.id}',
@@ -308,7 +368,7 @@ class _PreviousReviews extends StatelessWidget {
                   fieldKey: ValueKey('prev-comment-${p.id}'),
                   initial: ctl.previousReviewOf(p.id)?.comment ?? '',
                   enabled: !ctl.isFinalized && ctl.previousReviewOf(p.id) != null,
-                  label: 'Comentario',
+                  label: tr('Comentario', 'Comentari'),
                   onChanged: (v) => ctl.setPreviousReview(p.id, comment: v),
                 ),
               ],
@@ -322,27 +382,36 @@ class _PreviousReviews extends StatelessWidget {
 }
 
 class _Checklist extends StatelessWidget {
-  const _Checklist({required this.controller, required this.onIssue});
+  const _Checklist({required this.controller, required this.onIssue, required this.onClosed});
   final EvaluationController controller;
   final ValueChanged<CloseIssue> onIssue;
+  final VoidCallback onClosed;
 
-  Future<void> _confirmAndClose(BuildContext context) async {
+  Future<void> _confirmAndClose(BuildContext context, int warnings) async {
     final c = context.refColors;
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Cerrar el informe?'),
-        content: const Text(
-          'Quedará congelado con una huella de integridad y las marcas del partido se bloquearán. '
-          'Después solo se podrá corregir mediante una enmienda.',
+        title: Text(tr('¿Cerrar el informe?', "Tancar l'informe?")),
+        content: Text(
+          [
+            if (warnings > 0)
+              warnings == 1
+                  ? tr('Hay 1 aviso sin resolver: no impide cerrar, pero lo que falte no contará.',
+                      'Hi ha 1 avís sense resoldre: no impedeix tancar, però el que falti no comptarà.')
+                  : tr('Hay $warnings avisos sin resolver: no impiden cerrar, pero lo que falte no contará.',
+                      'Hi ha $warnings avisos sense resoldre: no impedeixen tancar, però el que falti no comptarà.'),
+            tr('El informe quedará congelado con una huella de integridad y las marcas del partido se bloquearán.',
+                "L'informe quedarà congelat amb una empremta d'integritat i les marques del partit es bloquejaran."),
+          ].join('\n\n'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Seguir revisando')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Seguir revisando', 'Continuar revisant'))),
           FilledButton(
             key: const ValueKey('confirm-close'),
             style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onPrimary),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cerrar informe'),
+            child: Text(tr('Cerrar informe', "Tancar l'informe")),
           ),
         ],
       ),
@@ -350,10 +419,14 @@ class _Checklist extends StatelessWidget {
     if (ok != true || !context.mounted) return;
     try {
       await controller.finalize();
+      if (controller.isFinalized) onClosed();
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se ha podido cerrar el informe. Tus datos siguen guardados: vuelve a intentarlo.')),
+          SnackBar(
+            content: Text(tr('No se ha podido cerrar el informe. Tus datos siguen guardados: vuelve a intentarlo.',
+                "No s'ha pogut tancar l'informe. Les teves dades continuen desades: torna-ho a provar.")),
+          ),
         );
       }
     }
@@ -363,11 +436,30 @@ class _Checklist extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.refColors;
     final ctl = controller;
-    final issues = ctl.closeIssues;
-    // Las marcas pendientes se agrupan en una sola línea con acceso a la revisión.
+    final issues = ctl.closeWarningsList;
+    // Las marcas pendientes y las competencias sin valorar se agrupan en una línea cada una.
     final incidentIssues = issues.where(isIncidentIssue).toList();
-    final shown = [if (incidentIssues.isNotEmpty) incidentIssues.first, ...issues.where((i) => !isIncidentIssue(i))];
-    final ready = issues.isEmpty;
+    final unrated = issues.where((i) => i.code == CloseIssueCode.criterionBandMissing).toList();
+    final previous = issues.where((i) => i.code == CloseIssueCode.previousActionPointNotReviewed).toList();
+    final lines = <(CloseIssue, String)>[
+      if (incidentIssues.isNotEmpty)
+        (
+          incidentIssues.first,
+          incidentIssues.length == 1
+              ? tr('1 marca sin valorar: no cuenta (ir a la revisión)', '1 marca sense valorar: no compta (anar a la revisió)')
+              : tr('${incidentIssues.length} marcas sin valorar: no cuentan (ir a la revisión)',
+                  '${incidentIssues.length} marques sense valorar: no compten (anar a la revisió)'),
+        ),
+      if (unrated.isNotEmpty)
+        (
+          unrated.first,
+          unrated.length == 1
+              ? tr('1 competencia sin valorar: no cuenta', '1 competència sense valorar: no compta')
+              : tr('${unrated.length} competencias sin valorar: no cuentan', '${unrated.length} competències sense valorar: no compten'),
+        ),
+      if (previous.isNotEmpty) (previous.first, closeIssueText(previous.first, ctl.rubric)),
+    ];
+    final clean = lines.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -376,11 +468,13 @@ class _Checklist extends StatelessWidget {
           liveRegion: true,
           child: Row(
             children: [
-              Icon(ready ? Icons.task_alt_rounded : Icons.checklist_rounded, color: ready ? c.positive : c.onSurface),
+              Icon(clean ? Icons.task_alt_rounded : Icons.info_outline_rounded, color: clean ? c.positive : c.onSurface),
               const SizedBox(width: RefSpace.s),
               Expanded(
                 child: Text(
-                  ready ? 'Todo listo para cerrar.' : 'Pendiente antes de cerrar (toca para ir):',
+                  clean
+                      ? tr('Todo valorado.', 'Tot valorat.')
+                      : tr('Avisos (no impiden cerrar; toca para ir):', 'Avisos (no impedeixen tancar; toca per anar-hi):'),
                   style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -388,25 +482,20 @@ class _Checklist extends StatelessWidget {
           ),
         ),
         const SizedBox(height: RefSpace.s),
-        for (final i in shown)
+        for (final (i, text) in lines)
           Material(
             color: Colors.transparent,
             child: InkWell(
-              key: ValueKey('issue-${i.code.name}-${i.criterionCode ?? i.itemId ?? ''}'),
+              key: ValueKey('issue-${i.code.name}'),
               onTap: () => onIssue(i),
               borderRadius: BorderRadius.circular(RefRadius.control),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: RefTouch.minTarget),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline_rounded, size: 20, color: c.onSurface),
+                    Icon(Icons.info_outline_rounded, size: 20, color: c.onSurface),
                     const SizedBox(width: RefSpace.s),
-                    Expanded(
-                      child: Text(
-                        isIncidentIssue(i) ? 'Quedan marcas por revisar (ir a la revisión)' : closeIssueText(i, ctl.rubric),
-                        style: RefType.caption.copyWith(color: c.onSurface, fontSize: 15),
-                      ),
-                    ),
+                    Expanded(child: Text(text, style: RefType.caption.copyWith(color: c.onSurface, fontSize: 15))),
                     Icon(Icons.chevron_right_rounded, color: c.onSurface),
                   ],
                 ),
@@ -420,11 +509,11 @@ class _Checklist extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'No se han podido guardar los últimos cambios.',
+                    tr('No se han podido guardar los últimos cambios.', "No s'han pogut desar els darrers canvis."),
                     style: RefType.caption.copyWith(color: c.negative),
                   ),
                 ),
-                TextButton(onPressed: ctl.retryPendingWrites, child: const Text('Reintentar')),
+                TextButton(onPressed: ctl.retryPendingWrites, child: Text(tr('Reintentar', 'Reintentar'))),
               ],
             ),
           ),
@@ -433,11 +522,11 @@ class _Checklist extends StatelessWidget {
           height: RefTouch.control,
           child: FilledButton.icon(
             key: const ValueKey('close-report'),
-            onPressed: ready && !ctl.finalizing ? () => _confirmAndClose(context) : null,
+            onPressed: ctl.finalizing ? null : () => _confirmAndClose(context, lines.length),
             icon: ctl.finalizing
                 ? SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 3, color: c.onPrimary))
                 : const Icon(Icons.lock_rounded),
-            label: const Text('Cerrar informe'),
+            label: Text(tr('Cerrar informe', "Tancar l'informe")),
             style: FilledButton.styleFrom(
               backgroundColor: c.primary,
               foregroundColor: c.onPrimary,
@@ -448,15 +537,6 @@ class _Checklist extends StatelessWidget {
             ),
           ),
         ),
-        if (!ready)
-          Padding(
-            padding: const EdgeInsets.only(top: RefSpace.xs),
-            child: Text(
-              'Se activará cuando no quede nada pendiente.',
-              textAlign: TextAlign.center,
-              style: RefType.caption.copyWith(color: c.onSurfaceMuted),
-            ),
-          ),
       ],
     );
   }
@@ -486,10 +566,10 @@ class _FinalizedBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Informe cerrado', style: RefType.control.copyWith(color: c.background)),
+                  Text(tr('Informe cerrado', 'Informe tancat'), style: RefType.control.copyWith(color: c.background)),
                   Text(
                     '${two(local.day)}/${two(local.month)}/${local.year} ${two(local.hour)}:${two(local.minute)} · '
-                    'huella ${f.contentHash.substring(0, 12)}…',
+                    '${tr('huella', 'empremta')} ${f.contentHash.substring(0, 12)}…',
                     style: RefType.caption.copyWith(color: c.background),
                   ),
                 ],
@@ -525,7 +605,7 @@ class _ItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.refColors;
-    final crit = rubric.criteria.firstWhere((x) => x.code == criterionCode);
+
     return Container(
       padding: const EdgeInsets.all(RefSpace.m),
       decoration: BoxDecoration(
@@ -553,7 +633,7 @@ class _ItemCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            '${crit.code.substring(0, 2)} · ${crit.name}',
+                            criterionTitle(rubric, criterionCode),
                             style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
                           ),
                         ),
@@ -595,13 +675,13 @@ Future<String?> showCriterionPicker(BuildContext context, AssessmentRubric rubri
               for (final area in rubric.areas) ...[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(RefSpace.l, RefSpace.m, RefSpace.l, RefSpace.xs),
-                  child: Text('${area.letter} · ${area.name}', style: RefType.status.copyWith(color: c.onSurfaceMuted)),
+                  child: Text('${area.letter} · ${area.label}', style: RefType.status.copyWith(color: c.onSurfaceMuted)),
                 ),
                 for (final crit in area.criteria)
                   ListTile(
                     key: ValueKey('pick-${crit.code}'),
                     minTileHeight: RefTouch.control,
-                    title: Text('${crit.code.substring(0, 2)} · ${crit.name}', style: RefType.body.copyWith(color: c.onSurface)),
+                    title: Text(criterionTitle(rubric, crit.code), style: RefType.body.copyWith(color: c.onSurface)),
                     trailing: crit.code == current ? Icon(Icons.check_rounded, color: c.onSurface) : null,
                     onTap: () => Navigator.of(context).pop(crit.code),
                   ),

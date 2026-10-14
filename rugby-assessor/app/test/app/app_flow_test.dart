@@ -8,6 +8,7 @@ import 'package:ref_assess/app/ref_assess_app.dart';
 import 'package:ref_assess/core/platform_ports.dart';
 import 'package:ref_assess/data/db/app_database.dart';
 import 'package:ref_assess/data/drift_export_repository.dart';
+import 'package:ref_assess/data/drift_live_session_repository.dart';
 import 'package:ref_assess/data/session_time.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
 import 'package:ref_assess/export/report_exporter.dart';
@@ -17,8 +18,11 @@ import 'package:ref_assess/domain/model.dart';
 import 'package:ref_assess/domain/category_presets.dart';
 import 'package:ref_assess/data/match_repository.dart';
 
+import 'package:ref_assess/core/i18n.dart';
 import 'package:ref_assess/features/evaluation/evaluation_screen.dart';
+import 'package:ref_assess/features/summary/report_summary_screen.dart';
 
+import '../data/evaluation_drift_test.dart' show incident;
 import '../export/fixture.dart' show ExportFixture, SeqIds, exportSchema, testFonts;
 
 class FakeMono implements MonotonicSource {
@@ -87,6 +91,12 @@ void main() {
     expect(f, findsWidgets);
   }
 
+  /// Desplaza el resumen hasta [f].
+  Future<void> inSummary(WidgetTester tester, Finder f) async {
+    await tester.ensureVisible(f);
+    await tester.pumpAndSettle();
+  }
+
   Future<void> enter(WidgetTester tester, String key, String text) async {
     final f = find.byKey(ValueKey(key));
     await tester.ensureVisible(f);
@@ -147,7 +157,7 @@ void main() {
     expect(tester.widget<LiveScreen>(find.byType(LiveScreen)).controller.assessmentId, row.id);
   });
 
-  testWidgets('informe finalizado: desde el inicio se abre el informe con la sección de exportación', (tester) async {
+  testWidgets('informe finalizado: desde el inicio se abre el resumen (marcador, golpes, tarjetas, valoración) y se vuelve al menú', (tester) async {
     tester.view.physicalSize = const Size(390, 844) * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -165,12 +175,88 @@ void main() {
     await tester.pumpWidget(RefAssessApp(services: closed));
     await pumpUntil(tester, find.text('Finalizados · 2'));
     await tester.tap(find.byKey(ValueKey('match-${f.secondId}')));
+    await pumpUntil(tester, find.byKey(const ValueKey('summary-referee')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReportSummaryScreen), findsOneWidget);
+    expect(find.text('Árbitro Ejemplo'), findsWidgets);
+    expect(find.byKey(const ValueKey('summary-band')), findsOneWidget);
+    expect(find.textContaining('Mantener en partidos similares'), findsOneWidget);
+    expect(find.textContaining('Muy alta'), findsOneWidget, reason: 'dificultad real');
+    await inSummary(tester, find.byKey(const ValueKey('summary-scoreline')));
+    expect(find.text('Club Local RC  24 – 19  Visitante RT'), findsOneWidget);
+    await inSummary(tester, find.text('Golpes de castigo'));
+    expect(find.text('Tarjetas amarillas'), findsOneWidget);
+    await inSummary(tester, find.byKey(const ValueKey('share-pdf')));
+    expect(find.text('Exportar y enviar al comité'), findsOneWidget);
+
+    // Informe completo (solo lectura) y vuelta.
+    await inSummary(tester, find.byKey(const ValueKey('open-full-report')));
+    await tester.tap(find.byKey(const ValueKey('open-full-report')));
+    await pumpUntil(tester, find.byType(EvaluationScreen));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await inSummary(tester, find.byKey(const ValueKey('back-to-menu')));
+    await tester.tap(find.byKey(const ValueKey('back-to-menu')));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Finalizados · 2'));
+    expect(find.byType(ReportSummaryScreen), findsNothing);
+  });
+
+  testWidgets('cerrar el informe lleva al resumen del partido (sin rellenar nada obligatorio)', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final f = (await tester.runAsync(ExportFixture.create))!;
+    addTearDown(() => tester.runAsync(f.dispose));
+    final open = (await tester.runAsync(f.addOpenMatch))!;
+    // Una marca sin valorar: no impide cerrar ni exportar (el resumen se lee del documento exportado).
+    await tester.runAsync(() => DriftLiveSessionRepository(f.db).insertIncident(incident(open, 90, IncidentCategory.ruck, Verdict.pending, ImpactLevel.medium)));
+    final services = AppServices(db: f.db, ids: SeqIds('app'), mono: FakeMono(), haptics: NoHaptics(), screenAwake: awake, exporter: f.exporter());
+
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$open')));
+    await tester.tap(find.byKey(ValueKey('match-$open')));
+    // Con una marca pendiente también se pasa a la evaluación (botón al final de la lista).
+    await pumpUntil(tester, find.byKey(const ValueKey('review-filter')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('continue-to-rubric-anyway')), 200);
+    await tester.tap(find.byKey(const ValueKey('continue-to-rubric-anyway')));
     await pumpUntil(tester, find.byType(EvaluationScreen));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tab-close')));
     await tester.pumpAndSettle();
-    expect(find.text('Exportar y enviar al comité'), findsOneWidget);
-    expect(find.byKey(const ValueKey('share-pdf')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('close-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('close-report')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirm-close')));
+    await pumpUntil(tester, find.byKey(const ValueKey('summary-referee')));
+    await tester.pumpAndSettle();
+    expect(find.byType(EvaluationScreen), findsNothing, reason: 'el resumen sustituye a la evaluación');
+    expect(find.textContaining('No se ha podido abrir'), findsNothing);
+    await inSummary(tester, find.byKey(const ValueKey('back-to-menu')));
+    await tester.tap(find.byKey(const ValueKey('back-to-menu')));
+    await pumpUntil(tester, find.text('Finalizados · 3'));
+  });
+
+  testWidgets('menú de inicio: cambiar a catalán se guarda y se recupera', (tester) async {
+    addTearDown(() => appLanguage.value = AppLanguage.es);
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(const ValueKey('home-menu')));
+    await tester.tap(find.byKey(const ValueKey('home-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('language-ca')));
+    await tester.pumpAndSettle();
+    expect(appLanguage.value, AppLanguage.ca);
+    expect(await tester.runAsync(() => services.settings.loadLanguage()), AppLanguage.ca);
+    await tester.tap(find.byKey(const ValueKey('home-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Català'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('language-es')));
+    await tester.pumpAndSettle();
+    expect(await tester.runAsync(() => services.settings.loadLanguage()), AppLanguage.es);
   });
 
   testWidgets('durante el partido: editar una marca al momento y abrir la lista de marcas, sin parar el reloj', (tester) async {

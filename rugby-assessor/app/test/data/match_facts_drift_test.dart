@@ -184,7 +184,7 @@ void main() {
     expect(sanctionsOf(after.incidents).single.infraction!.code, 'SCRUM_COLLAPSING');
     expect(after.incidents.first.infraction!.code, 'SCRUM_COLLAPSING');
     final version = await migrated.customSelect('PRAGMA user_version').getSingle();
-    expect(version.data.values.single, 4);
+    expect(version.data.values.single, 5);
     // Los triggers nuevos también existen tras migrar.
     await expectLater(migrated.customStatement("DELETE FROM score_event WHERE assessment_id = 'old'"), throwsA(isA<Exception>()));
   });
@@ -252,7 +252,7 @@ void main() {
 
     final gone = await migrated.customSelect("SELECT name FROM sqlite_master WHERE name LIKE 'sanction_event%'").get();
     expect(gone, isEmpty, reason: 'la tabla y sus triggers desaparecen');
-    expect((await migrated.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+    expect((await migrated.customSelect('PRAGMA user_version').getSingle()).data.values.single, 5);
   });
 
   for (final staleVersion in [3, 2]) {
@@ -288,7 +288,7 @@ void main() {
       expect(snap.incidents.single.decisionTaken!.againstTeam, d.TeamSide.home);
       expect(snap.incidents.single.infraction, InfractionRef.catalog('SIDE_ENTRY'));
       expect(scorelineOf(snap.scores), const Scoreline(0, 5));
-      expect((await reopened.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+      expect((await reopened.customSelect('PRAGMA user_version').getSingle()).data.values.single, 5);
       // Los triggers siguen en su sitio (sin duplicar ni romper nada).
       await expectLater(reopened.customStatement("DELETE FROM score_event WHERE assessment_id = '$aid'"), throwsA(isA<Exception>()));
     });

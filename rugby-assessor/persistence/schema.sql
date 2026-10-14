@@ -1,14 +1,15 @@
--- Esquema SQLite offline-first — Evaluador arbitral de rugby (schema v4).
+-- Esquema SQLite offline-first — Evaluador arbitral de rugby (schema v5).
 -- v2: solo se evalúa al árbitro principal (R5) y la evaluación visible es por bandas (R2).
 -- v3: marcador (score_event), sanciones (sanction_event) e infracción de cada incidencia.
 -- v4: las sanciones pasan a ser incidencias (decisión tomada contra un equipo): sanction_event desaparece.
+-- v5: rúbrica CARC (escala E/C/N/U), dificultad real y recomendación de nivel en el informe, preferencias.
 -- Portable a drift (Flutter) o Room (Android). Requiere SQLite ≥ 3.37 (tablas STRICT).
 -- Ver docs/ESPECIFICACION_EVALUADOR_ARBITRAL.md §3.
 
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = FULL;     -- cada tap sobrevive a un apagado por batería (§3.1)
-PRAGMA user_version = 4;
+PRAGMA user_version = 5;
 
 -- ───────────── Catálogos ─────────────
 
@@ -62,7 +63,7 @@ CREATE TABLE assessment (
   home_team        TEXT NOT NULL,
   away_team        TEXT NOT NULL,
   observation_mode TEXT NOT NULL CHECK (observation_mode IN ('LIVE','VIDEO','LIVE_AND_VIDEO')),
-  difficulty       TEXT CHECK (difficulty IN ('LOW','MEDIUM','HIGH','VERY_HIGH')), -- solo contexto (R3)
+  difficulty       TEXT CHECK (difficulty IN ('LOW','MEDIUM','HIGH','VERY_HIGH')), -- estimada; solo contexto (R3)
   category_code    TEXT NOT NULL,                                     -- preset elegido (R6)
   category_json    TEXT NOT NULL CHECK (json_valid(category_json)),  -- snapshot de CategoryConfig
   conditions_json  TEXT CHECK (conditions_json IS NULL OR json_valid(conditions_json)),
@@ -234,7 +235,7 @@ CREATE TABLE report (
   rubric_id        TEXT NOT NULL REFERENCES rubric(id),
   status           TEXT NOT NULL CHECK (status IN ('DRAFT','READY','FINALIZED','SUPERSEDED')),
   summary          TEXT NOT NULL DEFAULT '',
-  band             TEXT CHECK (band IN ('BELOW','AT','ABOVE')),  -- resultado visible
+  band             TEXT CHECK (band IN ('E','C','N','U','BELOW','AT','ABOVE')),  -- resultado visible (v2: BELOW/AT/ABOVE)
   overall_score    REAL,                                          -- interno (auditoría)
   key_correct      INTEGER NOT NULL DEFAULT 0,
   key_total        INTEGER NOT NULL DEFAULT 0,
@@ -242,6 +243,9 @@ CREATE TABLE report (
   finalized_at     TEXT,
   canonical_json   TEXT CHECK (canonical_json IS NULL OR json_valid(canonical_json)),
   content_hash     TEXT,
+  -- v5: dificultad real del partido (la estimada está en assessment.difficulty) y recomendación del CARC
+  actual_difficulty TEXT CHECK (actual_difficulty IN ('LOW','MEDIUM','HIGH','VERY_HIGH')),
+  level_recommendation TEXT CHECK (level_recommendation IN ('UP','SAME','DOWN')),
   PRIMARY KEY (assessment_id, version),
   CHECK (status <> 'FINALIZED' OR (canonical_json IS NOT NULL AND content_hash IS NOT NULL AND finalized_at IS NOT NULL)),
   CHECK (version = 1 OR amendment_reason IS NOT NULL)
@@ -261,12 +265,12 @@ CREATE TABLE criterion_score (
   assessment_id    TEXT NOT NULL,
   version          INTEGER NOT NULL,
   criterion_code   TEXT NOT NULL,
-  suggested_band   TEXT CHECK (suggested_band IN ('BELOW','AT','ABOVE')),
+  suggested_band   TEXT CHECK (suggested_band IN ('E','C','N','U','BELOW','AT','ABOVE')),
   suggested        REAL,                                   -- interno
-  final_band       TEXT CHECK (final_band IN ('BELOW','AT','ABOVE')), -- lo que elige el evaluador
+  final_band       TEXT CHECK (final_band IN ('E','C','N','U','BELOW','AT','ABOVE')), -- lo que elige el evaluador
   not_observed     INTEGER NOT NULL DEFAULT 0 CHECK (not_observed IN (0,1)),
   justification    TEXT NOT NULL DEFAULT '',
-  cap_band         TEXT CHECK (cap_band IN ('BELOW','AT','ABOVE')),
+  cap_band         TEXT CHECK (cap_band IN ('E','C','N','U','BELOW','AT','ABOVE')),
   evidence_json    TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(evidence_json)), -- ids de incidencias
   PRIMARY KEY (assessment_id, version, criterion_code),
   FOREIGN KEY (assessment_id, version) REFERENCES report(assessment_id, version) ON DELETE CASCADE,
@@ -309,6 +313,14 @@ CREATE TABLE action_point_review (
   evidence_json    TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(evidence_json)),
   PRIMARY KEY (assessment_id, version, action_point_id),
   FOREIGN KEY (assessment_id, version) REFERENCES report(assessment_id, version) ON DELETE CASCADE
+) STRICT;
+
+-- ───────────── Preferencias de la app (v5) ─────────────
+
+-- Nombre → valor. Hoy solo 'language' ('es' | 'ca').
+CREATE TABLE app_setting (
+  name             TEXT PRIMARY KEY,
+  value            TEXT NOT NULL
 ) STRICT;
 
 -- ───────────── Sincronización futura y exportaciones ─────────────

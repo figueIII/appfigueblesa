@@ -15,13 +15,6 @@ import 'evaluation_repository.dart';
 
 const _version = 1;
 
-BandCode? _decodeBand(String? s) => switch (s) {
-      'BELOW' => BandCode.below,
-      'AT' => BandCode.at,
-      'ABOVE' => BandCode.above,
-      _ => null,
-    };
-
 String? _bandOrNull(BandCode? b) => b == null ? null : r.encodeBand(b);
 
 r.ActionPointReviewStatus _decodeReviewStatus(String s) =>
@@ -83,7 +76,7 @@ class DriftEvaluationRepository implements EvaluationRepository {
         for (final s in scores)
           s.criterionCode: r.CriterionEvaluation(
             criterionCode: s.criterionCode,
-            finalBand: _decodeBand(s.finalBand),
+            finalBand: decodeBand(s.finalBand),
             notObserved: s.notObserved == 1,
             justification: s.justification,
           ),
@@ -110,8 +103,12 @@ class DriftEvaluationRepository implements EvaluationRepository {
         for (final v in reviews)
           v.actionPointId: r.ActionPointReview(actionPointId: v.actionPointId, status: _decodeReviewStatus(v.status), comment: v.comment),
       },
+      rubricId: a.rubricId,
+      estimatedDifficulty: a.difficulty,
+      actualDifficulty: report.actualDifficulty,
+      levelRecommendation: r.decodeLevelRecommendation(report.levelRecommendation),
       finalized: report.status == 'FINALIZED'
-          ? FinalizedInfo(at: DateTime.parse(report.finalizedAt!), contentHash: report.contentHash!, band: _decodeBand(report.band))
+          ? FinalizedInfo(at: DateTime.parse(report.finalizedAt!), contentHash: report.contentHash!, band: decodeBand(report.band))
           : null,
     );
   }
@@ -186,6 +183,20 @@ class DriftEvaluationRepository implements EvaluationRepository {
             comment: v.comment,
           ));
 
+  Future<void> _writeDraft(String assessmentId, ReportCompanion c) =>
+      (db.update(db.report)..where((t) => t.assessmentId.equals(assessmentId) & t.version.equals(_version) & t.status.equals('DRAFT')))
+          .write(c);
+
+  @override
+  Future<void> saveActualDifficulty(String assessmentId, String? difficulty) =>
+      _writeDraft(assessmentId, ReportCompanion(actualDifficulty: Value(difficulty)));
+
+  @override
+  Future<void> saveLevelRecommendation(String assessmentId, r.LevelRecommendation? recommendation) => _writeDraft(
+        assessmentId,
+        ReportCompanion(levelRecommendation: Value(recommendation == null ? null : r.encodeLevelRecommendation(recommendation))),
+      );
+
   @override
   Future<void> finalize(String assessmentId, FinalizationData d) => db.transaction(() async {
         // 1) Todas las filas de criterio, con la sugerencia con la que se cerró.
@@ -199,6 +210,8 @@ class DriftEvaluationRepository implements EvaluationRepository {
             .write(ReportCompanion(
           status: const Value('FINALIZED'),
           summary: Value(d.summary.trim()),
+          actualDifficulty: Value(d.actualDifficulty),
+          levelRecommendation: Value(d.levelRecommendation == null ? null : r.encodeLevelRecommendation(d.levelRecommendation!)),
           band: Value(_bandOrNull(d.aggregate.band)),
           overallScore: Value(d.aggregate.overallScore),
           keyCorrect: Value(d.keyDecisions.correct),

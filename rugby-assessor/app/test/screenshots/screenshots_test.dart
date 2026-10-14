@@ -23,6 +23,7 @@ import '../features/home/home_screen_test.dart' show ListRepository, summary;
 import '../features/setup/match_setup_screen_test.dart' show FakeMatchRepository;
 import 'package:ref_assess/features/home/home_screen.dart';
 import 'package:ref_assess/features/setup/match_setup_screen.dart';
+import 'package:ref_assess/features/summary/report_summary_screen.dart';
 import 'package:ref_assess/core/design_system/theme.dart';
 import 'package:ref_assess/data/drift_evaluation_repository.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
@@ -140,13 +141,14 @@ void main() {
   });
 
   for (final b in Brightness.values) {
-    testWidgets('evaluación: área A con tope y banda contraria a la sugerencia (${b.name})', (tester) async {
+    testWidgets('evaluación: área D con tope y banda contraria a la sugerencia (${b.name})', (tester) async {
       final h = evaluation.Harness();
       await h.pump(tester, brightness: b);
-      await evaluation.tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-above')));
-      await tester.enterText(find.byKey(const ValueKey('justification-A1_SCRUM')), 'Visto en vídeo.');
+      await evaluation.openTab(tester, 'D');
+      await evaluation.tapVisible(tester, find.byKey(const ValueKey('band-D2_SCRUM_SEQUENCE_SAFETY-competent')));
+      await tester.enterText(find.byKey(const ValueKey('justification-D2_SCRUM_SEQUENCE_SAFETY')), 'Visto en vídeo.');
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const ValueKey('suggested-A1_SCRUM')));
+      await tester.ensureVisible(find.byKey(const ValueKey('suggested-D2_SCRUM_SEQUENCE_SAFETY')));
       await tester.pumpAndSettle();
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/20_evaluacion_area_${b.name}.png'));
     });
@@ -156,7 +158,7 @@ void main() {
     final h = evaluation.Harness();
     await h.pump(tester);
     for (final c in evaluation.rubric.criteria.take(9)) {
-      h.controller.setBand(c.code, h.controller.suggestions[c.code]!.suggestedBand ?? BandCode.at);
+      h.controller.setBand(c.code, h.controller.suggestions[c.code]!.suggestedBand ?? BandCode.competent);
     }
     await tester.pumpAndSettle();
     await evaluation.openTab(tester, 'close');
@@ -201,6 +203,29 @@ void main() {
     await tester.runAsync(() => f.dispose());
   });
 
+  for (final b in Brightness.values) {
+    testWidgets('resumen del informe cerrado (${b.name})', (tester) async {
+      late exportfx.ExportFixture f;
+      late SummaryData data;
+      await tester.runAsync(() async {
+        f = await exportfx.ExportFixture.create();
+        final (_, doc) = await f.exporter().buildValidatedDocument(f.firstId);
+        data = (doc, kDefaultRubric);
+      });
+      tester.view.physicalSize = const Size(390, 1600) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildRefTheme(b),
+        home: ReportSummaryScreen(load: () async => data, onBackToMenu: () {}, onOpenFullReport: () {}),
+      ));
+      await tester.pumpAndSettle();
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/24_resumen_${b.name}.png'));
+      await tester.runAsync(() => f.dispose());
+    });
+  }
+
   Future<void> phone(WidgetTester tester, Brightness b, Widget home) async {
     tester.view.physicalSize = const Size(390, 844) * 3;
     tester.view.devicePixelRatio = 3;
@@ -218,7 +243,7 @@ void main() {
           repository: ListRepository([
             summary('live', 'LIVE', marks: 7),
             summary('review', 'POST_MATCH', marks: 14, home: 'CR Sant Cugat'),
-            summary('done', 'FINALIZED', marks: 12, band: BandCode.at, home: 'UE Santboiana'),
+            summary('done', 'FINALIZED', marks: 12, band: BandCode.competent, home: 'UE Santboiana'),
           ]),
           rubric: kDefaultRubric,
           onNewMatch: () async {},

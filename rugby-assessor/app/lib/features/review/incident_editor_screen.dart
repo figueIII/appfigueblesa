@@ -600,7 +600,7 @@ class _CriterionRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Cuenta en el criterio', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+                      Text('Cuenta en la competencia', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
                       Text(
                         '${code.substring(0, 2)} · ${criterionLabel(code)}',
                         style: RefType.body.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),

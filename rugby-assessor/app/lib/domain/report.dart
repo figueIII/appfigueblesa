@@ -43,7 +43,7 @@ class Finding {
       Finding(id: id, kind: kind, criterionCode: criterionCode ?? this.criterionCode, text: text ?? this.text, evidenceIncidentIds: evidenceIncidentIds);
 }
 
-/// Recomendación obligatoria para el próximo informe (vive por árbitro, spec §1.4).
+/// Recomendación para el próximo informe (vive por árbitro, spec §1.4). Opcional.
 class ActionPoint {
   const ActionPoint({required this.id, required this.criterionCode, required this.text, required this.successIndicator});
   final String id;
@@ -77,27 +77,48 @@ class ActionPointReview {
   final String comment;
 }
 
-// ───────────── Reglas de cierre ─────────────
+/// Recomendación del CARC sobre el nivel de los próximos partidos.
+enum LevelRecommendation {
+  /// ↑ Probar partidos de más exigencia.
+  up,
+
+  /// = Mantener en partidos similares.
+  same,
+
+  /// ↓ Reducir la exigencia de los partidos.
+  down,
+}
+
+String encodeLevelRecommendation(LevelRecommendation r) => switch (r) {
+      LevelRecommendation.up => 'UP',
+      LevelRecommendation.same => 'SAME',
+      LevelRecommendation.down => 'DOWN',
+    };
+
+LevelRecommendation? decodeLevelRecommendation(String? s) => switch (s) {
+      'UP' => LevelRecommendation.up,
+      'SAME' => LevelRecommendation.same,
+      'DOWN' => LevelRecommendation.down,
+      _ => null,
+    };
+
+/// Dificultad del partido (estimada al prepararlo, real al cerrar el informe).
+const List<String> kDifficultyCodes = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'];
+
+// ───────────── Avisos de cierre ─────────────
+//
+// Desde la rúbrica CARC (v3) NADA bloquea el cierre: ni las bandas, ni las justificaciones, ni el
+// resumen, las fortalezas, las áreas de mejora o las recomendaciones. La app solo AVISA de lo que
+// falta antes de cerrar (port de validateForFinalization en domain/usecases.ts, todo WARNING).
 
 enum CloseIssueCode {
-  // Incidencias (las de la pantalla 2)
+  /// Hay marcas sin veredicto: no cuentan en la sugerencia.
   incidentVerdictPending,
-  keyIncidentNotesRequired,
-  incidentExpectedDecisionRequired,
-  incidentImpactNotConfirmed,
-  // Criterios
+
+  /// Competencia sin valorar (ni banda ni "no observado"): no cuenta en la valoración.
   criterionBandMissing,
-  criterionJustificationRequired,
-  deviationJustificationTooShort,
-  capOverrideJustificationTooShort,
-  // Informe
-  summaryRequired,
-  strengthsCount,
-  developmentCount,
-  actionPointsCount,
-  findingTextRequired,
-  actionPointTextRequired,
-  actionPointIndicatorRequired,
+
+  /// Recomendación de un informe anterior sin revisar.
   previousActionPointNotReviewed,
 }
 
@@ -112,88 +133,43 @@ class CloseIssue {
   String toString() => 'CloseIssue(${code.name}${criterionCode != null ? ' $criterionCode' : ''})';
 }
 
-/// Estado de un criterio concreto (lo usa la tarjeta para decir qué le falta).
-List<CloseIssue> criterionIssues(CriterionEvaluation? e, SuggestedScore s, int minChars, String code) {
-  if (e == null || (!e.notObserved && e.finalBand == null)) {
-    return [CloseIssue(CloseIssueCode.criterionBandMissing, criterionCode: code)];
-  }
-  final text = e.justification.trim();
-  if (text.isEmpty) return [CloseIssue(CloseIssueCode.criterionJustificationRequired, criterionCode: code)];
-  final deviates = e.finalBand != null && s.suggestedBand != null && e.finalBand != s.suggestedBand;
-  final overCap = e.finalBand != null && s.capBand != null && bandRank(e.finalBand!) > bandRank(s.capBand!);
-  if ((deviates || overCap) && text.length < minChars) {
-    return [
-      CloseIssue(
-        overCap ? CloseIssueCode.capOverrideJustificationTooShort : CloseIssueCode.deviationJustificationTooShort,
-        criterionCode: code,
-      ),
-    ];
-  }
-  return const [];
-}
+/// ¿Está valorada la competencia? (banda elegida o "no observado"). Solo informa del progreso.
+bool isRated(CriterionEvaluation? e) => e != null && (e.notObserved || e.finalBand != null);
 
-/// ¿Exige esta elección una justificación larga? (banda distinta de la sugerida o por encima del tope)
+/// ¿Conviene justificar esta elección? (banda distinta de la sugerida o por encima del tope).
+/// Es una recomendación: la justificación nunca es obligatoria.
 bool needsLongJustification(CriterionEvaluation? e, SuggestedScore s) {
   final b = e?.finalBand;
   if (b == null) return false;
   return (s.suggestedBand != null && b != s.suggestedBand) || (s.capBand != null && bandRank(b) > bandRank(s.capBand!));
 }
 
-List<CloseIssue> validateForClose({
+/// Avisos antes de cerrar. Nunca impiden cerrar: la app los enseña y el evaluador decide.
+List<CloseIssue> closeWarnings({
   required AssessmentRubric rubric,
   required Iterable<Incident> incidents,
-  required Map<String, SuggestedScore> suggestions,
   required Map<String, CriterionEvaluation> evaluations,
-  required String summary,
-  required List<Finding> findings,
-  required List<ActionPoint> actionPoints,
   required List<PreviousActionPoint> openPrevious,
   required Map<String, ActionPointReview> previousReviews,
 }) {
   final issues = <CloseIssue>[];
   for (final i in incidents) {
-    for (final r in reviewIssues(i)) {
-      issues.add(CloseIssue(
-        switch (r) {
-          ReviewIssue.verdictPending => CloseIssueCode.incidentVerdictPending,
-          ReviewIssue.keyIncidentNotesMissing => CloseIssueCode.keyIncidentNotesRequired,
-          ReviewIssue.expectedDecisionMissing => CloseIssueCode.incidentExpectedDecisionRequired,
-          ReviewIssue.impactNotConfirmed => CloseIssueCode.incidentImpactNotConfirmed,
-        },
-        incidentId: i.id,
-      ));
+    if (reviewIssues(i).contains(ReviewIssue.verdictPending)) {
+      issues.add(CloseIssue(CloseIssueCode.incidentVerdictPending, incidentId: i.id));
     }
   }
   for (final c in rubric.criteria) {
-    issues.addAll(criterionIssues(evaluations[c.code], suggestions[c.code]!, rubric.scoring.minJustificationChars, c.code));
-  }
-  final strengths = findings.where((f) => f.kind == FindingKind.strength).toList();
-  final development = findings.where((f) => f.kind == FindingKind.development).toList();
-  if (strengths.isEmpty || strengths.length > 3) issues.add(const CloseIssue(CloseIssueCode.strengthsCount));
-  if (development.isEmpty || development.length > 3) issues.add(const CloseIssue(CloseIssueCode.developmentCount));
-  for (final f in findings) {
-    if (f.text.trim().isEmpty) issues.add(CloseIssue(CloseIssueCode.findingTextRequired, itemId: f.id));
-  }
-  if (actionPoints.isEmpty || actionPoints.length > 3) issues.add(const CloseIssue(CloseIssueCode.actionPointsCount));
-  for (final a in actionPoints) {
-    if (a.text.trim().isEmpty) issues.add(CloseIssue(CloseIssueCode.actionPointTextRequired, itemId: a.id));
-    if (a.successIndicator.trim().isEmpty) issues.add(CloseIssue(CloseIssueCode.actionPointIndicatorRequired, itemId: a.id));
+    if (!isRated(evaluations[c.code])) issues.add(CloseIssue(CloseIssueCode.criterionBandMissing, criterionCode: c.code));
   }
   for (final p in openPrevious) {
     if (!previousReviews.containsKey(p.id)) issues.add(CloseIssue(CloseIssueCode.previousActionPointNotReviewed, itemId: p.id));
   }
-  if (summary.trim().isEmpty) issues.add(const CloseIssue(CloseIssueCode.summaryRequired));
   return issues;
 }
 
 // ───────────── Forma canónica e integridad ─────────────
 
-String encodeBand(BandCode? b) => switch (b) {
-      null => 'null',
-      BandCode.below => 'BELOW',
-      BandCode.at => 'AT',
-      BandCode.above => 'ABOVE',
-    };
+String encodeBand(BandCode? b) => b == null ? 'null' : bandWireCode(b);
 
 Object? _band(BandCode? b) => b == null ? null : encodeBand(b);
 
@@ -204,8 +180,9 @@ String encodeReviewStatus(ActionPointReviewStatus s) => switch (s) {
       ActionPointReviewStatus.notObserved => 'NOT_OBSERVED',
     };
 
-/// Objeto `report` del formato de exportación 2.0 (export/assessment-export.schema.json), SIN
-/// `status`: es exactamente lo que cubre el hash.
+/// Objeto `report` del formato de exportación 2.2 (export/assessment-export.schema.json), SIN
+/// `status`: es exactamente lo que cubre el hash. Las fortalezas, áreas de mejora y
+/// recomendaciones sin texto no se incluyen (son opcionales: un hueco vacío no es contenido).
 Map<String, Object?> buildSignedReport({
   required int version,
   required DateTime finalizedAt,
@@ -219,7 +196,10 @@ Map<String, Object?> buildSignedReport({
   required List<ActionPoint> actionPoints,
   required List<PreviousActionPoint> openPrevious,
   required Map<String, ActionPointReview> previousReviews,
+  String? actualDifficulty,
+  LevelRecommendation? levelRecommendation,
 }) {
+  final written = [for (final f in findings) if (f.text.trim().isNotEmpty) f];
   Map<String, Object?> finding(Finding f) => {'criterionCode': f.criterionCode, 'text': f.text.trim(), 'evidenceIncidentIds': f.evidenceIncidentIds};
   return {
     'version': version,
@@ -244,11 +224,13 @@ Map<String, Object?> buildSignedReport({
     'overallScore': aggregate.overallScore,
     'keyDecisionAccuracy': {'correct': keyDecisions.correct, 'total': keyDecisions.total, 'ratio': keyDecisions.ratio},
     'summary': summary.trim(),
-    'strengths': [for (final f in findings.where((f) => f.kind == FindingKind.strength)) finding(f)],
-    'developmentAreas': [for (final f in findings.where((f) => f.kind == FindingKind.development)) finding(f)],
+    'actualDifficulty': actualDifficulty,
+    'levelRecommendation': levelRecommendation == null ? null : encodeLevelRecommendation(levelRecommendation),
+    'strengths': [for (final f in written.where((f) => f.kind == FindingKind.strength)) finding(f)],
+    'developmentAreas': [for (final f in written.where((f) => f.kind == FindingKind.development)) finding(f)],
     'actionPoints': [
       for (final a in actionPoints)
-        {'id': a.id, 'criterionCode': a.criterionCode, 'text': a.text.trim(), 'successIndicator': a.successIndicator.trim()},
+        if (a.text.trim().isNotEmpty) {'id': a.id, 'criterionCode': a.criterionCode, 'text': a.text.trim(), 'successIndicator': a.successIndicator.trim()},
     ],
     'previousActionPointReviews': [
       for (final p in openPrevious)

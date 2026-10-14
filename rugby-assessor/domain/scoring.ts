@@ -1,5 +1,5 @@
 // Motor de puntuación. Calcula con números en una escala INTERNA (1–10) y expone BANDAS
-// cualitativas (BELOW / AT / ABOVE), que son lo único visible para el evaluador y en el informe.
+// cualitativas (E / C / N / U del CARC), que son lo único visible para el evaluador y en el informe.
 // Puro y determinista. Ver docs/…/ESPECIFICACION… §2.3.
 
 import type {
@@ -8,7 +8,7 @@ import type {
 } from './model.ts';
 
 const IMPACT_ORDER: ImpactLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'MATCH_DEFINING'];
-const BAND_RANK: Record<BandCode, number> = { BELOW: 0, AT: 1, ABOVE: 2 };
+const BAND_RANK: Record<BandCode, number> = { U: 0, N: 1, C: 2, E: 3 };
 const ASSESSED: ReadonlySet<string> = new Set<AssessedVerdict>(['CORRECT', 'INCORRECT', 'MISSED', 'DEBATABLE']);
 const ERROR: ReadonlySet<string> = new Set(['INCORRECT', 'MISSED']);
 /** Tolerancia para que el ruido de coma flotante no cruce un límite de banda (8,000000001). */
@@ -19,7 +19,7 @@ const atLeast = (i: ImpactLevel, min: ImpactLevel) => IMPACT_ORDER.indexOf(i) >=
 export const bandRank = (b: BandCode) => BAND_RANK[b];
 export const minBand = (a: BandCode, b: BandCode): BandCode => (BAND_RANK[a] <= BAND_RANK[b] ? a : b);
 
-/** Valor interno → banda. Los empates exactos en un límite estricto caen en la banda central. */
+/** Valor interno → banda. Los empates exactos en el límite estricto de E caen en C. */
 export function toBand(value: number, rubric: AssessmentRubric): BandCode {
   for (const b of rubric.bands) {
     if (b.lowerInclusive ? value >= b.lower - EPS : value > b.lower + EPS) return b.code;
@@ -47,9 +47,9 @@ export interface SuggestedScore {
 /**
  * Sugerencia de un criterio (escala interna):
  *   p     = Σ wᵢ·créditoᵢ / Σ wᵢ                      (precisión ponderada por impacto)
- *   s_p   = atZero + (atOne − atZero)·p                (1 + 8p: 100 % ⇒ 9, representativo de ABOVE)
+ *   s_p   = atZero + (atOne − atZero)·p                (1 + 8p: 100 % ⇒ 9, representativo de E)
  *   n     = W / w_MEDIUM                               (evidencia en "incidencias medias equivalentes")
- *   s     = (k·baseline + n·s_p) / (k + n)             (contracción hacia "En el nivel" con poca evidencia)
+ *   s     = (k·baseline + n·s_p) / (k + n)             (contracción hacia "Competente" con poca evidencia)
  * Tope: si se cumple una CapRule, la sugerencia de ESTE criterio no supera su banda tope
  * (s = min(s, representativo de la banda tope)). No se propaga a otros criterios ni a la global.
  */
@@ -95,9 +95,9 @@ export interface AggregateResult {
 }
 
 /**
- * Agregación: cada banda final del evaluador vale su representativo (5 / 7 / 9); media
- * ponderada por criterios dentro del área y por áreas en la global. Los "no observados"
- * salen y su peso se redistribuye. La banda se obtiene del valor sin redondear.
+ * Agregación: cada banda final del evaluador vale su representativo (9 / 7 / 5 / 3); media
+ * ponderada por criterios dentro del área y por áreas en la global. Los "no observados" y los
+ * que quedan sin valorar salen y su peso se redistribuye. La banda se obtiene del valor sin redondear.
  */
 export function aggregate(rubric: AssessmentRubric, scores: readonly CriterionScore[]): AggregateResult {
   const byCode = new Map(scores.map((s) => [s.criterionCode, s]));

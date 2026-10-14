@@ -152,7 +152,7 @@ void main() {
     expect(i.sessionMs, 12 * min);
     expect(formatClock(i.matchTime.matchClockMs), '12:00');
     expect(i.category, IncidentCategory.ruck);
-    expect(i.criterionCode, 'A3_TACKLE_RUCK');
+    expect(i.criterionCode, 'E3_GATES_ENTRIES');
     expect(i.verdict, Verdict.pending);
     expect(find.text('Marcado: Ruck · 12:00'), findsOneWidget);
     expect(find.text('1 marca · 1 por revisar'), findsOneWidget);

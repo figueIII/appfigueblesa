@@ -9,8 +9,10 @@ import '../domain/clock.dart' as d;
 import '../domain/laws.dart' as d;
 import '../domain/match_facts.dart' as d;
 import '../domain/model.dart' as d;
+import '../domain/rubric_default.dart';
 import 'codecs.dart';
 import 'db/app_database.dart';
+import 'db/migrations.dart';
 import 'live_session_repository.dart';
 import 'session_time.dart';
 
@@ -305,9 +307,9 @@ class AssessmentSetup {
   final AppDatabase db;
   final IdGenerator ids;
 
-  /// Rúbrica v2.0.0 (rubric-default.ts). Se registra como referencia; la definición completa
-  /// (pesos y bandas) se carga en la pantalla 3.
-  static const rubricId = '01929d6e-0000-7000-8000-000000000001';
+  /// Rúbrica de los partidos nuevos: competencias del CARC (rubric-default.ts). Se registra como
+  /// referencia; la definición completa (competencias y escala) está en el código.
+  static String get rubricId => kDefaultRubric.id;
 
   Future<String> createLiveAssessment({
     required d.CategoryConfig category,
@@ -328,16 +330,7 @@ class AssessmentSetup {
     final id = ids.next();
     String? opt(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
     return db.transaction(() async {
-      await db.into(db.rubric).insert(
-            RubricCompanion.insert(
-              id: rubricId,
-              code: 'RUGBY-XV-BASE',
-              version: '2.0.0',
-              status: 'PUBLISHED',
-              definitionJson: '{"code":"RUGBY-XV-BASE","version":"2.0.0"}',
-            ),
-            mode: InsertMode.insertOrIgnore,
-          );
+      await ensureCarcRubricRow(db);
       // El MISMO árbitro (y evaluador) se reutiliza entre partidos: de ello depende el
       // seguimiento de recomendaciones de un informe al siguiente (spec §1.4).
       final refereeId = await _officialIdFor(refereeName.trim(), now);

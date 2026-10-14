@@ -1,5 +1,6 @@
-// Estado de la pantalla 3. Toda la lógica (sugerencias, topes, agregación, reglas de cierre,
-// hash) vive en el dominio puro; aquí solo se orquesta y se persiste.
+// Estado de la pantalla 3. Toda la lógica (sugerencias, topes, agregación, avisos de cierre,
+// hash) vive en el dominio puro; aquí solo se orquesta y se persiste. Desde la rúbrica CARC nada
+// es obligatorio para cerrar: las competencias sin valorar y los textos vacíos no cuentan.
 //
 // Persistencia: cada cambio se guarda en orden. Los textos (justificaciones, resumen, hallazgos)
 // se guardan con un retardo de 400 ms tras la última pulsación; flush() los fuerza (al cerrar o
@@ -50,6 +51,13 @@ class EvaluationController extends ChangeNotifier {
   final Map<String, ActionPointReview> _previousReviews = {};
   FinalizedInfo? finalized;
 
+  /// Dificultad estimada (preparación del partido) y real (se valora al cerrar). LOW…VERY_HIGH.
+  String? estimatedDifficulty;
+  String? actualDifficulty;
+
+  /// Recomendación del CARC sobre el nivel de los próximos partidos.
+  LevelRecommendation? levelRecommendation;
+
   bool saveFailed = false;
   bool finalizing = false;
   bool _disposed = false;
@@ -77,20 +85,16 @@ class EvaluationController extends ChangeNotifier {
   AggregateResult get aggregateResult => aggregate(rubric, _choices);
   KeyDecisionAccuracy get keyDecisions => keyDecisionAccuracy(incidents);
 
-  List<CloseIssue> issuesFor(String code) =>
-      criterionIssues(_evaluations[code], suggestions[code]!, rubric.scoring.minJustificationChars, code);
-  bool isComplete(String code) => issuesFor(code).isEmpty;
+  /// ¿Competencia valorada (banda o "no observado")? Solo sirve para mostrar el progreso.
+  bool isComplete(String code) => isRated(_evaluations[code]);
   int get completedCount => rubric.criteria.where((c) => isComplete(c.code)).length;
   int completedIn(RubricArea a) => a.criteria.where((c) => isComplete(c.code)).length;
 
-  List<CloseIssue> get closeIssues => validateForClose(
+  /// Avisos antes de cerrar (nunca bloquean).
+  List<CloseIssue> get closeWarningsList => closeWarnings(
     rubric: rubric,
     incidents: incidents,
-    suggestions: suggestions,
     evaluations: _evaluations,
-    summary: summary,
-    findings: _findings,
-    actionPoints: _actionPoints,
     openPrevious: openPrevious,
     previousReviews: _previousReviews,
   );
@@ -122,6 +126,9 @@ class EvaluationController extends ChangeNotifier {
         ..clear()
         ..addAll(s.previousReviews);
       finalized = s.finalized;
+      estimatedDifficulty = s.estimatedDifficulty;
+      actualDifficulty = s.actualDifficulty;
+      levelRecommendation = s.levelRecommendation;
       loadState = EvaluationLoadState.ready;
     } catch (_) {
       loadState = EvaluationLoadState.failed;
@@ -136,6 +143,13 @@ class EvaluationController extends ChangeNotifier {
   void setBand(String code, BandCode band) {
     if (isFinalized) return;
     _evaluations[code] = _eval(code).copyWith(finalBand: band, notObserved: false);
+    _saveCriterion(code);
+  }
+
+  /// Quita la banda elegida: la competencia vuelve a quedar sin valorar (no cuenta).
+  void clearBand(String code) {
+    if (isFinalized) return;
+    _evaluations[code] = _eval(code).copyWith(finalBand: null);
     _saveCriterion(code);
   }
 
@@ -168,11 +182,27 @@ class EvaluationController extends ChangeNotifier {
     _debounce('summary', () => _repo.saveSummary(assessmentId, summary));
   }
 
-  /// Criterio por defecto: el primero elegido "Por encima" (fortaleza) o "Por debajo" (mejora).
+  /// Dificultad real del partido (null = sin indicar).
+  void setActualDifficulty(String? code) {
+    if (isFinalized) return;
+    actualDifficulty = code;
+    _notify();
+    _enqueue(() => _repo.saveActualDifficulty(assessmentId, code));
+  }
+
+  /// Recomendación de nivel del CARC (null = sin indicar).
+  void setLevelRecommendation(LevelRecommendation? r) {
+    if (isFinalized) return;
+    levelRecommendation = r;
+    _notify();
+    _enqueue(() => _repo.saveLevelRecommendation(assessmentId, r));
+  }
+
+  /// Competencia por defecto: la primera valorada E (fortaleza) o U / N (mejora).
   String _defaultCriterion(FindingKind kind) {
-    final wanted = kind == FindingKind.strength ? BandCode.above : BandCode.below;
+    final wanted = kind == FindingKind.strength ? const {BandCode.excellent} : const {BandCode.urgent, BandCode.notYet};
     for (final c in rubric.criteria) {
-      if (_evaluations[c.code]?.finalBand == wanted) return c.code;
+      if (wanted.contains(_evaluations[c.code]?.finalBand)) return c.code;
     }
     return rubric.criteria.first.code;
   }
@@ -260,13 +290,20 @@ class EvaluationController extends ChangeNotifier {
 
   // ───────────── Cierre del informe ─────────────
 
-  /// Cierra el informe si no quedan problemas. Devuelve los problemas (vacío = cerrado).
-  Future<List<CloseIssue>> finalize() async {
-    final issues = closeIssues;
-    if (issues.isNotEmpty || isFinalized) return issues;
+  /// Cierra el informe. Nada es obligatorio: los avisos ([closeWarningsList]) se enseñan antes,
+  /// pero no impiden cerrar. Las fortalezas, áreas de mejora y recomendaciones sin texto se
+  /// descartan (un hueco vacío no es contenido del informe).
+  Future<void> finalize() async {
+    if (isFinalized) return;
     finalizing = true;
     _notify();
     try {
+      for (final f in [..._findings.where((f) => f.text.trim().isEmpty)]) {
+        removeFinding(f.id);
+      }
+      for (final a in [..._actionPoints.where((a) => a.text.trim().isEmpty)]) {
+        removeActionPoint(a.id);
+      }
       await flush();
       if (saveFailed) throw StateError('PENDING_WRITES');
       final at = _now();
@@ -285,6 +322,8 @@ class EvaluationController extends ChangeNotifier {
         actionPoints: _actionPoints,
         openPrevious: openPrevious,
         previousReviews: _previousReviews,
+        actualDifficulty: actualDifficulty,
+        levelRecommendation: levelRecommendation,
       );
       final hash = contentHash(signed);
       await _repo.finalize(
@@ -301,10 +340,11 @@ class EvaluationController extends ChangeNotifier {
           findings: List.of(_findings),
           actionPoints: List.of(_actionPoints),
           previousReviews: Map.of(_previousReviews),
+          actualDifficulty: actualDifficulty,
+          levelRecommendation: levelRecommendation,
         ),
       );
       finalized = FinalizedInfo(at: at, contentHash: hash, band: agg.band);
-      return const [];
     } finally {
       finalizing = false;
       _notify();

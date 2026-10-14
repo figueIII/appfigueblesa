@@ -1,4 +1,5 @@
 // Port a Dart puro de domain/scoring.ts. Misma fórmula, mismos topes, misma tolerancia.
+// Escala del CARC: U (0) < N (1) < C (2) < E (3); el índice de BandCode es el rango.
 // Calcula en una escala INTERNA (1–10) y expone solo BANDAS (resolución R2).
 // test/domain/scoring_test.dart replica, número a número, los casos de test/scoring.test.ts.
 
@@ -13,10 +14,10 @@ const Set<Verdict> _errors = {Verdict.incorrect, Verdict.missed};
 
 bool _atLeast(ImpactLevel i, ImpactLevel min) => i.index >= min.index;
 
-int bandRank(BandCode b) => b.index; // below 0 · at 1 · above 2
+int bandRank(BandCode b) => b.index; // U 0 · N 1 · C 2 · E 3
 BandCode minBand(BandCode a, BandCode b) => bandRank(a) <= bandRank(b) ? a : b;
 
-/// Valor interno → banda. Los empates exactos en un límite estricto caen en la banda central.
+/// Valor interno → banda. Los empates exactos en el límite estricto de E caen en C.
 BandCode toBand(double value, AssessmentRubric rubric) {
   for (final b in rubric.bands) {
     if (b.lowerInclusive ? value >= b.lower - _eps : value > b.lower + _eps) return b.code;
@@ -58,7 +59,7 @@ class SuggestedScore {
 ///   p   = Σ wᵢ·créditoᵢ / Σ wᵢ                 precisión ponderada por impacto
 ///   s_p = atZero + (atOne − atZero)·p           1 + 8p
 ///   n   = W / w_MEDIUM                          evidencia en "incidencias medias equivalentes"
-///   s   = (k·baseline + n·s_p) / (k + n)        contracción hacia "En el nivel"
+///   s   = (k·baseline + n·s_p) / (k + n)        contracción hacia "Competente"
 /// Tope: si se cumple una CapRule, la sugerencia de ESTE criterio no supera su banda tope.
 SuggestedScore suggestCriterionScore(String criterion, Iterable<Incident> incidents, AssessmentRubric rubric) {
   final p = rubric.scoring;

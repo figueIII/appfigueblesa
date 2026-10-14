@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/design_system/theme.dart';
+import '../core/i18n.dart';
 import '../data/match_repository.dart';
 import '../data/session_time.dart';
+import '../domain/rubric.dart';
 import '../features/evaluation/evaluation_controller.dart';
 import '../features/evaluation/evaluation_screen.dart';
 import '../features/evaluation/export_controller.dart';
@@ -15,6 +17,7 @@ import '../features/review/incident_editor_screen.dart';
 import '../features/review/review_controller.dart';
 import '../features/review/review_screen.dart';
 import '../features/setup/match_setup_screen.dart';
+import '../features/summary/report_summary_screen.dart';
 import 'app_services.dart';
 
 /// Raíz de la app: inicio → preparación → directo → revisión → evaluación (y exportación).
@@ -34,11 +37,19 @@ class RefAssessApp extends StatelessWidget {
       theme: buildRefTheme(Brightness.light),
       darkTheme: buildRefTheme(Brightness.dark),
       home: Builder(
-        builder: (context) => HomeScreen(
-          repository: services.matches,
-          rubric: services.rubric,
-          onNewMatch: () => nav.newMatch(context),
-          onOpenMatch: (m) => nav.openMatch(context, m),
+        // El inicio se reconstruye al cambiar de idioma (las demás pantallas lo leen al abrirse).
+        builder: (context) => ValueListenableBuilder<AppLanguage>(
+          valueListenable: appLanguage,
+          builder: (context, _, _) => HomeScreen(
+            repository: services.matches,
+            rubric: services.rubric,
+            onNewMatch: () => nav.newMatch(context),
+            onOpenMatch: (m) => nav.openMatch(context, m),
+            onLanguage: (l) {
+              appLanguage.value = l;
+              return services.settings.saveLanguage(l);
+            },
+          ),
         ),
       ),
     );
@@ -138,48 +149,79 @@ class AppNavigator {
     controller.dispose();
   }
 
-  /// Revisión post-partido (Pantalla 2) → evaluación (Pantalla 3).
-  Future<void> openReview(BuildContext context, String id) => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (reviewContext) => ReviewScreen(
-            controller: ReviewController(assessmentId: id, repository: s.live),
-            onContinueToRubric: () => Navigator.of(reviewContext).push(
-              MaterialPageRoute<void>(
+  /// Revisión post-partido (Pantalla 2) → evaluación (Pantalla 3). Al cerrar el informe, la
+  /// evaluación se sustituye por el resumen del partido.
+  Future<void> openReview(BuildContext context, String id) async {
+    final rubric = await s.rubricOf(id);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (reviewContext) => ReviewScreen(
+          controller: ReviewController(assessmentId: id, repository: s.live),
+          onContinueToRubric: () => Navigator.of(reviewContext).push(
+            MaterialPageRoute<void>(
+              builder: (evalContext) => _evaluation(
+                id,
+                rubric,
                 // Desde la evaluación, "ir a la revisión" vuelve a la pantalla anterior.
-                builder: (evalContext) => _evaluation(id, onOpenReview: () => Navigator.of(evalContext).pop()),
+                onOpenReview: () => Navigator.of(evalContext).pop(),
+                onFinalized: () => Navigator.of(evalContext).pushReplacement(_summaryRoute(id, rubric)),
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 
-  /// Informe cerrado: evaluación en solo lectura con la sección de exportación.
-  Future<void> openEvaluation(BuildContext context, String id) => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (evalContext) => _evaluation(
-            id,
-            onOpenReview: () => Navigator.of(evalContext).push(
-              MaterialPageRoute<void>(
-                builder: (reviewContext) => ReviewScreen(
-                  controller: ReviewController(assessmentId: id, repository: s.live),
-                  onContinueToRubric: () => Navigator.of(reviewContext).pop(),
+  /// Informe cerrado: resumen del partido (desde ahí, informe completo, exportación y menú).
+  Future<void> openEvaluation(BuildContext context, String id) async {
+    final rubric = await s.rubricOf(id);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(_summaryRoute(id, rubric));
+  }
+
+  MaterialPageRoute<void> _summaryRoute(String id, AssessmentRubric rubric) => MaterialPageRoute<void>(
+        builder: (summaryContext) => ReportSummaryScreen(
+          load: () async {
+            final (source, doc) = await s.exporter.buildValidatedDocument(id);
+            return (doc, s.exporter.rubricOf(source));
+          },
+          onBackToMenu: () => Navigator.of(summaryContext).popUntil((r) => r.isFirst),
+          onOpenFullReport: () => Navigator.of(summaryContext).push(
+            MaterialPageRoute<void>(
+              builder: (evalContext) => _evaluation(
+                id,
+                rubric,
+                onOpenReview: () => Navigator.of(evalContext).push(
+                  MaterialPageRoute<void>(
+                    builder: (reviewContext) => ReviewScreen(
+                      controller: ReviewController(assessmentId: id, repository: s.live),
+                      onContinueToRubric: () => Navigator.of(reviewContext).pop(),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
+          createExport: (home, away) => _exportController(id, home, away),
         ),
       );
 
-  Widget _evaluation(String id, {required VoidCallback onOpenReview}) => EvaluationScreen(
-        controller: EvaluationController(assessmentId: id, repository: s.evaluation, rubric: s.rubric, ids: s.ids),
+  ExportController _exportController(String id, String home, String away) => ExportController(
+        assessmentId: id,
+        exporter: s.exporter,
+        sharer: s.sharer,
+        bytesSharer: s.bytesSharer,
+        homeTeam: home,
+        awayTeam: away,
+      );
+
+  Widget _evaluation(String id, AssessmentRubric rubric, {required VoidCallback onOpenReview, VoidCallback? onFinalized}) =>
+      EvaluationScreen(
+        controller: EvaluationController(assessmentId: id, repository: s.evaluation, rubric: rubric, ids: s.ids),
         onOpenReview: onOpenReview,
-        createExport: (home, away) => ExportController(
-          assessmentId: id,
-          exporter: s.exporter,
-          sharer: s.sharer,
-          bytesSharer: s.bytesSharer,
-          homeTeam: home,
-          awayTeam: away,
-        ),
+        onFinalized: onFinalized,
+        createExport: (home, away) => _exportController(id, home, away),
       );
 }

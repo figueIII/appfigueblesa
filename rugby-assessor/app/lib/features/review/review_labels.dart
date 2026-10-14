@@ -3,8 +3,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/design_system/tokens.dart';
+import '../../core/i18n.dart';
 import '../../domain/model.dart';
 import '../../domain/review.dart';
+import '../../domain/rubric_default.dart';
+import '../../domain/rubric_legacy.dart';
 
 String verdictLabel(Verdict v) => switch (v) {
   Verdict.pending => 'Sin veredicto',
@@ -114,45 +117,11 @@ String issueLabel(ReviewIssue i) => switch (i) {
   ReviewIssue.impactNotConfirmed => 'Confirma el impacto',
 };
 
-/// Criterios de la rúbrica v2.0.0 (rubric-default.ts), agrupados por área.
-const List<(String area, List<(String code, String label)> criteria)> kRubricCriteria = [
-  (
-    'A · Fases de juego',
-    [
-      ('A1_SCRUM', 'Scrum'),
-      ('A2_LINEOUT_MAUL', 'Touch y maul'),
-      ('A3_TACKLE_RUCK', 'Placaje y ruck'),
-      ('A4_OFFSIDE_SPACE', 'Espacio y fuera de juego'),
-    ],
-  ),
-  (
-    'B · Comunicación y gestión',
-    [
-      ('B1_VERBAL_CONTROL', 'Control verbal y preventivo'),
-      ('B2_TONE_PRESENCE', 'Tono, señalización y presencia'),
-      ('B3_CAPTAINS_PLAYERS', 'Capitanes y jugadores'),
-      ('B4_ADVANTAGE', 'Ventaja'),
-    ],
-  ),
-  (
-    'C · Leyes y disciplina',
-    [
-      ('C1_LAW_ACCURACY', 'Exactitud en la aplicación de las leyes'),
-      ('C2_FOUL_PLAY', 'Juego desleal'),
-      ('C3_SANCTION_CONSISTENCY', 'Consistencia disciplinaria'),
-    ],
-  ),
-  (
-    'D · Físico y posicionamiento',
-    [('D1_FITNESS', 'Condición física'), ('D2_POSITIONING', 'Posicionamiento'), ('D3_RUNNING_LINES', 'Líneas de carrera')],
-  ),
-];
+/// Competencias de la rúbrica CARC (rubric-default.ts), agrupadas por área, en el idioma elegido.
+List<(String area, List<(String code, String label)> criteria)> get kRubricCriteria => [
+      for (final a in kDefaultRubric.areas) ('${a.letter} · ${a.label}', [for (final c in a.criteria) (c.code, c.label)]),
+    ];
 
-String criterionLabel(String code) {
-  for (final (_, list) in kRubricCriteria) {
-    for (final (c, label) in list) {
-      if (c == code) return label;
-    }
-  }
-  return code;
-}
+/// Texto de la competencia (o del criterio v2 de un partido antiguo).
+String criterionLabel(String code) =>
+    kDefaultRubric.criterionOrNull(code)?.label ?? kLegacyRubricV2.criterionOrNull(code)?.label ?? code;

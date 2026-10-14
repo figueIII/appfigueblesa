@@ -75,7 +75,7 @@ void main() {
     test('formato 2.1: marcador, sanciones con desglose e infracción de cada incidencia', () async {
       final out = await f.exporter().export(f.firstId, ExportFormat.json);
       final doc = jsonDecode(out.file.readAsStringSync()) as Map<String, dynamic>;
-      expect(doc['formatVersion'], '2.1');
+      expect(doc['formatVersion'], '2.2');
       final stats = doc['matchStats'] as Map;
       final score = stats['score'] as Map;
       expect([score['home'], score['away']], [24, 19]);
@@ -125,10 +125,18 @@ void main() {
       expect(exportSchema().validate(jsonDecode(jsonEncode(doc))).isValid, isTrue);
     });
 
-    test('un documento 2.0 (sin marcador ni infracciones) sigue siendo válido', () {
-      final doc = jsonDecode(File('../export/example-export.json').readAsStringSync()) as Map<String, dynamic>;
+    test('un documento 2.0 (rúbrica v2, sin marcador ni infracciones) sigue siendo válido', () {
+      final doc = jsonDecode(File('test/export/fixtures/example-export-2.0.json').readAsStringSync()) as Map<String, dynamic>;
       expect(doc['formatVersion'], '2.0');
       expect(exportSchema().validate(doc).isValid, isTrue);
+    });
+
+    test('el ejemplo 2.2 (CARC: escala E/C/N/U, nivel, catalán, dificultad real, recomendación) es válido', () {
+      final doc = jsonDecode(File('../export/example-export.json').readAsStringSync()) as Map<String, dynamic>;
+      expect(doc['formatVersion'], '2.2');
+      expect(exportSchema().validate(doc).isValid, isTrue);
+      final report = doc['report'] as Map;
+      expect((report['actualDifficulty'], report['levelRecommendation'], report['band']), ('VERY_HIGH', 'SAME', 'C'));
     });
 
     test('un documento que no cumple el esquema no se exporta', () async {
@@ -186,12 +194,13 @@ void main() {
       for (final s in [
         // Cabecera
         'INFORME DE EVALUACIÓN ARBITRAL', 'Club Local RC – Visitante RT', 'Liga DHCAT · J5', 'Árbitro Ejemplo', 'Asistente Uno, Asistente Dos',
-        'Evaluadora Ejemplo', '17/10/2026 · 17:00', 'Campo Municipal de La Foixarda', 'Alta (descriptiva: no modifica la evaluación)',
+        'Evaluadora Ejemplo', '17/10/2026 · 17:00', 'Campo Municipal de La Foixarda', 'Dificultad estimada Alta', 'Dificultad real Muy alta',
         // Resumen ejecutivo
-        'RESUMEN EJECUTIVO', 'Banda global del partido', 'Decisiones clave acertadas: 1 de 2',
+        'RESUMEN EJECUTIVO', 'Valoración global', 'Decisiones clave acertadas: 1 de 2', 'Recomendación', '= Mantener en partidos similares',
+        'Escala: E · Excelente · C · Competente · N · No competente todavía · U · Revisión urgente',
         // Desglose
-        'DESGLOSE POR ÁREAS Y CRITERIOS', 'A · Gestión de fases de juego', 'D · Condición física, posicionamiento y líneas de carrera',
-        'No observado', 'Sin touchs disputadas', 'Tope automático por error grave', 'Sugerencia de la app: En el nivel',
+        'DESGLOSE POR ÁREAS Y COMPETENCIAS', 'A · Colocación', 'E · Fases dinámicas', 'F · Disciplina', 'A1 · N1 · El punto de partida',
+        'No observado', 'Sin touchs disputadas', 'Tope automático por error grave', 'Sugerencia de la app: C · Competente', 'E · Excelente',
         // Hallazgos y recomendaciones
         'FORTALEZAS', 'Ventaja territorial bien leída.', 'ÁREAS DE MEJORA', 'RECOMENDACIONES PARA EL PRÓXIMO INFORME', 'Indicador de logro:',
         'SEGUIMIENTO DE RECOMENDACIONES ANTERIORES', 'Parcial',
@@ -204,7 +213,7 @@ void main() {
         'Amarilla · 12:00 · Visitante RT · Placaje alto / contacto con la cabeza',
         'Derrumbar la melé', // ley de la incidencia en el anexo (la columna estrecha parte la línea)
         // Pie
-        'Informe v1 · Rúbrica RUGBY-XV-BASE 2.0.0 · SHA-256 ${out.reportHash.substring(0, 8)}…${out.reportHash.substring(56)}',
+        'Informe v1 · Rúbrica CARC-COMPETENCIES 3.0.0 · SHA-256 ${out.reportHash.substring(0, 8)}…${out.reportHash.substring(56)}',
         'Página 1 de $pages', 'Página $pages de $pages',
       ]) {
         expect(text.replaceAll(RegExp(r'\s+'), ' '), contains(s), reason: 'falta en el PDF: "$s"');
@@ -223,7 +232,7 @@ void main() {
         for (final s in report['criterionScores'] as List) if (s['suggested'] != null) '${s['suggested']}',
       }..removeWhere((v) => v == 'null' || !v.contains('.')); // los enteros 5/7/9 se confundirían con fechas: los cubre la regla de decimales
       expect(internal, isNotEmpty, reason: 'el informe de prueba tiene medias no enteras');
-      final text = pdfText(out.file).replaceAll('RUGBY-XV-BASE 2.0.0', '');
+      final text = pdfText(out.file).replaceAll('CARC-COMPETENCIES 3.0.0', '');
       for (final v in internal) {
         expect(text, isNot(contains(v)), reason: 'valor interno visible: $v');
       }
@@ -281,7 +290,7 @@ void main() {
       expect(c.error, isNull);
       expect(sink.files.map((r) => r.format), [ExportFormat.pdf, ExportFormat.json]);
       expect(c.lastSharedNames, [for (final r in sink.files) r.fileName]);
-      expect(jsonDecode(utf8.decode(sink.files.last.bytes))['formatVersion'], '2.1');
+      expect(jsonDecode(utf8.decode(sink.files.last.bytes))['formatVersion'], '2.2');
       c.dispose();
     });
   });

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/design_system/theme.dart';
 import '../../core/design_system/tokens.dart';
+import '../../core/i18n.dart';
 import '../../data/match_repository.dart';
 import '../../domain/rubric.dart';
 import '../evaluation/widgets/band_widgets.dart';
@@ -19,6 +20,7 @@ class HomeScreen extends StatefulWidget {
     required this.rubric,
     required this.onNewMatch,
     required this.onOpenMatch,
+    this.onLanguage,
   });
 
   final MatchRepository repository;
@@ -29,6 +31,9 @@ class HomeScreen extends StatefulWidget {
 
   /// Abre el partido en el punto del flujo que le corresponde; al volver, se recarga.
   final Future<void> Function(MatchSummary match) onOpenMatch;
+
+  /// Cambio de idioma desde el menú (castellano / catalán). Null = sin selector (tests).
+  final Future<void> Function(AppLanguage language)? onLanguage;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -69,7 +74,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final matches = _matches;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(backgroundColor: c.background, foregroundColor: c.onSurface, title: const Text('RefAssess')),
+      appBar: AppBar(
+        backgroundColor: c.background,
+        foregroundColor: c.onSurface,
+        title: const Text('RefAssess'),
+        actions: [
+          if (widget.onLanguage != null)
+            PopupMenuButton<AppLanguage>(
+              key: const ValueKey('home-menu'),
+              tooltip: tr('Menú', 'Menú'),
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (l) => widget.onLanguage!(l),
+              itemBuilder: (context) => [
+                PopupMenuItem<AppLanguage>(
+                  enabled: false,
+                  child: Text(tr('Idioma', 'Idioma'), style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+                ),
+                for (final l in AppLanguage.values)
+                  CheckedPopupMenuItem<AppLanguage>(
+                    key: ValueKey('language-${l.name}'),
+                    value: l,
+                    checked: appLanguage.value == l,
+                    child: Text(languageName(l)),
+                  ),
+              ],
+            ),
+        ],
+      ),
       body: SafeArea(
         child: switch ((matches, _error)) {
           (_, final String error) => _Message(icon: Icons.error_rounded, title: 'Error', text: error, color: c.negative),

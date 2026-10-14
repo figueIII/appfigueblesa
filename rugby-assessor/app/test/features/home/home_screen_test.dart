@@ -66,7 +66,7 @@ void main() {
     summary('live', 'LIVE', marks: 7),
     summary('ready', 'READY', home: 'Otro Local'),
     summary('review', 'POST_MATCH', marks: 1),
-    summary('done', 'FINALIZED', marks: 12, band: BandCode.above),
+    summary('done', 'FINALIZED', marks: 12, band: BandCode.excellent),
   ];
 
   testWidgets('sin partidos: estado vacío y "Nuevo partido" siempre visible', (tester) async {
@@ -93,7 +93,7 @@ void main() {
     expect(find.text('En directo · 7 marcas'), findsOneWidget);
     expect(find.text('Sin empezar'), findsOneWidget);
     expect(find.text('Terminado · 1 marca'), findsOneWidget);
-    expect(find.text('Por encima del nivel'), findsOneWidget, reason: 'banda del informe cerrado, sin cifras');
+    expect(find.text('E · Excelente'), findsOneWidget, reason: 'banda del informe cerrado, sin cifras');
     expect(find.text('Continuar'), findsOneWidget);
     expect(find.text('Empezar'), findsOneWidget);
     expect(find.text('Revisar'), findsOneWidget);
@@ -119,11 +119,11 @@ void main() {
   });
 
   testWidgets('las secciones vacías no se muestran', (tester) async {
-    await pump(tester, [summary('done', 'FINALIZED', band: BandCode.below)]);
+    await pump(tester, [summary('done', 'FINALIZED', band: BandCode.notYet)]);
     expect(find.text('Finalizados · 1'), findsOneWidget);
     expect(find.textContaining('En curso'), findsNothing);
     expect(find.textContaining('Pendientes'), findsNothing);
-    expect(find.text('Por debajo del nivel'), findsOneWidget);
+    expect(find.text('N · No competente todavía'), findsOneWidget);
   });
 
   test('formatKickoff', () {

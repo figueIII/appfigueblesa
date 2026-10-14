@@ -12,23 +12,23 @@ const incident: Incident = {
   id: INC_ID, assessmentId: '0192a1b0-0000-7000-8000-000000000001', seq: 12,
   capturedAt: { sessionMs: 3_900_000, wallUtc: '2026-10-17T16:05:14Z' },
   matchTime: { period: 'H2', phaseLabel: 'IN_PLAY', periodElapsedMs: 1_034_000, matchClockMs: 3_134_000, overtimeMs: 0, integrity: 'OK' },
-  category: 'OTHER_LAW', criterionCode: 'C1_LAW_ACCURACY', polarity: 'NEGATIVE', gamePhase: 'RESTART', fieldZone: 'OWN_22_TO_HALF',
+  category: 'OTHER_LAW', criterionCode: 'C2_MATERIAL_EFFECT', polarity: 'NEGATIVE', gamePhase: 'RESTART', fieldZone: 'OWN_22_TO_HALF',
   decisionTaken: { outcomes: ['SCRUM'], againstTeam: 'HOME', description: 'Saque de centro que no recorre 10 m: scrum en el centro.' },
   decisionExpected: { outcomes: ['FREE_KICK', 'SCRUM'], againstTeam: 'HOME', lawRef: '12', description: 'El equipo no infractor elige: lanzar de nuevo, scrum o puntapié libre (opción no ofrecida).' },
   verdict: 'INCORRECT', impact: 'HIGH', impactConfirmed: true, notes: 'Error de reglamento teórico: no ofreció las opciones al capitán.',
   attachments: [], source: 'ONE_TAP', status: 'ENRICHED', updatedAt: '2026-10-17T19:40:00Z',
 };
 
-// Bandas elegidas por el evaluador (todo "En el nivel" salvo lo indicado).
-const chosen: Partial<Record<string, BandCode>> = { C1_LAW_ACCURACY: 'BELOW', B4_ADVANTAGE: 'ABOVE' };
+// Bandas elegidas por el evaluador (todo "Competente" salvo lo indicado).
+const chosen: Partial<Record<string, BandCode>> = { C2_MATERIAL_EFFECT: 'N', C3_ADVANTAGE_CONSISTENCY: 'E' };
 const criterionScores: CriterionScore[] = R.areas.flatMap((a) => a.criteria).map((c) => {
   const s = suggestCriterionScore(c.code, [incident], R);
   return {
     criterionCode: c.code, suggestedBand: s.suggestedBand, suggested: s.suggested,
-    finalBand: chosen[c.code] ?? 'AT', final: null, notObserved: false,
-    justification: c.code === 'C1_LAW_ACCURACY'
+    finalBand: chosen[c.code] ?? 'C', final: null, notObserved: false,
+    justification: c.code === 'C2_MATERIAL_EFFECT'
       ? 'No ofreció las opciones reglamentarias tras el saque de centro corto (52:14).'
-      : c.code === 'B4_ADVANTAGE' ? 'Ventajas largas y bien cerradas, con lectura territorial.' : 'Acorde al nivel del partido.',
+      : c.code === 'C3_ADVANTAGE_CONSISTENCY' ? 'Ventajas largas y bien cerradas, con lectura territorial.' : '',
     capBand: s.capBand, evidenceIncidentIds: s.evidenceIncidentIds,
   };
 });
@@ -40,9 +40,10 @@ const report = {
   areaScores: agg.areaScores, band: agg.band, overallScore: agg.overallScore,
   keyDecisionAccuracy: keyDecisionAccuracy([incident]),
   summary: 'Partido bien gestionado en lo físico y en la ventaja; el conocimiento reglamentario en reinicios es la prioridad.',
-  strengths: [{ criterionCode: 'B4_ADVANTAGE', text: 'Ventaja territorial bien leída y cerrada con claridad.', evidenceIncidentIds: [] }],
-  developmentAreas: [{ criterionCode: 'C1_LAW_ACCURACY', text: 'Opciones del equipo no infractor en reinicios incorrectos.', evidenceIncidentIds: [INC_ID] }],
-  actionPoints: [{ id: '0192a1b0-0000-7000-8000-0000000000a1', criterionCode: 'C1_LAW_ACCURACY', text: 'Repasar la ley 12 (saque de centro y reinicios) y sus opciones.', successIndicator: 'En la próxima evaluación, todas las infracciones en reinicios se resuelven con las opciones correctas.' }],
+  actualDifficulty: 'VERY_HIGH', levelRecommendation: 'SAME',
+  strengths: [{ criterionCode: 'C3_ADVANTAGE_CONSISTENCY', text: 'Ventaja territorial bien leída y cerrada con claridad.', evidenceIncidentIds: [] }],
+  developmentAreas: [{ criterionCode: 'C2_MATERIAL_EFFECT', text: 'Opciones del equipo no infractor en reinicios incorrectos.', evidenceIncidentIds: [INC_ID] }],
+  actionPoints: [{ id: '0192a1b0-0000-7000-8000-0000000000a1', criterionCode: 'C2_MATERIAL_EFFECT', text: 'Repasar la ley 12 (saque de centro y reinicios) y sus opciones.', successIndicator: 'En la próxima evaluación, todas las infracciones en reinicios se resuelven con las opciones correctas.' }],
   previousActionPointReviews: [],
 };
 const { status: _omit, ...signed } = report;
@@ -50,8 +51,8 @@ const contentHash = createHash('sha256').update(canonicalJson(signed), 'utf8').d
 const category = categoryPreset('SM_DHCAT_1_2_3');
 
 const doc = {
-  format: 'rugby-referee-assessment', formatVersion: '2.0', exportedAt: '2026-10-18T09:13:05Z',
-  generator: { app: 'RefAssess', appVersion: '0.2.0', rubricEngineVersion: '2.0.0' },
+  format: 'rugby-referee-assessment', formatVersion: '2.2', exportedAt: '2026-10-18T09:13:05Z',
+  generator: { app: 'RefAssess', appVersion: '1.2.0', rubricEngineVersion: R.version },
   match: {
     assessmentId: incident.assessmentId, competition: 'DHCAT', round: 'J5',
     category: { code: category.code, name: category.name, format: category.format, periodLengthMin: category.periodLengthMin, sinBinMin: category.sinBinMin, lawVariations: category.lawVariations },
@@ -64,8 +65,11 @@ const doc = {
   assessor: { id: '0192a1b0-0000-7000-8000-0000000000e1', fullName: 'Evaluador Ejemplo' },
   rubric: {
     id: R.id, code: R.code, version: R.version,
-    bands: R.bands.map((b) => ({ code: b.code, label: b.label })),
-    areas: R.areas.map((a) => ({ code: a.code, name: a.name, weight: a.weight, criteria: a.criteria.map((c) => ({ code: c.code, name: c.name, weight: c.weight })) })),
+    bands: R.bands.map((b) => ({ code: b.code, label: b.label, labelCa: b.labelCa })),
+    areas: R.areas.map((a) => ({
+      code: a.code, name: a.name, nameCa: a.nameCa, weight: a.weight,
+      criteria: a.criteria.map((c) => ({ code: c.code, name: c.name, nameCa: c.nameCa, level: c.level, weight: c.weight })),
+    })),
   },
   report,
   incidents: [{
@@ -77,4 +81,4 @@ const doc = {
   integrity: { algorithm: 'SHA-256', canonicalization: 'sorted-keys-no-whitespace-v1', hashedPointer: '/report', contentHash },
 };
 writeFileSync(new URL('../export/example-export.json', import.meta.url), JSON.stringify(doc, null, 2) + '\n');
-console.log('band', agg.band, '| areas', agg.areaScores.map((a) => `${a.areaCode}:${a.band}`).join(' '), '| C1 sugerida', criterionScores.find((c) => c.criterionCode === 'C1_LAW_ACCURACY')!.suggestedBand, '| hash', contentHash.slice(0, 16));
+console.log('band', agg.band, '| areas', agg.areaScores.map((a) => `${a.areaCode}:${a.band}`).join(' '), '| C2 sugerida', criterionScores.find((c) => c.criterionCode === 'C2_MATERIAL_EFFECT')!.suggestedBand, '| hash', contentHash.slice(0, 16));

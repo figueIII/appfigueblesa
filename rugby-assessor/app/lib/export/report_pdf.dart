@@ -2,16 +2,20 @@
 // (export_document.dart): lo que se imprime es exactamente lo firmado. PURO salvo las fuentes, que
 // llegan ya cargadas (assets incrustados: funciona sin conexión).
 //
-// Reglas de contenido (resolución R2): ninguna nota numérica. Las bandas se muestran con texto y un
-// indicador de nivel de tres casillas (dibujado, no tipográfico), legible también en blanco y negro.
+// Reglas de contenido (resolución R2): ninguna nota numérica. Las bandas (E / C / N / U del CARC) se
+// muestran con letra, texto y un indicador de nivel de cuatro casillas (dibujado, no tipográfico),
+// legible también en blanco y negro. Los textos del CARC salen en el idioma elegido en la app.
 
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../core/i18n.dart';
 import '../data/codecs.dart';
+import '../domain/report.dart';
 import '../domain/rubric.dart';
+import '../features/evaluation/evaluation_labels.dart';
 import '../features/live/live_labels.dart';
 import '../features/review/review_labels.dart';
 import 'export_document.dart';
@@ -36,25 +40,15 @@ const _panel = PdfColor.fromInt(0xFFF1F5F9);
 const _accent = PdfColor.fromInt(0xFF1E40AF);
 
 PdfColor _bandFill(BandCode b) => switch (b) {
-      BandCode.below => const PdfColor.fromInt(0xFF92400E),
-      BandCode.at => _ink,
-      BandCode.above => const PdfColor.fromInt(0xFF166534),
+      BandCode.excellent => const PdfColor.fromInt(0xFF166534),
+      BandCode.competent => _ink,
+      BandCode.notYet => const PdfColor.fromInt(0xFF92400E),
+      BandCode.urgent => const PdfColor.fromInt(0xFF991B1B),
     };
 
-BandCode? _band(Object? code) => switch (code) {
-      'BELOW' => BandCode.below,
-      'AT' => BandCode.at,
-      'ABOVE' => BandCode.above,
-      _ => null,
-    };
+BandCode? _band(Object? code) => decodeBand(code as String?);
 
-String _difficultyLabel(String? d) => switch (d) {
-      'LOW' => 'Baja',
-      'MEDIUM' => 'Media',
-      'HIGH' => 'Alta',
-      'VERY_HIGH' => 'Muy alta',
-      _ => 'No indicada',
-    };
+String _difficultyLabel(String? d) => d == null ? 'No indicada' : difficultyText(d);
 
 String _observationLabel(String m) => switch (m) {
       'LIVE' => 'En directo',
@@ -114,14 +108,20 @@ Future<Uint8List> buildReportPdf(
       pw.TextStyle(font: font ?? fonts.regular, fontSize: size, color: color, lineSpacing: height ?? 1.5);
 
   final criteriaByCode = {for (final c in rubric.criteria) c.code: c};
-  String criterionName(String code) => '${code.substring(0, 2)} · ${criteriaByCode[code]?.name ?? code}';
+  String criterionName(String code) {
+    final c = criteriaByCode[code];
+    if (c == null) return code;
+    return [code.substring(0, 2), ?c.levelLabel, c.label].join(' · ');
+  }
+
+  String bandText(BandCode b) => bandFullLabel(rubric, b);
 
   // ───────────── Piezas reutilizables ─────────────
 
   pw.Widget gauge(BandCode? band, {double cell = 9}) => pw.Row(
         mainAxisSize: pw.MainAxisSize.min,
         children: [
-          for (final (i, b) in const [BandCode.below, BandCode.at, BandCode.above].indexed) ...[
+          for (final (i, b) in BandCode.values.indexed) ...[
             if (i > 0) pw.SizedBox(width: 2),
             pw.Container(
               width: cell * 1.6,
@@ -141,7 +141,7 @@ Future<Uint8List> buildReportPdf(
         children: [
           gauge(band, cell: size * 0.8),
           pw.SizedBox(height: 2),
-          pw.Text(band == null ? 'Sin banda' : rubric.band(band).label,
+          pw.Text(band == null ? 'Sin valorar' : bandText(band),
               style: st(size, font: fonts.bold, color: band == null ? _muted : _bandFill(band), height: 1.2)),
         ],
       );
@@ -152,7 +152,7 @@ Future<Uint8List> buildReportPdf(
         children: [
           gauge(band, cell: size * 0.8),
           pw.SizedBox(width: 6),
-          pw.Text(band == null ? 'Sin banda' : rubric.band(band).label,
+          pw.Text(band == null ? 'Sin valorar' : bandText(band),
               style: st(size, font: bold ? fonts.bold : fonts.medium, color: band == null ? _muted : _bandFill(band))),
         ],
       );
@@ -241,7 +241,8 @@ Future<Uint8List> buildReportPdf(
               kv('Campo', match['venue']! as String),
               kv('Categoría', '${category['name']} · partes de ${category['periodLengthMin']} min'),
               if (score != null) kv('Resultado', '$home ${score['home']} – ${score['away']} $away'),
-              kv('Dificultad', '${_difficultyLabel(match['difficulty'] as String?)} (descriptiva: no modifica la evaluación)'),
+              kv('Dificultad estimada', _difficultyLabel(match['difficulty'] as String?)),
+              kv('Dificultad real', _difficultyLabel(report['actualDifficulty'] as String?)),
               kv('Cierre', closedText),
             ]),
           ),
@@ -254,6 +255,8 @@ Future<Uint8List> buildReportPdf(
   final globalBand = _band(report['band']);
   final areaScores = [for (final a in report['areaScores']! as List) a as Map];
   final keys = report['keyDecisionAccuracy']! as Map;
+  final recommendation = decodeLevelRecommendation(report['levelRecommendation'] as String?);
+  final summaryText = (report['summary'] as String?) ?? '';
   final summary = <pw.Widget>[
     sectionTitle('Resumen ejecutivo'),
     pw.Row(
@@ -266,11 +269,20 @@ Future<Uint8List> buildReportPdf(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('Banda global del partido', style: st(8.5, font: fonts.medium, color: _muted)),
+              pw.Text(tr('Valoración global', 'Valoració global'), style: st(8.5, font: fonts.medium, color: _muted)),
               pw.SizedBox(height: 6),
               bandLabel(globalBand, size: 13),
               pw.SizedBox(height: 4),
-              pw.Text(globalBand == null ? '' : rubric.band(globalBand).description, style: st(8.5, color: _muted)),
+              pw.Text(globalBand == null ? '' : rubric.band(globalBand).help, style: st(8.5, color: _muted)),
+              pw.SizedBox(height: 8),
+              pw.Text(tr('Recomendación', 'Recomanació'), style: st(8.5, font: fonts.medium, color: _muted)),
+              pw.SizedBox(height: 2),
+              pw.Text(
+                recommendation == null
+                    ? 'No indicada'
+                    : '${levelRecommendationLabel(recommendation).$1}  ${levelRecommendationLabel(recommendation).$2}',
+                style: st(9.5, font: fonts.bold),
+              ),
             ],
           ),
         ),
@@ -283,7 +295,7 @@ Future<Uint8List> buildReportPdf(
                 pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 4),
                   child: pw.Row(children: [
-                    pw.Expanded(child: pw.Text('${area.letter} · ${area.name}', style: st(9))),
+                    pw.Expanded(child: pw.Text('${area.letter} · ${area.label}', style: st(9))),
                     bandLabel(_band(areaScores.firstWhere((a) => a['areaCode'] == area.code)['band']), size: 9),
                   ]),
                 ),
@@ -299,20 +311,24 @@ Future<Uint8List> buildReportPdf(
         ),
       ],
     ),
-    pw.SizedBox(height: 8),
-    pw.Text(report['summary']! as String, style: st(9.5)),
+    if (summaryText.trim().isNotEmpty) ...[pw.SizedBox(height: 8), pw.Text(summaryText, style: st(9.5))],
+    pw.SizedBox(height: 4),
+    pw.Text(
+      'Escala: ${[for (final b in rubric.bands) bandText(b.code)].join(' · ')}',
+      style: st(8, color: _muted),
+    ),
   ];
 
   // Desglose por áreas y criterios
   final scores = {for (final s in report['criterionScores']! as List) (s as Map)['criterionCode'] as String: s};
-  final breakdown = <pw.Widget>[sectionTitle('Desglose por áreas y criterios')];
+  final breakdown = <pw.Widget>[sectionTitle(tr('Desglose por áreas y competencias', 'Desglossament per àrees i competències'))];
   for (final area in rubric.areas) {
     // Título del área + su tabla en un bloque que no se parte: nunca queda una cabecera huérfana.
     final block = <pw.Widget>[];
     block.add(pw.Padding(
       padding: const pw.EdgeInsets.only(top: 6, bottom: 4),
       child: pw.Row(children: [
-        pw.Expanded(child: pw.Text('${area.letter} · ${area.name}', style: st(10.5, font: fonts.bold))),
+        pw.Expanded(child: pw.Text('${area.letter} · ${area.label}', style: st(10.5, font: fonts.bold))),
         bandLabel(_band(areaScores.firstWhere((a) => a['areaCode'] == area.code)['band']), size: 9),
       ]),
     ));
@@ -323,7 +339,7 @@ Future<Uint8List> buildReportPdf(
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: _panel),
           children: [
-            for (final h in ['Criterio', 'Banda', 'Justificación'])
+            for (final h in [tr('Competencia', 'Competència'), tr('Valoración', 'Valoració'), 'Justificación'])
               pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(h, style: st(8, font: fonts.bold, color: _muted))),
           ],
         ),
@@ -335,8 +351,8 @@ Future<Uint8List> buildReportPdf(
             final suggested = _band(s['suggestedBand']);
             final cap = _band(s['capBand']);
             final notes = [
-              if (suggested != null && suggested != finalBand && !notObserved) 'Sugerencia de la app: ${rubric.band(suggested).label}.',
-              if (cap != null) 'Tope automático por error grave: máximo ${rubric.band(cap).label}.',
+              if (suggested != null && suggested != finalBand && !notObserved) 'Sugerencia de la app: ${bandText(suggested)}.',
+              if (cap != null) 'Tope automático por error grave: máximo ${bandText(cap)}.',
             ];
             return pw.TableRow(
               verticalAlignment: pw.TableCellVerticalAlignment.top,
@@ -351,7 +367,7 @@ Future<Uint8List> buildReportPdf(
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text(s['justification'] as String, style: st(8.5)),
+                      pw.Text((s['justification'] as String).trim().isEmpty ? '—' : s['justification'] as String, style: st(8.5)),
                       for (final n in notes) pw.Text(n, style: st(7.5, font: fonts.italic, color: _muted)),
                     ],
                   ),
@@ -380,13 +396,17 @@ Future<Uint8List> buildReportPdf(
         ]),
       );
 
+  // Todo es opcional: una sección sin contenido no se imprime.
+  final strengths = report['strengths']! as List;
+  final development = report['developmentAreas']! as List;
+  final actionPoints = report['actionPoints']! as List;
   final findings = <pw.Widget>[
-    sectionTitle('Fortalezas'),
-    for (final f in report['strengths']! as List) bullet(criterionName((f as Map)['criterionCode'] as String), f['text'] as String),
-    sectionTitle('Áreas de mejora'),
-    for (final f in report['developmentAreas']! as List) bullet(criterionName((f as Map)['criterionCode'] as String), f['text'] as String),
-    sectionTitle('Recomendaciones para el próximo informe'),
-    for (final (i, a) in (report['actionPoints']! as List).indexed)
+    if (strengths.isNotEmpty) sectionTitle('Fortalezas'),
+    for (final f in strengths) bullet(criterionName((f as Map)['criterionCode'] as String), f['text'] as String),
+    if (development.isNotEmpty) sectionTitle('Áreas de mejora'),
+    for (final f in development) bullet(criterionName((f as Map)['criterionCode'] as String), f['text'] as String),
+    if (actionPoints.isNotEmpty) sectionTitle('Recomendaciones para el próximo informe'),
+    for (final (i, a) in actionPoints.indexed)
       pw.Container(
         width: double.infinity,
         margin: const pw.EdgeInsets.only(bottom: 6),
@@ -396,13 +416,15 @@ Future<Uint8List> buildReportPdf(
           pw.Text('Recomendación ${i + 1} · ${criterionName((a as Map)['criterionCode'] as String)}', style: st(8.5, font: fonts.bold, color: _muted)),
           pw.SizedBox(height: 2),
           pw.Text(a['text'] as String, style: st(9.5, font: fonts.medium)),
-          pw.SizedBox(height: 3),
-          pw.RichText(
-            text: pw.TextSpan(children: [
-              pw.TextSpan(text: 'Indicador de logro: ', style: st(8.5, font: fonts.bold)),
-              pw.TextSpan(text: a['successIndicator'] as String, style: st(8.5)),
-            ]),
-          ),
+          if ((a['successIndicator'] as String? ?? '').trim().isNotEmpty) ...[
+            pw.SizedBox(height: 3),
+            pw.RichText(
+              text: pw.TextSpan(children: [
+                pw.TextSpan(text: 'Indicador de logro: ', style: st(8.5, font: fonts.bold)),
+                pw.TextSpan(text: a['successIndicator'] as String, style: st(8.5)),
+              ]),
+            ),
+          ],
         ]),
       ),
     if ((report['previousActionPointReviews']! as List).isNotEmpty) ...[

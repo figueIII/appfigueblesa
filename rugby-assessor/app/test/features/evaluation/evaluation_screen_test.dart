@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ref_assess/core/design_system/theme.dart';
+import 'package:ref_assess/core/i18n.dart';
 import 'package:ref_assess/core/platform_ports.dart';
 import 'package:ref_assess/data/evaluation_repository.dart';
 import 'package:ref_assess/domain/model.dart';
@@ -32,11 +33,11 @@ Incident seed(String id, int t, IncidentCategory c, Verdict v, ImpactLevel impac
     );
 
 final defaultIncidents = [
-  seed('scrum', 30 * min, IncidentCategory.scrum, Verdict.missed, ImpactLevel.matchDefining), // A1: tope
-  seed('tackle', 12 * min, IncidentCategory.tackle, Verdict.correct, ImpactLevel.medium), // A3: En el nivel
-  seed('ko1', 20 * min, IncidentCategory.knockOnForwardPass, Verdict.incorrect, ImpactLevel.high), // C1: dos HIGH
+  seed('scrum', 30 * min, IncidentCategory.scrum, Verdict.missed, ImpactLevel.matchDefining), // D2: U con tope
+  seed('tackle', 12 * min, IncidentCategory.tackle, Verdict.correct, ImpactLevel.medium), // E2: C
+  seed('ko1', 20 * min, IncidentCategory.knockOnForwardPass, Verdict.incorrect, ImpactLevel.high), // C2: dos HIGH
   seed('ko2', 50 * min, IncidentCategory.otherLaw, Verdict.incorrect, ImpactLevel.high),
-  seed('adv', 55 * min, IncidentCategory.advantage, Verdict.correct, ImpactLevel.low), // B4: En el nivel
+  seed('adv', 55 * min, IncidentCategory.advantage, Verdict.correct, ImpactLevel.low), // C3: C
 ];
 
 class SeqIds implements IdGenerator {
@@ -46,13 +47,14 @@ class SeqIds implements IdGenerator {
 }
 
 class Harness {
-  Harness({List<Incident>? incidents, List<PreviousActionPoint> previous = const []})
+  Harness({List<Incident>? incidents, List<PreviousActionPoint> previous = const [], this.onFinalized})
       : repo = InMemoryEvaluationRepository(EvaluationSnapshot(
           assessmentId: 'a1',
           refereeName: 'Árbitro Ejemplo',
           homeTeam: 'Local',
           awayTeam: 'Visitante',
           incidents: incidents ?? defaultIncidents,
+          estimatedDifficulty: 'HIGH',
           evaluations: const {},
           summary: '',
           findings: const [],
@@ -62,6 +64,7 @@ class Harness {
         ));
 
   final InMemoryEvaluationRepository repo;
+  final VoidCallback? onFinalized;
   int openedReview = 0;
   late final controller = EvaluationController(
     assessmentId: 'a1',
@@ -81,18 +84,17 @@ class Harness {
       theme: buildRefTheme(brightness),
       home: MediaQuery(
         data: MediaQueryData(size: size, textScaler: TextScaler.linear(textScale)),
-        child: EvaluationScreen(controller: controller, onOpenReview: () => openedReview++),
+        child: EvaluationScreen(controller: controller, onOpenReview: () => openedReview++, onFinalized: onFinalized),
       ),
     ));
     await tester.pumpAndSettle();
   }
 
-  /// Rellena todo por el controlador (para probar el cierre sin repetir 14 tarjetas).
-  void completeAll({String justification = 'Acorde a lo observado.'}) {
+  /// Valora todo por el controlador (para probar el cierre sin repetir 25 tarjetas).
+  void completeAll() {
     for (final c in rubric.criteria) {
       final s = controller.suggestions[c.code]!;
-      controller.setBand(c.code, s.suggestedBand ?? BandCode.at);
-      controller.setJustification(c.code, justification);
+      controller.setBand(c.code, s.suggestedBand ?? BandCode.competent);
     }
     controller.setSummary('Partido exigente bien gestionado; el reglamento en reinicios es la prioridad.');
     final st = controller.addFinding(FindingKind.strength)!;
@@ -131,180 +133,214 @@ void expectNoScores(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('área A: sugerencias en bandas, tope visible en A1 y ninguna puntuación en pantalla', (tester) async {
+  tearDown(() => appLanguage.value = AppLanguage.es);
+
+  testWidgets('seis áreas A–F; sugerencias E/C/N/U con tope visible y ninguna puntuación en pantalla', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    expect(find.text('A · Gestión de fases de juego'), findsOneWidget);
-    expect(find.byKey(const ValueKey('suggested-A1_SCRUM')), findsOneWidget);
-    expect(
-      find.descendant(of: find.byKey(const ValueKey('suggested-A1_SCRUM')), matching: find.text('Por debajo del nivel')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('cap-A1_SCRUM')), findsOneWidget);
-    expect(find.textContaining('Scrum 30:00 · no pitada · decisivo'), findsOneWidget, reason: 'la marca que provoca el tope');
-    expect(
-      find.descendant(of: find.byKey(const ValueKey('suggested-A3_TACKLE_RUCK')), matching: find.text('En el nivel')),
-      findsOneWidget,
-    );
-    expect(find.textContaining('sin marcas valoradas'), findsNWidgets(2), reason: 'A2 y A4 sin evidencia');
+    expect(find.text('A · Colocación'), findsOneWidget);
+    expect(find.textContaining('sin marcas valoradas'), findsNWidgets(6), reason: 'colocación: sin marcas');
+    expect(find.byKey(const ValueKey('level-A1_STATIC_START')), findsOneWidget);
+    expect(find.text('A1 · El punto de partida en las fases estáticas es adecuado para seguir el juego'), findsOneWidget);
     expectNoScores(tester);
-    for (final l in ['B', 'C', 'D', 'close']) {
+    await openTab(tester, 'D');
+    expect(find.text('D · Fases estáticas'), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('suggested-D2_SCRUM_SEQUENCE_SAFETY')), matching: find.text('U · Revisión urgente')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('cap-D2_SCRUM_SEQUENCE_SAFETY')), findsOneWidget);
+    expect(find.textContaining('Scrum 30:00 · no pitada · decisivo'), findsOneWidget, reason: 'la marca que provoca el tope');
+    await openTab(tester, 'E');
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('suggested-E2_TACKLER_TACKLED')), matching: find.text('C · Competente')),
+      findsOneWidget,
+    );
+    for (final l in ['B', 'C', 'D', 'E', 'F', 'close']) {
       await openTab(tester, l);
       expectNoScores(tester);
     }
   });
 
-  testWidgets('dos errores HIGH en C1 fuerzan la sugerencia "Por debajo" con tope', (tester) async {
+  testWidgets('dos errores HIGH en C2 fuerzan la sugerencia U con tope', (tester) async {
     final h = Harness();
     await h.pump(tester);
     await openTab(tester, 'C');
     expect(
-      find.descendant(of: find.byKey(const ValueKey('suggested-C1_LAW_ACCURACY')), matching: find.text('Por debajo del nivel')),
+      find.descendant(of: find.byKey(const ValueKey('suggested-C2_MATERIAL_EFFECT')), matching: find.text('U · Revisión urgente')),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('cap-C1_LAW_ACCURACY')), findsOneWidget);
+    expect(find.byKey(const ValueKey('cap-C2_MATERIAL_EFFECT')), findsOneWidget);
   });
 
-  testWidgets('seguir la sugerencia: basta una justificación breve', (tester) async {
+  testWidgets('valorar no exige justificación; tocar otra vez la banda la quita', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    await tapVisible(tester, find.byKey(const ValueKey('band-A3_TACKLE_RUCK-at')));
-    expect(h.controller.issuesFor('A3_TACKLE_RUCK').single.code, CloseIssueCode.criterionJustificationRequired);
-    await tester.enterText(find.byKey(const ValueKey('justification-A3_TACKLE_RUCK')), 'Buen breakdown.');
-    await tester.pumpAndSettle();
-    expect(h.controller.isComplete('A3_TACKLE_RUCK'), isTrue);
-    expect(find.text('Criterio completo'), findsOneWidget);
+    await openTab(tester, 'E');
+    final band = find.byKey(const ValueKey('band-E2_TACKLER_TACKLED-competent'));
+    await tapVisible(tester, band);
+    expect(h.controller.evaluationOf('E2_TACKLER_TACKLED')!.finalBand, BandCode.competent);
+    expect(h.controller.isComplete('E2_TACKLER_TACKLED'), isTrue, reason: 'sin justificación');
+    expect(find.text('Justificación · opcional'), findsWidgets);
+    await tapVisible(tester, band);
+    expect(h.controller.evaluationOf('E2_TACKLER_TACKLED')!.finalBand, isNull);
+    expect(h.controller.isComplete('E2_TACKLER_TACKLED'), isFalse);
   });
 
-  testWidgets('contradecir la sugerencia o superar el tope exige 40 caracteres antes de validar', (tester) async {
+  testWidgets('contradecir la sugerencia o superar el tope solo aconseja justificar', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    await tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-above')));
-    final field = find.byKey(const ValueKey('justification-A1_SCRUM'));
-    await tester.ensureVisible(field);
-    await tester.enterText(field, 'Visto en vídeo.');
-    await tester.pumpAndSettle();
-    expect(h.controller.issuesFor('A1_SCRUM').single.code, CloseIssueCode.capOverrideJustificationTooShort);
-    expect(find.textContaining('faltan 25 caracteres'), findsOneWidget);
-    expect(find.textContaining('justifica por qué superas el tope'), findsOneWidget);
-
-    await tester.enterText(field, 'Visto en vídeo: el colapso lo provocó el pilar local.');
-    await tester.pumpAndSettle();
-    expect(h.controller.isComplete('A1_SCRUM'), isTrue);
-    expect(find.text('Justificación suficiente.'), findsOneWidget);
-
-    // Volver a la banda sugerida ya no exige el mínimo largo.
-    await tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-below')));
-    expect(find.text('Qué viste para valorarlo así.'), findsWidgets);
+    await openTab(tester, 'D');
+    await tapVisible(tester, find.byKey(const ValueKey('band-D2_SCRUM_SEQUENCE_SAFETY-excellent')));
+    expect(h.controller.isComplete('D2_SCRUM_SEQUENCE_SAFETY'), isTrue);
+    expect(find.textContaining('conviene explicar por qué'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('band-D2_SCRUM_SEQUENCE_SAFETY-urgent')));
+    expect(find.textContaining('conviene explicar por qué'), findsNothing);
   });
 
-  testWidgets('"No se observó": sin banda, sigue pidiendo justificación', (tester) async {
+  testWidgets('"No se observó": valorada sin banda y sin justificación', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    await tapVisible(tester, find.byKey(const ValueKey('not-observed-A2_LINEOUT_MAUL')));
-    expect(h.controller.evaluationOf('A2_LINEOUT_MAUL')!.notObserved, isTrue);
-    expect(h.controller.issuesFor('A2_LINEOUT_MAUL').single.code, CloseIssueCode.criterionJustificationRequired);
-    await tester.enterText(find.byKey(const ValueKey('justification-A2_LINEOUT_MAUL')), 'Sin touchs disputadas.');
-    await tester.pumpAndSettle();
-    expect(h.controller.isComplete('A2_LINEOUT_MAUL'), isTrue);
+    await openTab(tester, 'D');
+    await tapVisible(tester, find.byKey(const ValueKey('not-observed-D4_FAIR_CONTEST')));
+    expect(h.controller.evaluationOf('D4_FAIR_CONTEST')!.notObserved, isTrue);
+    expect(h.controller.isComplete('D4_FAIR_CONTEST'), isTrue);
   });
 
-  testWidgets('la banda del área y la global se recalculan al elegir', (tester) async {
+  testWidgets('la valoración del área y la global se recalculan al elegir', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    expect(find.descendant(of: find.byKey(const ValueKey('area-band-PHASES')), matching: find.text('Sin banda todavía')), findsOneWidget);
-    await tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-below')));
-    await tester.ensureVisible(find.byKey(const ValueKey('area-band-PHASES')));
+    await openTab(tester, 'D');
+    expect(find.descendant(of: find.byKey(const ValueKey('area-band-SET_PIECE')), matching: find.text('Sin valorar')), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('band-D2_SCRUM_SEQUENCE_SAFETY-urgent')));
+    await tester.ensureVisible(find.byKey(const ValueKey('area-band-SET_PIECE')));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: find.byKey(const ValueKey('area-band-PHASES')), matching: find.text('Por debajo del nivel')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('area-band-SET_PIECE')), matching: find.text('U · Revisión urgente')), findsOneWidget);
     await openTab(tester, 'close');
-    expect(find.descendant(of: find.byKey(const ValueKey('global-band')), matching: find.text('Por debajo del nivel')), findsOneWidget);
-    expect(find.text('Provisional: hay criterios sin completar.'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('global-band')), matching: find.text('U · Revisión urgente')), findsOneWidget);
+    expect(find.text('Las competencias sin valorar no cuentan.'), findsOneWidget);
   });
 
   testWidgets('la justificación se guarda sola (sin botón) tras dejar de escribir', (tester) async {
     final h = Harness();
     await h.pump(tester);
-    await tapVisible(tester, find.byKey(const ValueKey('band-A3_TACKLE_RUCK-at')));
-    await tester.enterText(find.byKey(const ValueKey('justification-A3_TACKLE_RUCK')), 'Buen breakdown.');
+    await openTab(tester, 'E');
+    await tapVisible(tester, find.byKey(const ValueKey('band-E2_TACKLER_TACKLED-competent')));
+    await tester.enterText(find.byKey(const ValueKey('justification-E2_TACKLER_TACKLED')), 'Buen breakdown.');
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpAndSettle();
-    expect(h.repo.evaluations['A3_TACKLE_RUCK']!.justification, 'Buen breakdown.');
-    expect(h.repo.evaluations['A3_TACKLE_RUCK']!.finalBand, BandCode.at);
+    expect(h.repo.evaluations['E2_TACKLER_TACKLED']!.justification, 'Buen breakdown.');
+    expect(h.repo.evaluations['E2_TACKLER_TACKLED']!.finalBand, BandCode.competent);
   });
 
-  testWidgets('cierre bloqueado hasta completar; cada pendiente lleva a su sitio', (tester) async {
+  testWidgets('el cierre nunca se bloquea: los avisos llevan a lo que falta', (tester) async {
     final h = Harness();
     await h.pump(tester);
     await openTab(tester, 'close');
     final close = find.byKey(const ValueKey('close-report'));
     await tester.ensureVisible(close);
     await tester.pumpAndSettle();
-    expect(tester.widget<ButtonStyleButton>(close).onPressed, isNull);
-    expect(find.text('Se activará cuando no quede nada pendiente.'), findsOneWidget);
+    expect(tester.widget<ButtonStyleButton>(close).onPressed, isNotNull, reason: 'todo es opcional');
+    expect(find.text('25 competencias sin valorar: no cuentan'), findsOneWidget);
 
-    final issue = find.byKey(const ValueKey('issue-criterionBandMissing-C2_FOUL_PLAY'));
-    await tester.ensureVisible(issue);
+    await tester.tap(find.byKey(const ValueKey('issue-criterionBandMissing')));
     await tester.pumpAndSettle();
-    await tester.tap(issue);
-    await tester.pumpAndSettle();
-    expect(find.text('C · Aplicación de leyes y consistencia disciplinaria'), findsOneWidget);
-    expect(find.byKey(const ValueKey('band-C2_FOUL_PLAY-at')).hitTestable(), findsOneWidget, reason: 'desplazado hasta la tarjeta');
+    expect(find.text('A · Colocación'), findsOneWidget);
+    expect(find.byKey(const ValueKey('band-A1_STATIC_START-competent')).hitTestable(), findsOneWidget, reason: 'desplazado hasta la tarjeta');
   });
 
-  testWidgets('las marcas sin revisar bloquean el cierre y llevan a la revisión', (tester) async {
+  testWidgets('las marcas sin valorar se avisan y llevan a la revisión', (tester) async {
     final h = Harness(incidents: [...defaultIncidents, seed('p', 70 * min, IncidentCategory.ruck, Verdict.pending, ImpactLevel.medium)]);
     await h.pump(tester);
     h.completeAll();
     await tester.pumpAndSettle();
     await openTab(tester, 'close');
-    final issue = find.text('Quedan marcas por revisar (ir a la revisión)');
+    final issue = find.text('1 marca sin valorar: no cuenta (ir a la revisión)');
     await tester.ensureVisible(issue);
     await tester.tap(issue);
     expect(h.openedReview, 1);
   });
 
-  testWidgets('cierre completo: confirmación, hash, informe bloqueado y sin puntuaciones', (tester) async {
-    final h = Harness();
+  testWidgets('cerrar sin rellenar nada: aviso en la confirmación, hash, solo lectura y vuelta arriba', (tester) async {
+    var finalizedCalls = 0;
+    final h = Harness(onFinalized: () => finalizedCalls++);
     await h.pump(tester);
-    h.completeAll();
-    await tester.pumpAndSettle();
     await openTab(tester, 'close');
-    expect(find.text('Todo listo para cerrar.'), findsOneWidget);
     await tapVisible(tester, find.byKey(const ValueKey('close-report')));
+    expect(find.textContaining('Hay 1 aviso sin resolver: no impide cerrar'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('confirm-close')));
     await tester.pumpAndSettle();
 
     final data = h.repo.finalizedWith!;
     expect(data.contentHash, contentHash(data.signedReport));
-    expect(data.signedReport['band'], isNotNull);
+    expect(data.signedReport['band'], isNull, reason: 'nada valorado: sin valoración global');
     expect(data.signedReport.containsKey('status'), isFalse, reason: 'el hash no cubre el estado');
-    expect((data.signedReport['criterionScores'] as List).length, 14);
+    expect((data.signedReport['criterionScores'] as List).length, 25);
     expect(h.controller.isFinalized, isTrue);
-    await tester.ensureVisible(find.byKey(const ValueKey('finalized-banner')));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('huella ${data.contentHash.substring(0, 12)}'), findsOneWidget);
+    expect(finalizedCalls, 1, reason: 'la app pasa al resumen del partido');
+    // Lo nuevo aparece arriba y se ve SIN desplazarse (antes quedaba fuera de la vista).
+    expect(find.byKey(const ValueKey('finalized-banner')).hitTestable(), findsOneWidget);
     expect(find.byKey(const ValueKey('close-report')), findsNothing);
     expectNoScores(tester);
 
     await openTab(tester, 'A');
-    final tf = tester.widget<TextField>(find.byKey(const ValueKey('justification-A1_SCRUM')));
+    final tf = tester.widget<TextField>(find.byKey(const ValueKey('justification-A1_STATIC_START')));
     expect(tf.enabled, isFalse, reason: 'informe cerrado: solo lectura');
-    h.controller.setBand('A1_SCRUM', BandCode.above);
-    expect(h.controller.evaluationOf('A1_SCRUM')!.finalBand, BandCode.below, reason: 'el controlador ignora cambios tras el cierre');
+    h.controller.setBand('A1_STATIC_START', BandCode.excellent);
+    expect(h.controller.evaluationOf('A1_STATIC_START'), isNull, reason: 'el controlador ignora cambios tras el cierre');
   });
 
-  testWidgets('recomendaciones del informe anterior: hay que revisarlas para cerrar', (tester) async {
+  testWidgets('cierre: dificultad real y recomendación de nivel (opcionales) entran en el informe firmado', (tester) async {
+    final h = Harness();
+    await h.pump(tester);
+    h.completeAll();
+    await tester.pumpAndSettle();
+    await openTab(tester, 'close');
+    expect(find.textContaining('Estimada al preparar el partido: Alta'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('actual-difficulty-VERY_HIGH')));
+    await tapVisible(tester, find.byKey(const ValueKey('level-rec-up')));
+    expect((h.controller.actualDifficulty, h.controller.levelRecommendation), ('VERY_HIGH', LevelRecommendation.up));
+    expect((h.repo.actualDifficulty, h.repo.levelRecommendation), ('VERY_HIGH', LevelRecommendation.up));
+    // Tocar otra vez la quita.
+    await tapVisible(tester, find.byKey(const ValueKey('level-rec-up')));
+    expect(h.controller.levelRecommendation, isNull);
+    await tapVisible(tester, find.byKey(const ValueKey('level-rec-same')));
+    expect(find.text('Todo valorado.'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('close-report')));
+    await tester.tap(find.byKey(const ValueKey('confirm-close')));
+    await tester.pumpAndSettle();
+    final signed = h.repo.finalizedWith!.signedReport;
+    expect((signed['actualDifficulty'], signed['levelRecommendation']), ('VERY_HIGH', 'SAME'));
+    expect(signed['band'], 'C');
+    expect((signed['strengths'] as List).length, 1);
+  });
+
+  testWidgets('recomendaciones del informe anterior: se avisan, pero no impiden cerrar', (tester) async {
     final h = Harness(previous: const [
-      PreviousActionPoint(id: 'prev1', criterionCode: 'D2_POSITIONING', text: 'Ver el ruck desde el lado defensor', successIndicator: '80 % de rucks'),
+      PreviousActionPoint(id: 'prev1', criterionCode: 'A3_SEES_PLAY', text: 'Ver el ruck desde el lado defensor', successIndicator: ''),
     ]);
     await h.pump(tester);
     h.completeAll();
     await tester.pumpAndSettle();
     await openTab(tester, 'close');
-    expect(h.controller.closeIssues.single.code, CloseIssueCode.previousActionPointNotReviewed);
+    expect(h.controller.closeWarningsList.single.code, CloseIssueCode.previousActionPointNotReviewed);
     await tapVisible(tester, find.byKey(const ValueKey('prev-prev1-achieved')));
-    expect(h.controller.closeIssues, isEmpty);
+    expect(h.controller.closeWarningsList, isEmpty);
+  });
+
+  testWidgets('en catalán: áreas, competencias y escala del CARC', (tester) async {
+    appLanguage.value = AppLanguage.ca;
+    final h = Harness();
+    await h.pump(tester);
+    expect(find.text('A · Col·locació'), findsOneWidget);
+    expect(find.text('A1 · El punt de partida en les fases estàtiques és adequat per seguir el joc'), findsOneWidget);
+    await openTab(tester, 'E');
+    expect(find.text('E · Fases dinàmiques'), findsOneWidget);
+    expect(find.text('E6 · Coneix i aplica les accions del jugador pescador'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('suggested-E2_TACKLER_TACKLED')), matching: find.text('C · Competent')), findsOneWidget);
+    await openTab(tester, 'close');
+    expect(find.text('Dificultat real del partit'), findsOneWidget);
+    expect(find.text("=  Mantenir en partits similars"), findsOneWidget);
   });
 
   group('accesibilidad y ergonomía', () {
@@ -313,10 +349,12 @@ void main() {
         final handle = tester.ensureSemantics();
         final h = Harness();
         await h.pump(tester, brightness: b);
-        await tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-above')));
+        for (final band in ['excellent', 'competent', 'notYet', 'urgent']) {
+          await tapVisible(tester, find.byKey(ValueKey('band-A1_STATIC_START-$band')));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        }
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-        await expectLater(tester, meetsGuideline(textContrastGuideline));
         await openTab(tester, 'close');
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(textContrastGuideline));
@@ -328,7 +366,7 @@ void main() {
       testWidgets('sin desbordes con texto ×1,6: $name', (tester) async {
         final h = Harness();
         await h.pump(tester, size: size, textScale: 1.6);
-        await tapVisible(tester, find.byKey(const ValueKey('band-A1_SCRUM-above')));
+        await tapVisible(tester, find.byKey(const ValueKey('band-A1_STATIC_START-notYet')));
         expect(tester.takeException(), isNull);
         await openTab(tester, 'close');
         expect(tester.takeException(), isNull);

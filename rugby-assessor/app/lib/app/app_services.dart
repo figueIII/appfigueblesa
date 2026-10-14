@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:json_schema/json_schema.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../core/i18n.dart';
 import '../core/platform_ports.dart';
 import '../data/db/app_database.dart';
 import '../data/drift_evaluation_repository.dart';
@@ -12,8 +13,10 @@ import '../data/drift_live_session_repository.dart';
 import '../data/evaluation_repository.dart';
 import '../data/match_repository.dart';
 import '../data/session_time.dart';
+import '../data/settings_repository.dart';
 import '../domain/rubric.dart';
 import '../domain/rubric_default.dart';
+import '../domain/rubrics.dart';
 import '../export/download.dart';
 import '../export/report_exporter.dart';
 import '../export/report_pdf.dart';
@@ -27,6 +30,7 @@ class AppServices {
     required this.mono,
     required this.exporter,
     AssessmentRubric? rubric,
+    SettingsRepository? settings,
     this.haptics = const SystemHaptics(),
     this.screenAwake = const WakelockScreenAwake(),
     this.sharer = const SystemFileSharer(),
@@ -34,6 +38,8 @@ class AppServices {
     this.wallNow,
   })  : bytesSharer = bytesSharer ?? platformBytesSharer(),
         rubric = rubric ?? kDefaultRubric,
+        _fixedRubric = rubric,
+        settings = settings ?? DriftSettingsRepository(db),
         live = DriftLiveSessionRepository(db),
         evaluation = DriftEvaluationRepository(db),
         matches = DriftMatchRepository(db, AssessmentSetup(db, ids));
@@ -42,7 +48,10 @@ class AppServices {
   final IdGenerator ids;
   final MonotonicSource mono;
   final ReportExporter exporter;
+  /// Rúbrica de los partidos nuevos (CARC).
   final AssessmentRubric rubric;
+  final AssessmentRubric? _fixedRubric;
+  final SettingsRepository settings;
   final Haptics haptics;
   final ScreenAwake screenAwake;
   final FileSharer sharer;
@@ -57,11 +66,23 @@ class AppServices {
   final EvaluationRepository evaluation;
   final MatchRepository matches;
 
+  /// Rúbrica con la que se evalúa (o se cerró) un partido: la del CARC o, en los informes cerrados
+  /// antes de la v1.2, la v2.
+  Future<AssessmentRubric> rubricOf(String assessmentId) async {
+    if (_fixedRubric != null) return _fixedRubric;
+    final row = await (db.select(db.assessment)..where((t) => t.id.equals(assessmentId))).getSingleOrNull();
+    return rubricById(row?.rubricId);
+  }
+
   /// Arranque de producción: SQLite en el almacenamiento privado, reloj de arranque del sistema,
   /// esquema de exportación y fuentes empaquetados (la exportación funciona sin conexión).
   static Future<AppServices> onDevice() async {
     final db = AppDatabase.onDevice();
     final ids = UuidV7Generator();
+    // Idioma guardado (castellano si no hay ninguno o si no se puede leer).
+    try {
+      appLanguage.value = await DriftSettingsRepository(db).loadLanguage();
+    } catch (_) {}
     final schema = JsonSchema.create(await rootBundle.loadString('assets/export/assessment-export.schema.json'));
     return AppServices(
       db: db,
@@ -69,7 +90,6 @@ class AppServices {
       mono: NativeMonotonicSource(),
       exporter: ReportExporter(
         repository: DriftExportRepository(db),
-        rubric: kDefaultRubric,
         schema: schema,
         fonts: () async => PdfFonts.fromBytes(
           regular: await rootBundle.load('assets/fonts/Roboto-Regular.ttf'),

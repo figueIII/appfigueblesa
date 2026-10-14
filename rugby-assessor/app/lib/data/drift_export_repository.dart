@@ -59,6 +59,7 @@ class DriftExportRepository implements ExportRepository {
       assessorId: assessor.id,
       assessorName: assessor.fullName,
       assessorLicence: assessor.federationLicence,
+      rubricId: report.rubricId,
       reportVersion: report.version,
       reportStatus: report.status,
       canonicalJson: report.canonicalJson,

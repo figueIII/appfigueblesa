@@ -294,7 +294,10 @@ class _MatchSetupScreenState extends State<MatchSetupScreen> {
               ),
 
               // ─── Dificultad ───
-              const SectionHeader(title: 'Dificultad estimada', subtitle: 'Solo informativa: no modifica la evaluación.'),
+              const SectionHeader(
+                title: 'Dificultad estimada del partido',
+                subtitle: 'Opcional y solo informativa: no modifica la evaluación. La dificultad real se indica al cerrar el informe.',
+              ),
               ChoiceGrid<String>(
                 keyPrefix: 'difficulty',
                 selected: _difficulty,
