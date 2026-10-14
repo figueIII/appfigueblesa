@@ -6,7 +6,7 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 - **Evaluación por bandas cualitativas**: Por debajo, En el nivel o Por encima del nivel, sin notas numéricas visibles.
 - **Informe firmado** (SHA-256) que se exporta en PDF y JSON.
 
-**Estado:** versión **1.1** (marcador, sanciones y leyes sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
+**Estado:** versión **1.1.1** (marcador, sanciones valorables como marcas, leyes y edición durante el partido, sobre el MVP 1.0 de pruebas de campo). Ver [docs/MARCADOR_SANCIONES_LEYES.md](docs/MARCADOR_SANCIONES_LEYES.md) y [docs/PRUEBAS_DE_CAMPO.md](docs/PRUEBAS_DE_CAMPO.md).
 
 ## Estructura
 
@@ -19,7 +19,7 @@ App móvil, sin conexión, para que un evaluador valore al **árbitro principal*
 | `app/scripts/build_apk.sh` | **Compilar el APK** (debug o release, con instalación opcional por adb), solo cuando se pida. |
 | `docs/` | Especificación, una guía por pantalla, exportación y prueba de campo. |
 | `domain/`, `test/` | Especificación ejecutable en TypeScript (modelo, reloj, puntuación, rúbrica) y sus tests. |
-| `persistence/schema.sql` | Esquema SQLite de referencia (v3), del que se copia `app/lib/data/db/schema.drift`. |
+| `persistence/schema.sql` | Esquema SQLite de referencia (v4), del que se copia `app/lib/data/db/schema.drift`. |
 | `export/` | Esquema JSON del informe (2.1), ejemplo y muestras reales en `export/samples/`. |
 | `scripts/` | Generación de `rubric_default.dart` a partir de la rúbrica TypeScript. |
 

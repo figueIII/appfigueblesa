@@ -1,13 +1,14 @@
--- Esquema SQLite offline-first — Evaluador arbitral de rugby (schema v3).
+-- Esquema SQLite offline-first — Evaluador arbitral de rugby (schema v4).
 -- v2: solo se evalúa al árbitro principal (R5) y la evaluación visible es por bandas (R2).
 -- v3: marcador (score_event), sanciones (sanction_event) e infracción de cada incidencia.
+-- v4: las sanciones pasan a ser incidencias (decisión tomada contra un equipo): sanction_event desaparece.
 -- Portable a drift (Flutter) o Room (Android). Requiere SQLite ≥ 3.37 (tablas STRICT).
 -- Ver docs/ESPECIFICACION_EVALUADOR_ARBITRAL.md §3.
 
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = FULL;     -- cada tap sobrevive a un apagado por batería (§3.1)
-PRAGMA user_version = 3;
+PRAGMA user_version = 4;
 
 -- ───────────── Catálogos ─────────────
 
@@ -184,8 +185,10 @@ CREATE TABLE attachment (
   CHECK ((kind = 'VIDEO_LINK' AND url IS NOT NULL) OR (kind <> 'VIDEO_LINK' AND relative_path IS NOT NULL))
 ) STRICT;
 
--- ───────────── Hechos del partido (v3): marcador y sanciones ─────────────
--- Registros de solo inserción, como el reloj: "deshacer" anula (status VOID), nunca borra.
+-- ───────────── Hechos del partido: marcador (v3) ─────────────
+-- Registro de solo inserción, como el reloj: "deshacer" anula (status VOID), nunca borra.
+-- Las sanciones (GC, GF, tarjetas) no tienen tabla propia desde v4: son la decisión tomada de una
+-- incidencia (decision_taken_json con againstTeam), así se valoran como cualquier otra marca.
 
 CREATE TABLE score_event (
   id               TEXT PRIMARY KEY,
@@ -204,51 +207,21 @@ CREATE TABLE score_event (
          OR (kind IN ('PENALTY_GOAL','DROP_GOAL') AND points = 3))
 ) STRICT;
 
-CREATE TABLE sanction_event (
-  id               TEXT PRIMARY KEY,
-  assessment_id    TEXT NOT NULL REFERENCES assessment(id) ON DELETE CASCADE,
-  seq              INTEGER NOT NULL,
-  team             TEXT NOT NULL CHECK (team IN ('HOME','AWAY')),  -- equipo infractor
-  kind             TEXT NOT NULL CHECK (kind IN ('PENALTY','FREE_KICK','YELLOW_CARD','RED_CARD')),
-  infraction_code  TEXT,                                            -- NULL = sin especificar
-  infraction_custom TEXT,
-  infraction_law_ref TEXT,
-  t_session_ms     INTEGER NOT NULL,
-  wall_utc         TEXT NOT NULL,
-  period           TEXT CHECK (period IN ('H1','H2','ET1','ET2','SD')),
-  match_clock_ms   INTEGER NOT NULL,
-  status           TEXT NOT NULL CHECK (status IN ('ACTIVE','VOID')),
-  UNIQUE (assessment_id, seq),
-  CHECK (infraction_code IS NOT 'CUSTOM' OR infraction_custom IS NOT NULL)
-) STRICT;
 
--- Solo se permite anular (ACTIVE → VOID) y, en las sanciones, completar el motivo.
+-- Solo se permite anular (ACTIVE → VOID).
 CREATE TRIGGER score_event_void_only BEFORE UPDATE ON score_event
 WHEN NOT (OLD.status = 'ACTIVE' AND NEW.status = 'VOID' AND NEW.team = OLD.team AND NEW.kind = OLD.kind
           AND NEW.points = OLD.points AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms)
 BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
-CREATE TRIGGER sanction_event_void_or_reason BEFORE UPDATE ON sanction_event
-WHEN NOT (NEW.team = OLD.team AND NEW.kind = OLD.kind AND NEW.seq = OLD.seq AND NEW.match_clock_ms = OLD.match_clock_ms
-          AND (NEW.status = OLD.status OR (OLD.status = 'ACTIVE' AND NEW.status = 'VOID')))
-BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
 CREATE TRIGGER score_event_no_delete BEFORE DELETE ON score_event
 WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL
 BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
-CREATE TRIGGER sanction_event_no_delete BEFORE DELETE ON sanction_event
-WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IS NOT NULL
-BEGIN SELECT RAISE(ABORT, 'MATCH_FACTS_APPEND_ONLY'); END;
 
--- Con la evaluación finalizada, los hechos del partido quedan congelados.
+-- Con la evaluación finalizada, el marcador queda congelado.
 CREATE TRIGGER score_event_locked_insert BEFORE INSERT ON score_event
 WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN ('FINALIZED','ARCHIVED')
 BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
 CREATE TRIGGER score_event_locked_update BEFORE UPDATE ON score_event
-WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN ('FINALIZED','ARCHIVED')
-BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
-CREATE TRIGGER sanction_event_locked_insert BEFORE INSERT ON sanction_event
-WHEN (SELECT status FROM assessment WHERE id = NEW.assessment_id) IN ('FINALIZED','ARCHIVED')
-BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
-CREATE TRIGGER sanction_event_locked_update BEFORE UPDATE ON sanction_event
 WHEN (SELECT status FROM assessment WHERE id = OLD.assessment_id) IN ('FINALIZED','ARCHIVED')
 BEGIN SELECT RAISE(ABORT, 'ASSESSMENT_LOCKED'); END;
 

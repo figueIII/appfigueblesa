@@ -11,6 +11,7 @@ import '../features/evaluation/export_controller.dart';
 import '../features/home/home_screen.dart';
 import '../features/live/live_controller.dart';
 import '../features/live/live_screen.dart';
+import '../features/review/incident_editor_screen.dart';
 import '../features/review/review_controller.dart';
 import '../features/review/review_screen.dart';
 import '../features/setup/match_setup_screen.dart';
@@ -93,6 +94,34 @@ class AppNavigator {
       builder: (liveContext) => LiveScreen(
         controller: controller,
         screenAwake: s.screenAwake,
+        // Durante el partido: lista de marcas y editor completo, sin parar el reloj.
+        onOpenMarks: () async {
+          await controller.flush();
+          if (!liveContext.mounted) return;
+          await Navigator.of(liveContext).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ReviewScreen(
+                controller: ReviewController(assessmentId: id, repository: s.live),
+                duringMatch: true,
+                onContinueToRubric: () {},
+              ),
+            ),
+          );
+          await controller.reloadMarks();
+        },
+        onEditIncident: (incidentId) async {
+          await controller.flush();
+          final review = ReviewController(assessmentId: id, repository: s.live);
+          await review.load();
+          if (!liveContext.mounted) return;
+          await Navigator.of(liveContext).push(
+            MaterialPageRoute<void>(
+              builder: (_) => IncidentEditorScreen(controller: review, incidentId: incidentId, chainPending: false),
+            ),
+          );
+          review.dispose();
+          await controller.reloadMarks();
+        },
         onGoToReview: () async {
           // Lo que quede en la cola del directo se escribe antes de leer para la revisión.
           await controller.flush();

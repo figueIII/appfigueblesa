@@ -35,7 +35,6 @@ class ExportSource {
     required this.contentHash,
     required this.incidents,
     this.scores = const [],
-    this.sanctions = const [],
     this.round,
     this.difficulty,
     this.finalScoreHome,
@@ -75,9 +74,11 @@ class ExportSource {
   final String? contentHash;
   final List<Incident> incidents;
 
-  /// Hechos del partido (v3): marcador y sanciones, con los anulados (se filtran al exportar).
+  /// Marcador del partido, con los tantos anulados (se filtran al exportar).
   final List<ScoreEvent> scores;
-  final List<SanctionEvent> sanctions;
+
+  /// Sanciones: las decisiones tomadas (golpes y tarjetas) de las incidencias.
+  List<SanctionEvent> get sanctions => sanctionsOf(incidents);
 }
 
 enum ExportErrorCode { notFinalized, integrityMismatch, schemaInvalid }

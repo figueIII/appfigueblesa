@@ -66,6 +66,8 @@ class Harness {
   final clock = FakeClock();
   final haptics = RecordingHaptics();
   final awake = FakeScreenAwake();
+  int openedMarks = 0;
+  final List<String> edited = [];
   late final controller = LiveController(
     assessmentId: 'a1',
     repository: repo,
@@ -79,6 +81,7 @@ class Harness {
     Size size = const Size(390, 844),
     double textScale = 1.0,
     Brightness brightness = Brightness.light,
+    bool withEditing = false,
   }) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
@@ -89,7 +92,13 @@ class Harness {
         theme: buildRefTheme(brightness),
         home: MediaQuery(
           data: MediaQueryData(size: size, textScaler: TextScaler.linear(textScale)),
-          child: LiveScreen(controller: controller, onGoToReview: () {}, screenAwake: awake),
+          child: LiveScreen(
+            controller: controller,
+            onGoToReview: () {},
+            screenAwake: awake,
+            onOpenMarks: withEditing ? () => openedMarks++ : null,
+            onEditIncident: withEditing ? edited.add : null,
+          ),
         ),
       ),
     );

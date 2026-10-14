@@ -101,7 +101,7 @@ void main() {
 
       final closed = byId[f.firstId]!;
       expect(closed.stage, MatchStage.finalized);
-      expect(closed.markCount, 4);
+      expect(closed.markCount, 13, reason: '4 marcas + 9 sanciones, que también son marcas');
       expect(closed.band, isA<BandCode>(), reason: 'banda global del informe cerrado');
       expect(closed.refereeName, 'Árbitro Ejemplo');
       expect(closed.homeTeam, 'Club Local RC');

@@ -84,7 +84,7 @@ SKIP_TESTS=1 ./scripts/build_apk.sh     # sin análisis ni tests
 | `test/features/setup/match_setup_screen_test.dart` (12) | Presets, hora por defecto, errores y contador, mismo equipo, alta completa con `onStart`, dificultad opcional, autocompletado, selector de hora, fallo de guardado, accesibilidad en claro y oscuro, y texto ×1.6. |
 | `test/features/home/home_screen_test.dart` (8) | Estado vacío, secciones y orden, textos de estado y banda, apertura y recarga, accesibilidad, y texto ×1.6. |
 | `test/app/app_flow_test.dart` (2) | **De extremo a extremo con Drift real:** inicio → preparación → "Comenzar partido" → directo en ANTES DEL INICIO y 00:00, sin eventos de reloj → atrás vuelve al inicio con el partido en curso → continuar. Además, un informe finalizado abre la evaluación con la sección de exportación. |
-| `test/app/version_test.dart` (1) | La versión que figura en los informes exportados coincide con la de `pubspec.yaml` (1.1.0). |
+| `test/app/version_test.dart` (1) | La versión que figura en los informes exportados coincide con la de `pubspec.yaml` (1.1.1). |
 | `test/screenshots` | Capturas 30 a 33: inicio, preparación, errores e inicio vacío. |
 
 ## 6. Pendiente

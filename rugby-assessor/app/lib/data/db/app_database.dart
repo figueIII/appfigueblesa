@@ -3,6 +3,7 @@
 import 'package:drift/drift.dart';
 
 import 'connection.dart';
+import 'migrations.dart';
 
 part 'app_database.g.dart';
 
@@ -15,13 +16,13 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase.onDevice() => AppDatabase(openAppConnection());
 
   @override
-  int get schemaVersion => 3; // = PRAGMA user_version de persistence/schema.sql
+  int get schemaVersion => 4; // = PRAGMA user_version de persistence/schema.sql
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
-          // v2 → v3: marcador, sanciones e infracción de cada incidencia. Solo añade: los
-          // partidos ya registrados en el móvil se conservan tal cual.
+          // v2 → v3: marcador e infracción de cada incidencia. Solo añade: los partidos ya
+          // registrados en el móvil se conservan tal cual.
           if (from < 3) {
             await m.addColumn(incident, incident.infractionCode);
             await m.addColumn(incident, incident.infractionCustom);
@@ -29,20 +30,13 @@ class AppDatabase extends _$AppDatabase {
             await m.drop(incidentAudit);
             await m.createTrigger(incidentAudit);
             await m.createTable(scoreEvent);
-            await m.createTable(sanctionEvent);
-            for (final t in [
-              scoreEventVoidOnly,
-              sanctionEventVoidOrReason,
-              scoreEventNoDelete,
-              sanctionEventNoDelete,
-              scoreEventLockedInsert,
-              scoreEventLockedUpdate,
-              sanctionEventLockedInsert,
-              sanctionEventLockedUpdate,
-            ]) {
+            for (final t in [scoreEventVoidOnly, scoreEventNoDelete, scoreEventLockedInsert, scoreEventLockedUpdate]) {
               await m.createTrigger(t);
             }
           }
+          // v3 → v4: cada sanción registrada pasa a ser una incidencia con su decisión tomada
+          // (así se puede valorar) y la tabla sanction_event desaparece.
+          if (from == 3) await migrateSanctionsToIncidents(this);
         },
         beforeOpen: (details) async {
           // Integridad referencial y durabilidad (spec §3.1): con synchronous=FULL cada

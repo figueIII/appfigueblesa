@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ref_assess/data/db/app_database.dart' hide ScoreEvent, SanctionEvent;
+import 'package:ref_assess/data/db/app_database.dart' hide ScoreEvent;
 import 'package:ref_assess/data/drift_live_session_repository.dart';
 import 'package:ref_assess/domain/category_presets.dart';
 import 'package:ref_assess/domain/laws.dart';
@@ -24,16 +24,10 @@ ScoreEvent score(String a, int seq, d.TeamSide team, ScoreKind kind) => ScoreEve
       matchClockMs: seq * 60000,
     );
 
-SanctionEvent sanction(String a, int seq, d.TeamSide team, SanctionKind kind, [InfractionRef? why]) => SanctionEvent(
-      id: '$a-k$seq',
-      assessmentId: a,
-      seq: seq,
-      team: team,
-      kind: kind,
-      sessionMs: seq * 1000,
-      wallUtc: DateTime.utc(2026, 10, 17, 15, seq),
-      period: d.PeriodId.h2,
-      matchClockMs: seq * 60000,
+/// Una sanción es una incidencia con la decisión tomada contra el equipo infractor.
+d.Incident sanctionMark(String a, int seq, d.TeamSide team, SanctionKind kind, [InfractionRef? why]) =>
+    incident(a, seq, seq * 1000, categoryForSanction(kind, why)).copyWith(
+      decisionTaken: d.Decision(outcomes: [outcomeFor(kind)], againstTeam: team),
       infraction: why,
     );
 
@@ -81,25 +75,35 @@ void main() {
     expect(scorelineOf(snap.scores), const Scoreline(2, 3));
   });
 
-  test('sanciones: ida y vuelta con motivo de catálogo, personalizado y sin especificar; completar y anular', () async {
-    await repo.insertSanction(sanction(id, 1, d.TeamSide.home, SanctionKind.penalty, InfractionRef.catalog('SIDE_ENTRY')));
-    await repo.insertSanction(sanction(id, 2, d.TeamSide.away, SanctionKind.freeKick, InfractionRef.custom('Avance intencionado', lawRef: 'Ley 11')));
-    final open = sanction(id, 3, d.TeamSide.away, SanctionKind.yellowCard);
-    await repo.insertSanction(open);
-    await repo.updateSanction(open.copyWith(infraction: InfractionRef.catalog('HIGH_TACKLE')));
-    final last = sanction(id, 4, d.TeamSide.home, SanctionKind.redCard);
-    await repo.insertSanction(last);
-    await repo.updateSanction(last.copyWith(voided: true));
+  test('una sanción es una incidencia con su decisión tomada: ida y vuelta, motivo y anulación', () async {
+    await repo.insertIncident(sanctionMark(id, 1, d.TeamSide.home, SanctionKind.penalty, InfractionRef.catalog('SIDE_ENTRY')));
+    await repo.insertIncident(sanctionMark(id, 2, d.TeamSide.away, SanctionKind.freeKick, InfractionRef.custom('Avance intencionado', lawRef: 'Ley 11')));
+    final open = sanctionMark(id, 3, d.TeamSide.away, SanctionKind.yellowCard);
+    await repo.insertIncident(open);
+    await repo.updateIncident(open.copyWith(infraction: InfractionRef.catalog('HIGH_TACKLE')));
+    final last = sanctionMark(id, 4, d.TeamSide.home, SanctionKind.redCard);
+    await repo.insertIncident(last);
+    await repo.updateIncident(last.copyWith(status: d.IncidentStatus.voided));
 
-    final s = (await repo.load(id)).sanctions;
+    final snap = await repo.load(id);
+    expect(snap.incidents.length, 4, reason: 'cada sanción es una marca');
+    expect(snap.incidents.first.category, d.IncidentCategory.ruck);
+    expect(snap.incidents[2].category, d.IncidentCategory.card);
+    final s = sanctionsOf(snap.incidents);
     expect(s.map((e) => e.kind), [SanctionKind.penalty, SanctionKind.freeKick, SanctionKind.yellowCard, SanctionKind.redCard]);
     expect(s[0].infraction, InfractionRef.catalog('SIDE_ENTRY'));
-    expect(s[1].infraction!.label, 'Avance intencionado');
     expect(s[1].infraction!.lawRef, 'Ley 11');
     expect(s[2].infraction!.label, 'Placaje alto / contacto con la cabeza');
-    expect(s[2].period, d.PeriodId.h2);
     expect(s[3].voided, isTrue);
-    expect(s[3].infraction, isNull);
+
+    // Corregir la decisión en la revisión corrige el contador: ahora es un golpe franco.
+    await repo.saveEnrichment(snap.incidents.first.copyWith(
+      verdict: d.Verdict.incorrect,
+      decisionTaken: const d.Decision(outcomes: [d.DecisionOutcome.freeKick], againstTeam: d.TeamSide.home),
+    ));
+    final tally = SanctionTally(sanctionsOf((await repo.load(id)).incidents));
+    expect(tally.count(d.TeamSide.home, SanctionKind.penalty), 0);
+    expect(tally.count(d.TeamSide.home, SanctionKind.freeKick), 1);
   });
 
   test('infracción de una incidencia: se guarda desde el directo y desde la revisión', () async {
@@ -130,22 +134,17 @@ void main() {
       throwsA(isA<Exception>()),
       reason: 'un ensayo vale 5',
     );
-    final k = sanction(id, 1, d.TeamSide.away, SanctionKind.penalty);
-    await repo.insertSanction(k);
-    await expectLater(db.customStatement("UPDATE sanction_event SET team = 'HOME' WHERE id = '${k.id}'"), throwsA(isA<Exception>()));
-    await expectLater(db.customStatement("DELETE FROM sanction_event WHERE id = '${k.id}'"), throwsA(isA<Exception>()));
   });
 
-  test('con la evaluación finalizada, marcador y sanciones quedan congelados', () async {
+  test('con la evaluación finalizada, el marcador queda congelado', () async {
     await repo.insertScoreEvent(score(id, 1, d.TeamSide.home, ScoreKind.tryScored));
     await db.customStatement("UPDATE assessment SET status = 'FINALIZED' WHERE id = '$id'");
     await expectLater(repo.insertScoreEvent(score(id, 2, d.TeamSide.away, ScoreKind.dropGoal)), throwsA(isA<Exception>()));
     await expectLater(repo.voidScoreEvent(score(id, 1, d.TeamSide.home, ScoreKind.tryScored)), throwsA(isA<Exception>()));
-    await expectLater(repo.insertSanction(sanction(id, 1, d.TeamSide.home, SanctionKind.penalty)), throwsA(isA<Exception>()));
     expect(await stored(), (5, 0));
   });
 
-  test('migración v2 → v3: los partidos ya guardados en el móvil se conservan y ganan marcador y sanciones', () async {
+  test('migración v2 → v4: los partidos ya guardados en el móvil se conservan y ganan marcador y sanciones', () async {
     final dir = Directory.systemTemp.createTempSync('refassess_migr_');
     addTearDown(() => dir.deleteSync(recursive: true));
     final file = File('${dir.path}/v2.sqlite');
@@ -178,15 +177,81 @@ void main() {
     expect(snap.scores, isEmpty);
 
     await r.insertScoreEvent(score('old', 1, d.TeamSide.away, ScoreKind.tryScored));
-    await r.insertSanction(sanction('old', 1, d.TeamSide.home, SanctionKind.penalty, InfractionRef.catalog('SCRUM_COLLAPSING')));
+    await r.insertIncident(sanctionMark('old', 2, d.TeamSide.home, SanctionKind.penalty, InfractionRef.catalog('SCRUM_COLLAPSING')));
     await r.updateIncident(snap.incidents.single.copyWith(infraction: InfractionRef.catalog('SCRUM_COLLAPSING')));
     final after = await r.load('old');
     expect(scorelineOf(after.scores), const Scoreline(0, 5));
-    expect(after.sanctions.single.infraction!.code, 'SCRUM_COLLAPSING');
-    expect(after.incidents.single.infraction!.code, 'SCRUM_COLLAPSING');
+    expect(sanctionsOf(after.incidents).single.infraction!.code, 'SCRUM_COLLAPSING');
+    expect(after.incidents.first.infraction!.code, 'SCRUM_COLLAPSING');
     final version = await migrated.customSelect('PRAGMA user_version').getSingle();
-    expect(version.data.values.single, 3);
+    expect(version.data.values.single, 4);
     // Los triggers nuevos también existen tras migrar.
     await expectLater(migrated.customStatement("DELETE FROM score_event WHERE assessment_id = 'old'"), throwsA(isA<Exception>()));
+  });
+
+  test('migración v3 → v4: cada sanción guardada pasa a ser una marca valorable (y un partido cerrado no se reabre)', () async {
+    final dir = Directory.systemTemp.createTempSync('refassess_migr3_');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/v3.sqlite');
+    // Base de datos v3 tal y como la dejó la versión 1.1.0 (sanciones en sanction_event).
+    final v3 = raw.sqlite3.open(file.path);
+    v3.execute(File('test/data/fixtures/schema_v3.sql').readAsStringSync());
+    v3.execute("INSERT INTO official VALUES ('ref', 'Árbitro', NULL, NULL, NULL, 'x', 'x')");
+    v3.execute("INSERT INTO assessor_profile VALUES ('ev', 'Evaluador', NULL, NULL)");
+    v3.execute("INSERT INTO rubric VALUES ('rb', 'RUGBY-XV-BASE', '2.0.0', 'PUBLISHED', '{}')");
+    const cat = '{"code":"M18","name":"M18","format":"XV","periodLengthMin":35,"sinBinMin":5}';
+    for (final (aid, status) in const [('live', 'LIVE'), ('closed', 'POST_MATCH')]) {
+      v3.execute(
+        "INSERT INTO assessment (id, status, rubric_id, assessor_id, referee_id, competition, kickoff_local, kickoff_tz, venue, "
+        "home_team, away_team, observation_mode, category_code, category_json, created_at, updated_at) VALUES "
+        "('$aid', '$status', 'rb', 'ev', 'ref', 'Liga', '2026-10-10T17:00', 'Europe/Madrid', 'Campo', 'Local', 'Visitante', 'LIVE', "
+        "'M18', '$cat', 'x', 'x')",
+      );
+    }
+    v3.execute(
+      "INSERT INTO incident (id, assessment_id, seq, t_session_ms, wall_utc, period, phase_label, period_elapsed_ms, match_clock_ms, "
+      "time_integrity, category, criterion_code, polarity, verdict, impact, impact_confirmed, source, status, updated_at) VALUES "
+      "('inc', 'live', 1, 1000, '2026-10-10T15:01:00Z', 'H1', 'IN_PLAY', 60000, 60000, 'OK', 'SCRUM', 'A1_SCRUM', 'REVIEW', 'PENDING', 'MEDIUM', 0, 'ONE_TAP', 'QUICK', 'x')",
+    );
+    void sanctionRow(String sid, String aid, int seq, String team, String kind, int t, String status, [String? code, String? custom, String? lawRef]) => v3.execute(
+          'INSERT INTO sanction_event (id, assessment_id, seq, team, kind, infraction_code, infraction_custom, infraction_law_ref, '
+          't_session_ms, wall_utc, period, match_clock_ms, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [sid, aid, seq, team, kind, code, custom, lawRef, t, '2026-10-10T15:00:00Z', 'H1', t, status],
+        );
+    sanctionRow('k1', 'live', 1, 'HOME', 'PENALTY', 120000, 'ACTIVE', 'SIDE_ENTRY');
+    sanctionRow('k2', 'live', 2, 'AWAY', 'YELLOW_CARD', 180000, 'ACTIVE', 'CUSTOM', 'Avance intencionado', 'Ley 11');
+    sanctionRow('k3', 'live', 3, 'HOME', 'FREE_KICK', 240000, 'VOID');
+    sanctionRow('k9', 'closed', 1, 'AWAY', 'PENALTY', 60000, 'ACTIVE', 'HANDS_IN_RUCK');
+    v3.execute("UPDATE assessment SET status = 'FINALIZED' WHERE id = 'closed'"); // cerrado después
+    expect(v3.userVersion, 3);
+    v3.close();
+
+    final migrated = AppDatabase(NativeDatabase(file));
+    addTearDown(migrated.close);
+    final r = DriftLiveSessionRepository(migrated);
+    final live = (await r.load('live')).incidents;
+    expect(live.map((i) => i.seq), [1, 2, 3, 4], reason: 'las sanciones se añaden detrás de las marcas existentes');
+    final k1 = live[1], k2 = live[2], k3 = live[3];
+    expect(k1.id, 'k1');
+    expect(k1.category, d.IncidentCategory.ruck);
+    expect(k1.decisionTaken, const d.Decision(outcomes: [d.DecisionOutcome.penalty], againstTeam: d.TeamSide.home));
+    expect(k1.infraction, InfractionRef.catalog('SIDE_ENTRY'));
+    expect(k1.verdict, d.Verdict.pending, reason: 'queda por valorar: ¿estuvo bien pitado?');
+    expect(k1.matchTime.matchClockMs, 120000);
+    expect(k2.category, d.IncidentCategory.card);
+    expect(k2.infraction!.label, 'Avance intencionado');
+    expect(k2.infraction!.lawRef, 'Ley 11');
+    expect(k3.isVoid, isTrue);
+    final tally = SanctionTally(sanctionsOf(live));
+    expect(tally.count(d.TeamSide.home, SanctionKind.penalty), 1);
+    expect(tally.count(d.TeamSide.away, SanctionKind.yellowCard), 1);
+    expect(tally.count(d.TeamSide.home, SanctionKind.freeKick), 0);
+
+    final closed = (await r.load('closed')).incidents.single;
+    expect(closed.verdict, d.Verdict.notAssessable, reason: 'un informe cerrado no se reabre');
+
+    final gone = await migrated.customSelect("SELECT name FROM sqlite_master WHERE name LIKE 'sanction_event%'").get();
+    expect(gone, isEmpty, reason: 'la tabla y sus triggers desaparecen');
+    expect((await migrated.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
   });
 }

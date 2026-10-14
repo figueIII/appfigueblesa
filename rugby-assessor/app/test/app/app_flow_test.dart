@@ -12,6 +12,10 @@ import 'package:ref_assess/data/session_time.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
 import 'package:ref_assess/export/report_exporter.dart';
 import 'package:ref_assess/features/live/live_screen.dart';
+import 'package:ref_assess/features/review/incident_editor_screen.dart';
+import 'package:ref_assess/domain/model.dart';
+import 'package:ref_assess/domain/category_presets.dart';
+import 'package:ref_assess/data/match_repository.dart';
 
 import 'package:ref_assess/features/evaluation/evaluation_screen.dart';
 
@@ -167,5 +171,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Exportar y enviar al comité'), findsOneWidget);
     expect(find.byKey(const ValueKey('share-pdf')), findsOneWidget);
+  });
+
+  testWidgets('durante el partido: editar una marca al momento y abrir la lista de marcas, sin parar el reloj', (tester) async {
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final id = (await tester.runAsync(() => services.matches.createMatch(MatchSetupInput(
+          category: categoryPreset('M16'),
+          homeTeam: 'Club Local RC',
+          awayTeam: 'Visitante RT',
+          refereeName: 'Ana Árbitro',
+          assessorName: 'Evaluadora',
+          kickoffLocal: DateTime(2026, 10, 17, 17),
+          venue: 'Campo Municipal',
+        ))))!;
+
+    await tester.pumpWidget(RefAssessApp(services: services));
+    await pumpUntil(tester, find.byKey(ValueKey('match-$id')));
+    await tester.tap(find.byKey(ValueKey('match-$id')));
+    await pumpUntil(tester, find.byType(LiveScreen));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('primary-clock-action')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tag-ruck')));
+    await tester.pump();
+
+    // "Editar" en la tira abre el editor completo de esa marca.
+    await tester.tap(find.byKey(const ValueKey('edit-last')));
+    await pumpUntil(tester, find.byType(IncidentEditorScreen));
+    await tester.pumpAndSettle();
+    final correct = find.byKey(const ValueKey('verdict-correct'));
+    await tester.ensureVisible(correct);
+    await tester.tap(correct);
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar y volver al directo'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-incident')));
+    await pumpUntil(tester, find.textContaining('1 marca · 0 por revisar'));
+    expect(find.byType(LiveScreen), findsOneWidget, reason: 'de vuelta al directo');
+    expect(find.text('1ª PARTE · EN JUEGO'), findsOneWidget, reason: 'el reloj sigue en marcha');
+    final stored = await tester.runAsync(() => services.live.load(id));
+    expect(stored!.incidents.single.verdict, Verdict.correct);
+
+    // "Ver marcas": la lista de marcas, en modo directo.
+    await tester.tap(find.byKey(const ValueKey('open-marks')));
+    await pumpUntil(tester, find.text('Marcas del partido'));
+    expect(find.text('En directo: el reloj sigue corriendo'), findsOneWidget);
+    expect(find.byKey(const ValueKey('continue-to-rubric')), findsNothing);
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+    expect(find.byType(LiveScreen), findsOneWidget);
   });
 }

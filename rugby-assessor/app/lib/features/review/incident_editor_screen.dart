@@ -17,9 +17,13 @@ import 'widgets/choice_controls.dart';
 /// ¿qué pasó? → veredicto → ley → impacto → decisiones → notas → contexto (opcional).
 /// Los errores se muestran junto a su campo, no en un resumen lejano.
 class IncidentEditorScreen extends StatefulWidget {
-  const IncidentEditorScreen({super.key, required this.controller, required this.incidentId});
+  const IncidentEditorScreen({super.key, required this.controller, required this.incidentId, this.chainPending = true});
   final ReviewController controller;
   final String incidentId;
+
+  /// En la revisión, guardar salta a la siguiente pendiente. Abierto desde el directo (false),
+  /// guardar vuelve al partido.
+  final bool chainPending;
 
   @override
   State<IncidentEditorScreen> createState() => _IncidentEditorScreenState();
@@ -147,7 +151,7 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
     final c = context.refColors;
     final i = _draft;
     final issues = _issues;
-    final hasNext = widget.controller.nextPendingAfter(i.id) != null;
+    final hasNext = widget.chainPending && widget.controller.nextPendingAfter(i.id) != null;
     final period = i.matchTime.period;
 
     return PopScope(
@@ -181,7 +185,7 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                 // ─── Qué pasó ───
                 Text(formatClock(i.matchTime.matchClockMs), style: RefType.clockCompact.copyWith(color: c.onSurface)),
                 Text(
-                  '${kCategoryLabel[i.category]} · ${period == null ? 'fuera de juego' : periodLabel(period)}',
+                  '${incidentHeadline(i, (t) => t == TeamSide.home ? widget.controller.homeTeam : widget.controller.awayTeam)} · ${period == null ? 'fuera de juego' : periodLabel(period)}',
                   style: RefType.control.copyWith(color: c.onSurface),
                 ),
                 if (i.matchTime.integrity == TimeIntegrity.degraded)
@@ -401,7 +405,7 @@ class _IncidentEditorScreenState extends State<IncidentEditorScreen> {
                     icon: _saving
                         ? SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 3, color: c.onPrimary))
                         : Icon(hasNext ? Icons.arrow_forward_rounded : Icons.check_rounded),
-                    label: Text(hasNext ? 'Guardar y siguiente' : 'Guardar'),
+                    label: Text(hasNext ? 'Guardar y siguiente' : (widget.chainPending ? 'Guardar' : 'Guardar y volver al directo')),
                     style: FilledButton.styleFrom(
                       backgroundColor: c.primary,
                       foregroundColor: c.onPrimary,

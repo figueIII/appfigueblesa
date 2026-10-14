@@ -1,8 +1,10 @@
-// Hechos del partido que registra el evaluador junto a sus marcas: el marcador y las sanciones
-// del árbitro (golpes de castigo, golpes francos y tarjetas). PURO: sin Flutter ni almacenamiento.
+// Hechos del partido que registra el evaluador junto a sus marcas. PURO: sin Flutter ni almacenamiento.
 //
-// Ambos son registros de solo inserción. "Deshacer" no borra: anula (voided = true), igual que
-// las marcas. Todo lo visible (marcador, contadores y desgloses) se deriva de los registros activos.
+//  · Marcador: registro propio de solo inserción. "Deshacer" no borra: anula (voided = true).
+//  · Sanciones (golpes de castigo, golpes francos y tarjetas): NO son un registro aparte. Son la
+//    "decisión tomada" de una marca (contra un equipo). Así una sanción se valora como cualquier
+//    otra marca (Bien / Error) y, si en la revisión se corrige la decisión, los contadores y el
+//    desglose se corrigen solos. Todo se deriva de las marcas activas.
 
 import 'laws.dart';
 import 'model.dart';
@@ -152,10 +154,12 @@ String sanctionKindShort(SanctionKind k) => switch (k) {
       SanctionKind.redCard => 'TR',
     };
 
-/// Sanción pitada por el árbitro contra [team] (el equipo infractor).
+/// Sanción pitada por el árbitro contra [team] (el equipo infractor). Vista derivada de la
+/// decisión tomada de una marca ([sanctionsOf]); [incidentId] es esa marca.
 class SanctionEvent extends MatchFact {
   const SanctionEvent({
     required super.id,
+    required this.incidentId,
     required super.assessmentId,
     required super.seq,
     required super.team,
@@ -167,29 +171,14 @@ class SanctionEvent extends MatchFact {
     this.infraction,
     super.voided,
   });
+  final String incidentId;
   final SanctionKind kind;
 
-  /// Motivo. null = sin especificar (se puede completar después).
+  /// Motivo (la ley de la marca). null = sin especificar (se puede completar después).
   final InfractionRef? infraction;
 
   bool get isCard => kind == SanctionKind.yellowCard || kind == SanctionKind.redCard;
-
-  SanctionEvent copyWith({bool? voided, Object? infraction = _keep}) => SanctionEvent(
-        id: id,
-        assessmentId: assessmentId,
-        seq: seq,
-        team: team,
-        kind: kind,
-        sessionMs: sessionMs,
-        wallUtc: wallUtc,
-        period: period,
-        matchClockMs: matchClockMs,
-        infraction: identical(infraction, _keep) ? this.infraction : infraction as InfractionRef?,
-        voided: voided ?? this.voided,
-      );
 }
-
-const Object _keep = Object();
 
 /// Recuento por equipo y tipo (solo sanciones activas).
 class SanctionTally {
@@ -269,4 +258,70 @@ List<SanctionEvent> cardsOf(Iterable<SanctionEvent> sanctions, TeamSide team) =>
 SanctionEvent? lastActiveSanction(Iterable<SanctionEvent> sanctions) {
   final active = _activeInOrder(sanctions);
   return active.isEmpty ? null : active.last;
+}
+
+// ───────────── Sanciones ⇄ decisión tomada de una marca ─────────────
+
+SanctionKind? sanctionKindOf(DecisionOutcome o) => switch (o) {
+      DecisionOutcome.penalty => SanctionKind.penalty,
+      DecisionOutcome.freeKick => SanctionKind.freeKick,
+      DecisionOutcome.yellowCard => SanctionKind.yellowCard,
+      DecisionOutcome.redCard || DecisionOutcome.redCard20 => SanctionKind.redCard,
+      _ => null,
+    };
+
+DecisionOutcome outcomeFor(SanctionKind k) => switch (k) {
+      SanctionKind.penalty => DecisionOutcome.penalty,
+      SanctionKind.freeKick => DecisionOutcome.freeKick,
+      SanctionKind.yellowCard => DecisionOutcome.yellowCard,
+      SanctionKind.redCard => DecisionOutcome.redCard,
+    };
+
+/// Sanciones pitadas: una por cada golpe o tarjeta de la decisión tomada de cada marca que tenga
+/// equipo infractor (una marca con "golpe + amarilla" da dos). Las marcas anuladas salen anuladas.
+List<SanctionEvent> sanctionsOf(Iterable<Incident> incidents) {
+  final sorted = [...incidents]..sort((a, b) => a.seq.compareTo(b.seq));
+  return [
+    for (final i in sorted)
+      if (i.decisionTaken?.againstTeam case final team?)
+        for (final o in i.decisionTaken!.outcomes)
+          if (sanctionKindOf(o) case final kind?)
+            SanctionEvent(
+              id: '${i.id}#${kind.name}',
+              incidentId: i.id,
+              assessmentId: i.assessmentId,
+              seq: i.seq,
+              team: team,
+              kind: kind,
+              sessionMs: i.sessionMs,
+              wallUtc: i.wallUtc,
+              period: i.matchTime.period,
+              matchClockMs: i.matchTime.matchClockMs,
+              infraction: i.infraction,
+              voided: i.isVoid,
+            ),
+  ];
+}
+
+/// ¿La marca es una sanción (golpe o tarjeta contra un equipo)?
+bool isSanction(Incident i) => i.decisionTaken?.againstTeam != null && i.decisionTaken!.outcomes.any((o) => sanctionKindOf(o) != null);
+
+/// Categoría (y por tanto criterio de la rúbrica) de una marca creada desde el panel de sanciones.
+/// Las tarjetas cuentan en la consistencia disciplinaria; los golpes, según la fase del motivo.
+IncidentCategory categoryForSanction(SanctionKind kind, InfractionRef? why) {
+  if (kind == SanctionKind.yellowCard || kind == SanctionKind.redCard) return IncidentCategory.card;
+  final law = why?.catalog;
+  if (law == null) return IncidentCategory.otherLaw;
+  return switch (law.group) {
+    LawGroup.ruck => IncidentCategory.ruck,
+    LawGroup.tackle => IncidentCategory.tackle,
+    LawGroup.offside => IncidentCategory.offside,
+    LawGroup.scrum => IncidentCategory.scrum,
+    LawGroup.lineoutMaul => law.code == 'LINEOUT_NOT_STRAIGHT' ? IncidentCategory.lineout : IncidentCategory.maul,
+    LawGroup.discipline => switch (law.code) {
+        'DISSENT' || 'FOUL_LANGUAGE' => IncidentCategory.captainMgmt,
+        'DELAYING_RESTART' => IncidentCategory.otherLaw,
+        _ => IncidentCategory.foulPlay,
+      },
+  };
 }

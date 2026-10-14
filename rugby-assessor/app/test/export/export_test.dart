@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ref_assess/data/drift_export_repository.dart';
+import 'package:ref_assess/domain/match_facts.dart';
 import 'package:ref_assess/domain/rubric_default.dart';
 import 'package:ref_assess/export/export_document.dart';
 import 'package:ref_assess/export/report_exporter.dart';
@@ -49,7 +50,12 @@ void main() {
       expect(doc['match']['difficulty'], 'HIGH');
       expect(doc['match']['assistants'], {'ar1': 'Asistente Uno', 'ar2': 'Asistente Dos'});
       expect(doc['match']['finalScore'], {'home': 24, 'away': 19});
-      expect((doc['incidents'] as List).map((i) => i['matchClock']), ['12:00', '30:00', '52:00', '65:00'], reason: 'orden cronológico');
+      final incidents = doc['incidents'] as List;
+      expect(incidents.length, 13, reason: '4 marcas + 9 marcas-sanción');
+      expect([for (final i in incidents) if (i['decisionTaken']?['againstTeam'] == null) i['matchClock']], ['12:00', '30:00', '52:00', '65:00'],
+          reason: 'orden cronológico');
+      final clocks = [for (final i in incidents) i['matchClock'] as String];
+      expect(clocks, orderedEquals([...clocks]..sort()), reason: 'todas en orden cronológico');
       expect((doc['report']['previousActionPointReviews'] as List).single['status'], 'PARTIAL');
       expect(out.sha256, sha256.convert(out.file.readAsBytesSync()).toString());
     });
@@ -104,7 +110,7 @@ void main() {
         kickoffTz: src.kickoffTz, venue: src.venue, homeTeam: src.homeTeam, awayTeam: src.awayTeam, observationMode: src.observationMode,
         refereeId: src.refereeId, refereeName: src.refereeName, assessorId: src.assessorId, assessorName: src.assessorName,
         reportVersion: src.reportVersion, reportStatus: src.reportStatus, canonicalJson: src.canonicalJson, contentHash: src.contentHash,
-        incidents: src.incidents,
+        incidents: [for (final i in src.incidents) if (!isSanction(i)) i], // sin marcador ni sanciones
       );
       final doc = buildExportDocument(bare, kDefaultRubric, exportedAt: DateTime.utc(2026), appVersion: 't');
       expect(doc.containsKey('matchStats'), isFalse);
@@ -113,7 +119,7 @@ void main() {
         kickoffTz: src.kickoffTz, venue: src.venue, homeTeam: src.homeTeam, awayTeam: src.awayTeam, observationMode: src.observationMode,
         refereeId: src.refereeId, refereeName: src.refereeName, assessorId: src.assessorId, assessorName: src.assessorName,
         reportVersion: 1, reportStatus: 'FINALIZED', canonicalJson: src.canonicalJson, contentHash: src.contentHash,
-        incidents: const [], sanctions: src.sanctions,
+        incidents: src.incidents, // sin marcador, con las marcas-sanción
       ))!;
       expect(onlySanctions.keys, ['sanctions']);
       expect(exportSchema().validate(jsonDecode(jsonEncode(doc))).isValid, isTrue);

@@ -53,7 +53,7 @@ void main() {
     again.logSanction(TeamSide.away, SanctionKind.freeKick, t: clock.t);
     await again.flush();
     expect(repo.scores.map((e) => e.seq), [1, 2, 3]);
-    expect(repo.sanctions.map((e) => e.seq), [1, 2, 3]);
+    expect(sanctionsOf(repo.incidents).map((e) => e.seq), [1, 2, 3], reason: 'cada sanción es una marca más, con su número');
   });
 
   test('si falla el guardado, tantos y sanciones esperan en la cola en orden y se escriben al reintentar', () async {
@@ -79,7 +79,36 @@ void main() {
     repo.failWrites = false;
     await c.retryPendingWrites();
     expect(repo.storedScore, const Scoreline(7, 0));
-    expect(repo.sanctions.single.team, TeamSide.away);
+    expect(sanctionsOf(repo.incidents).single.team, TeamSide.away);
     expect(c.saveFailed, isFalse);
+  });
+
+  test('una sanción es una marca: queda como última marca, se valora con Bien y se deshace como sanción', () async {
+    final repo = InMemoryLiveSessionRepository(LiveSessionSnapshot(
+      assessmentId: 'a1',
+      category: categoryPreset('M16'),
+      homeTeam: 'Local',
+      awayTeam: 'Visitante',
+      clockLog: const [ClockEvent(seq: 1, t: 0, body: PeriodStart(PeriodId.h1))],
+      incidents: const [],
+    ));
+    final clock = FakeClock()..t = 12 * min;
+    final c = controllerFor(repo, clock);
+    await c.load();
+    final mark = c.logSanction(TeamSide.home, SanctionKind.penalty, t: clock.t, infraction: InfractionRef.catalog('SIDE_ENTRY'));
+    expect(c.lastIncident!.id, mark.id);
+    expect(mark.category, IncidentCategory.ruck);
+    expect(mark.decisionTaken, const Decision(outcomes: [DecisionOutcome.penalty], againstTeam: TeamSide.home));
+    expect(c.canRefine(clock.t), isTrue, reason: 'se puede valorar al momento');
+    c.refineLast(QuickPolarity.positive);
+    expect(c.incidents.single.verdict, Verdict.correct, reason: 'bien pitado');
+    expect(c.sanctionTally.count(TeamSide.home, SanctionKind.penalty), 1);
+    expect(c.pendingReviewCount, 0);
+
+    c.undoLastSanction();
+    expect(c.incidents.single.isVoid, isTrue);
+    expect(c.sanctionTally.count(TeamSide.home, SanctionKind.penalty), 0);
+    await c.flush();
+    expect(repo.incidents.single.isVoid, isTrue);
   });
 }

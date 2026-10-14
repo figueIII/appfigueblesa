@@ -65,7 +65,6 @@ class DriftExportRepository implements ExportRepository {
       contentHash: report.contentHash,
       incidents: live.incidents,
       scores: live.scores,
-      sanctions: live.sanctions,
     );
   }
 

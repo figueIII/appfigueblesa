@@ -17,10 +17,14 @@ import 'review_labels.dart';
 /// urgencia e IMPACTO (domain/review.dart), o todas las marcas en orden cronológico.
 /// Cada tarjeta dice qué le falta; al tocarla se abre el editor, que al guardar salta a la
 /// siguiente pendiente. Cuando la cola se vacía, se ofrece pasar a la evaluación por criterios.
+///
+/// Con [duringMatch], es la misma lista abierta desde el directo: el partido sigue (el reloj no se
+/// detiene) y no se ofrece pasar a la evaluación, que llega al final.
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({super.key, required this.controller, required this.onContinueToRubric});
+  const ReviewScreen({super.key, required this.controller, required this.onContinueToRubric, this.duringMatch = false});
   final ReviewController controller;
   final VoidCallback onContinueToRubric;
+  final bool duringMatch;
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -53,8 +57,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Revisión post-partido'),
-              if (_ctl.homeTeam.isNotEmpty)
+              Text(widget.duringMatch ? 'Marcas del partido' : 'Revisión post-partido'),
+              if (widget.duringMatch)
+                Text('En directo: el reloj sigue corriendo', style: RefType.caption.copyWith(color: c.onSurfaceMuted))
+              else if (_ctl.homeTeam.isNotEmpty)
                 Text('${_ctl.homeTeam} – ${_ctl.awayTeam}', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
             ],
           ),
@@ -79,12 +85,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final c = context.refColors;
     final p = _ctl.progress;
     if (p.total == 0) {
-      return _Centered(
-        icon: Icons.inbox_rounded,
-        title: 'No hubo marcas en este partido',
-        body: 'Puedes pasar directamente a la evaluación por criterios.',
-        action: ('Ir a la evaluación', widget.onContinueToRubric),
-      );
+      return widget.duringMatch
+          ? const _Centered(icon: Icons.inbox_rounded, title: 'Aún no hay marcas', body: 'Vuelve al directo para marcar acciones.')
+          : _Centered(
+              icon: Icons.inbox_rounded,
+              title: 'No hubo marcas en este partido',
+              body: 'Puedes pasar directamente a la evaluación por criterios.',
+              action: ('Ir a la evaluación', widget.onContinueToRubric),
+            );
     }
     final list = _ctl.visible;
     return Column(
@@ -125,19 +133,26 @@ class _ReviewScreenState extends State<ReviewScreen> {
         ),
         Expanded(
           child: list.isEmpty
-              ? _Centered(
-                  icon: Icons.task_alt_rounded,
-                  title: 'Revisión completa',
-                  body: 'Las ${p.total} marcas tienen veredicto, y las que lo necesitan, impacto, decisión esperada y notas.',
-                  action: ('Ir a la evaluación por criterios', widget.onContinueToRubric),
-                  actionKey: const ValueKey('continue-to-rubric'),
-                )
+              ? (widget.duringMatch
+                  ? _Centered(
+                      icon: Icons.task_alt_rounded,
+                      title: 'Todo al día',
+                      body: 'Las ${p.total} marcas están completas. Vuelve al directo para seguir.',
+                    )
+                  : _Centered(
+                      icon: Icons.task_alt_rounded,
+                      title: 'Revisión completa',
+                      body: 'Las ${p.total} marcas tienen veredicto, y las que lo necesitan, impacto, decisión esperada y notas.',
+                      action: ('Ir a la evaluación por criterios', widget.onContinueToRubric),
+                      actionKey: const ValueKey('continue-to-rubric'),
+                    ))
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(RefSpace.l, RefSpace.xs, RefSpace.l, RefSpace.xxl),
                   itemCount: list.length,
                   separatorBuilder: (_, _) => const SizedBox(height: RefTouch.gap),
                   itemBuilder: (context, index) => _IncidentCard(
                     incident: list[index],
+                    headline: incidentHeadline(list[index], (t) => t == TeamSide.home ? _ctl.homeTeam : _ctl.awayTeam),
                     position: _ctl.filter == ReviewFilter.pending ? index + 1 : null,
                     onTap: () => _open(list[index]),
                   ),
@@ -190,8 +205,11 @@ class _ProgressHeader extends StatelessWidget {
 }
 
 class _IncidentCard extends StatelessWidget {
-  const _IncidentCard({required this.incident, required this.onTap, this.position});
+  const _IncidentCard({required this.incident, required this.headline, required this.onTap, this.position});
   final Incident incident;
+
+  /// Categoría o, en una sanción, lo que pitó el árbitro.
+  final String headline;
   final VoidCallback onTap;
   final int? position;
 
@@ -208,7 +226,7 @@ class _IncidentCard extends StatelessWidget {
       button: true,
       label: [
         if (position != null) 'Pendiente $position',
-        '$minute, ${kCategoryLabel[i.category]}',
+        '$minute, $headline',
         if (i.infraction != null) i.infraction!.label,
         verdictLabel(i.verdict),
         'impacto ${impactLabel(i.impact).toLowerCase()}${i.impactConfirmed ? '' : ' sin confirmar'}',
@@ -248,7 +266,7 @@ class _IncidentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(kCategoryLabel[i.category]!, style: RefType.control.copyWith(color: c.onSurface)),
+                      Text(headline, style: RefType.control.copyWith(color: c.onSurface)),
                       if (i.infraction != null)
                         Text(
                           '${i.infraction!.label}${i.infraction!.lawRef == null ? '' : ' · ${i.infraction!.lawRef}'}',

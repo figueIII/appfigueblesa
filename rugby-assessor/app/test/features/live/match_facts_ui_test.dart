@@ -10,10 +10,10 @@ import 'live_screen_test.dart' show Harness, min, tile;
 Finder key(String k) => find.byKey(ValueKey(k));
 
 /// Con la 1ª parte en marcha y en el minuto [minute].
-Future<Harness> playing(WidgetTester tester, {int minute = 10, double textScale = 1, Brightness brightness = Brightness.light}) async {
+Future<Harness> playing(WidgetTester tester, {int minute = 10, double textScale = 1, Brightness brightness = Brightness.light, bool withEditing = false}) async {
   final h = Harness(clockLog: const [ClockEvent(seq: 1, t: 0, body: PeriodStart(PeriodId.h1))]);
   h.clock.t = minute * min;
-  await h.pump(tester, textScale: textScale, brightness: brightness);
+  await h.pump(tester, textScale: textScale, brightness: brightness, withEditing: withEditing);
   return h;
 }
 
@@ -30,6 +30,12 @@ Future<void> pick(WidgetTester tester, String option) async {
   await tester.scrollUntilVisible(f, 200, scrollable: find.byType(Scrollable).last);
   await tester.pumpAndSettle();
   await tester.tap(f);
+  await tester.pumpAndSettle();
+}
+
+/// Desplaza la hoja abierta hasta [f] (sus listas se construyen bajo demanda).
+Future<void> seeInSheet(WidgetTester tester, Finder f) async {
+  await tester.scrollUntilVisible(f, 150, scrollable: find.byType(Scrollable).last);
   await tester.pumpAndSettle();
 }
 
@@ -88,46 +94,73 @@ void main() {
   });
 
   group('sanciones', () {
-    testWidgets('registrar GC y GF con su motivo: contador por equipo y desglose acumulado', (tester) async {
-      final h = await playing(tester);
-      expect(tester.widget<Text>(key('tally-home-penalty')).data, '0');
+    /// Abre el panel, elige el equipo infractor y registra la sanción (el panel se cierra solo).
+    Future<void> registerSanction(WidgetTester tester, TeamSide team, SanctionKind kind, String option) async {
       await tapIn(tester, key('discipline-bar'));
-      expect(find.text('Sanciones del árbitro'), findsOneWidget);
+      await tapIn(tester, key('sanction-team-${team.name}'));
+      await tapIn(tester, key('sanction-add-${kind.name}'));
+      await pick(tester, option);
+    }
 
-      Future<void> register(SanctionKind kind, String option) async {
-        await tapIn(tester, key('sanction-add-${kind.name}'));
-        await pick(tester, option);
+    Future<void> closeSheet(WidgetTester tester) async {
+      await tester.tapAt(const Offset(195, 20));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('una sanción es una marca: el panel se cierra y se valora al momento con Bien / Error', (tester) async {
+      final h = await playing(tester);
+      await registerSanction(tester, TeamSide.home, SanctionKind.penalty, 'SIDE_ENTRY');
+      expect(find.text('Sanciones del árbitro'), findsNothing, reason: 'el panel se cierra para valorar');
+      expect(find.text('Marcado: Golpe de castigo contra Club Local RC · 10:00'), findsOneWidget);
+      await tester.tap(key('refine-positive'));
+      await tester.pump();
+      final mark = h.controller.incidents.single;
+      expect(mark.verdict, Verdict.correct, reason: 'bien pitado');
+      expect(mark.category, IncidentCategory.ruck, reason: 'cuenta en el criterio de su fase');
+      expect(mark.decisionTaken, const Decision(outcomes: [DecisionOutcome.penalty], againstTeam: TeamSide.home));
+      expect(tester.widget<Text>(key('tally-home-penalty')).data, '1');
+
+      await registerSanction(tester, TeamSide.away, SanctionKind.freeKick, 'SCRUM_EARLY_ENGAGEMENT');
+      await tester.tap(key('refine-negative'));
+      await tester.pump();
+      expect(h.controller.incidents.last.polarity, QuickPolarity.negative, reason: 'mal pitado: queda para revisar');
+      expect(find.textContaining('2 marcas · 1 por revisar'), findsOneWidget);
+      await h.controller.flush();
+      expect(h.repo.incidents.length, 2, reason: 'las sanciones se guardan como marcas');
+    });
+
+    testWidgets('contador por equipo y desglose acumulado por motivo', (tester) async {
+      final h = await playing(tester);
+      for (final (kind, option) in const [
+        (SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL'),
+        (SanctionKind.penalty, 'SIDE_ENTRY'),
+        (SanctionKind.freeKick, 'OFFSIDE_RUCK_MAUL'),
+        (SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL'),
+        (SanctionKind.penalty, 'unspecified'),
+      ]) {
+        await registerSanction(tester, TeamSide.home, kind, option);
       }
+      await registerSanction(tester, TeamSide.away, SanctionKind.penalty, 'HANDS_IN_RUCK');
+      expect(tester.widget<Text>(key('tally-home-penalty')).data, '4');
+      expect(tester.widget<Text>(key('tally-home-freeKick')).data, '1');
+      expect(tester.widget<Text>(key('tally-away-penalty')).data, '1');
 
-      await register(SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL');
-      await register(SanctionKind.penalty, 'SIDE_ENTRY');
-      await register(SanctionKind.freeKick, 'OFFSIDE_RUCK_MAUL');
-      await register(SanctionKind.penalty, 'OFFSIDE_RUCK_MAUL');
-      await register(SanctionKind.penalty, 'unspecified');
-
+      await tapIn(tester, key('discipline-bar'));
       expect(find.text('GC 4  ·  GF 1  ·  TA 0  ·  TR 0'), findsOneWidget);
       expect(find.text('3× Fuera de juego en ruck / maul'), findsOneWidget);
       expect(find.text('GC 2 · GF 1 · Leyes 15 y 16'), findsOneWidget);
       expect(find.text('1× Entrada lateral'), findsOneWidget);
+      await seeInSheet(tester, find.text('1× Sin especificar'));
       expect(find.text('1× Sin especificar'), findsOneWidget);
       final y = [
         for (final t in ['3× Fuera de juego en ruck / maul', '1× Entrada lateral', '1× Sin especificar']) tester.getTopLeft(find.text(t)).dy,
       ];
       expect(y, orderedEquals([...y]..sort()), reason: 'de más a menos frecuente; sin especificar al final');
-
-      // Visitante: su propio contador, sin mezclar.
       await tapIn(tester, key('sanction-team-away'));
-      expect(find.text('GC 0  ·  GF 0  ·  TA 0  ·  TR 0'), findsOneWidget);
-      await register(SanctionKind.penalty, 'HANDS_IN_RUCK');
-
-      await tester.tapAt(const Offset(195, 20));
-      await tester.pumpAndSettle();
-      expect(tester.widget<Text>(key('tally-home-penalty')).data, '4');
-      expect(tester.widget<Text>(key('tally-home-freeKick')).data, '1');
-      expect(tester.widget<Text>(key('tally-away-penalty')).data, '1');
+      expect(find.text('GC 1  ·  GF 0  ·  TA 0  ·  TR 0'), findsOneWidget, reason: 'cada equipo, su contador');
+      await closeSheet(tester);
       await h.controller.flush();
-      expect(h.repo.sanctions.length, 6);
-      expect(h.repo.sanctions.last.team, TeamSide.away);
+      expect(sanctionsOf(h.repo.incidents).length, 6);
     });
 
     testWidgets('el minuto es el del toque en "+ GC", aunque se tarde en elegir el motivo', (tester) async {
@@ -147,23 +180,31 @@ void main() {
       await tester.tapAt(const Offset(195, 10)); // fuera de la hoja del selector
       await tester.pumpAndSettle();
       expect(h.controller.sanctions, isEmpty);
+      expect(h.controller.incidents, isEmpty);
     });
 
     testWidgets('tarjetas: con motivo, en su lista y en el contador; "Otra infracción" personalizada', (tester) async {
       final h = await playing(tester);
+      await registerSanction(tester, TeamSide.away, SanctionKind.yellowCard, 'HIGH_TACKLE');
+      expect(find.text('Marcado: Amarilla contra Visitante RT · 10:00'), findsOneWidget);
+      expect(h.controller.incidents.single.category, IncidentCategory.card);
+
       await tapIn(tester, key('discipline-bar'));
+      await tapIn(tester, key('sanction-add-penalty')); // equipo: el último elegido no se recuerda → local
+      await tester.tapAt(const Offset(195, 10));
+      await tester.pumpAndSettle();
       await tapIn(tester, key('sanction-team-away'));
-      await tapIn(tester, key('sanction-add-yellowCard'));
-      await pick(tester, 'HIGH_TACKLE');
       expect(find.text('10:00 · Placaje alto / contacto con la cabeza'), findsOneWidget);
       expect(find.text('Sin golpes registrados contra Visitante RT.'), findsOneWidget, reason: 'las tarjetas no cuentan como golpes');
-
       await tapIn(tester, key('sanction-add-penalty'));
       await pick(tester, 'custom');
       await tester.enterText(key('custom-infraction-text'), 'Avance intencionado');
       await tester.enterText(key('custom-infraction-law'), 'Ley 11');
       await tester.pump();
       await tapIn(tester, key('custom-infraction-ok'));
+
+      await tapIn(tester, key('discipline-bar'));
+      await tapIn(tester, key('sanction-team-away'));
       expect(find.text('1× Avance intencionado'), findsOneWidget);
       expect(find.text('GC 1 · Ley 11'), findsOneWidget);
       expect(find.text('GC 1  ·  GF 0  ·  TA 1  ·  TR 0'), findsOneWidget);
@@ -172,27 +213,27 @@ void main() {
 
     testWidgets('completar después el motivo de un golpe "sin especificar"', (tester) async {
       final h = await playing(tester);
+      await registerSanction(tester, TeamSide.home, SanctionKind.penalty, 'unspecified');
       await tapIn(tester, key('discipline-bar'));
-      await tapIn(tester, key('sanction-add-penalty'));
-      await pick(tester, 'unspecified');
       await tapIn(tester, find.text('Completar'));
       await pick(tester, 'OFF_FEET_SEALING');
       expect(find.text('1× Tirarse sobre el ruck / sellar'), findsOneWidget);
       expect(find.text('1× Sin especificar'), findsNothing);
       await h.controller.flush();
-      expect(h.repo.sanctions.single.infraction!.code, 'OFF_FEET_SEALING');
+      expect(h.repo.incidents.single.infraction!.code, 'OFF_FEET_SEALING');
     });
 
-    testWidgets('deshacer anula la última sanción (no la borra)', (tester) async {
+    testWidgets('deshacer anula la última sanción (es anular su marca, no borrarla)', (tester) async {
       final h = await playing(tester);
+      await registerSanction(tester, TeamSide.home, SanctionKind.redCard, 'TIP_TACKLE');
       await tapIn(tester, key('discipline-bar'));
-      await tapIn(tester, key('sanction-add-redCard'));
-      await pick(tester, 'TIP_TACKLE');
+      await seeInSheet(tester, key('sanction-undo'));
       expect(find.text('Deshacer: TR · Club Local RC · 10:00'), findsOneWidget);
       await tapIn(tester, key('sanction-undo'));
       expect(find.text('Sin tarjetas.'), findsOneWidget);
       await h.controller.flush();
-      expect(h.repo.sanctions.single.voided, isTrue);
+      expect(h.repo.incidents.single.isVoid, isTrue);
+      expect(tester.widget<Text>(key('tally-home-redCard')).data, '0');
     });
   });
 
@@ -257,5 +298,45 @@ void main() {
     await tapIn(tester, key('sanction-add-yellowCard'));
     await pick(tester, 'DISSENT');
     expect(tester.takeException(), isNull);
+  });
+
+  group('editar durante el partido', () {
+    testWidgets('"Editar" en la tira (también pasada la ventana de 10 s) y la lista de marcas con su insignia', (tester) async {
+      final h = await playing(tester, withEditing: true);
+      expect(key('open-marks'), findsOneWidget);
+      await tester.tap(tile('scrum'));
+      await tester.pump();
+      await tapIn(tester, key('edit-last'));
+      expect(h.edited, [h.controller.incidents.single.id]);
+      h.clock.t += 15000;
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('Última: Scrum'), findsOneWidget);
+      await tapIn(tester, key('edit-last'));
+      expect(h.edited.length, 2, reason: 'se puede editar cuando se quiera');
+      await tapIn(tester, key('open-marks'));
+      expect(h.openedMarks, 1);
+      expect(find.bySemanticsLabel('Ver y editar las marcas: 1, 1 por revisar'), findsOneWidget);
+    });
+
+    testWidgets('sin acceso al editor (p. ej. en las pruebas antiguas), no aparecen los botones', (tester) async {
+      await playing(tester);
+      await tester.tap(tile('scrum'));
+      await tester.pump();
+      expect(key('edit-last'), findsNothing);
+      expect(key('open-marks'), findsNothing);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('accesibilidad con "Editar" y la lista de marcas (${brightness.name})', (tester) async {
+        final handle = tester.ensureSemantics();
+        await playing(tester, withEditing: true, brightness: brightness);
+        await tester.tap(tile('ruck'));
+        await tester.pump();
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+        handle.dispose();
+      });
+    }
   });
 }

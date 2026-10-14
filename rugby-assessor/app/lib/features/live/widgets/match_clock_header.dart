@@ -19,12 +19,16 @@ class MatchClockHeader extends StatelessWidget {
     required this.controller,
     required this.onOpenClockMenu,
     required this.onGoToReview,
+    this.onOpenMarks,
     this.compact = false,
   });
 
   final LiveController controller;
   final VoidCallback onOpenClockMenu;
   final VoidCallback onGoToReview;
+
+  /// Abre la lista de marcas para revisarlas y editarlas sin esperar al final.
+  final VoidCallback? onOpenMarks;
   final bool compact;
 
   @override
@@ -40,6 +44,9 @@ class MatchClockHeader extends StatelessWidget {
             Expanded(
               child: ScoreboardBar(controller: controller, onOpen: () => showScoreSheet(context, controller)),
             ),
+            // Las marcas se pueden revisar y editar en cualquier momento, no solo al final.
+            if (onOpenMarks != null)
+              _MarksButton(pending: controller.pendingReviewCount, total: controller.activeCount, onPressed: onOpenMarks!),
             _IconControl(
               key: const ValueKey('clock-menu'),
               icon: Icons.tune_rounded,
@@ -301,6 +308,36 @@ class _StatusBandState extends State<_StatusBand> {
                 ),
               ),
             ),
+    );
+  }
+}
+
+/// Lista de marcas (con insignia de las que faltan por revisar).
+class _MarksButton extends StatelessWidget {
+  const _MarksButton({required this.pending, required this.total, required this.onPressed});
+  final int pending;
+  final int total;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.refColors;
+    return Semantics(
+      button: true,
+      label: 'Ver y editar las marcas: $total, $pending por revisar',
+      excludeSemantics: true,
+      child: IconButton(
+        key: const ValueKey('open-marks'),
+        onPressed: onPressed,
+        constraints: const BoxConstraints(minWidth: RefTouch.minTarget, minHeight: RefTouch.minTarget),
+        icon: Badge(
+          isLabelVisible: pending > 0,
+          label: Text('$pending'),
+          backgroundColor: c.review,
+          textColor: c.onReview,
+          child: Icon(Icons.format_list_bulleted_rounded, size: 28, color: c.onSurface),
+        ),
+      ),
     );
   }
 }

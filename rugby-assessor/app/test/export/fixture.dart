@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:json_schema/json_schema.dart';
 import 'package:ref_assess/core/platform_ports.dart';
-import 'package:ref_assess/data/db/app_database.dart' hide Incident, Finding, ActionPoint, ActionPointReview, ScoreEvent, SanctionEvent;
+import 'package:ref_assess/data/db/app_database.dart' hide Incident, Finding, ActionPoint, ActionPointReview, ScoreEvent;
 import 'package:ref_assess/data/drift_evaluation_repository.dart';
 import 'package:ref_assess/data/drift_export_repository.dart';
 import 'package:ref_assess/data/drift_live_session_repository.dart';
@@ -86,33 +86,53 @@ List<ScoreEvent> _scores(String a) {
   ];
 }
 
-List<SanctionEvent> _sanctions(String a) {
-  var seq = 0;
-  SanctionEvent e(TeamSide t, SanctionKind k, int minute, [InfractionRef? why]) => SanctionEvent(
-        id: '$a-sanction-${++seq}',
-        assessmentId: a,
-        seq: seq,
-        team: t,
-        kind: k,
-        sessionMs: minute * 60000,
-        wallUtc: DateTime.utc(2026, 10, 17, 15, minute % 60),
+/// Sanciones del árbitro: son marcas con su decisión tomada, ya valoradas (bien pitadas).
+/// El golpe del minuto 12 lleva además amarilla: una sola marca con las dos decisiones.
+List<Incident> _sanctions(String a) {
+  var n = 0;
+  Incident e(TeamSide t, List<DecisionOutcome> outcomes, int minute, [InfractionRef? why]) {
+    final kind = sanctionKindOf(outcomes.last)!;
+    final category = categoryForSanction(kind, why);
+    n++;
+    return Incident(
+      id: '$a-sanction-$n',
+      assessmentId: a,
+      seq: 100 + n,
+      sessionMs: minute * 60000,
+      wallUtc: DateTime.utc(2026, 10, 17, 15, minute % 60),
+      matchTime: MatchTimeStamp(
         period: minute < 40 ? PeriodId.h1 : PeriodId.h2,
+        phase: MatchPhaseLabel.inPlay,
+        periodElapsedMs: minute * 60000,
         matchClockMs: minute * 60000,
-        infraction: why,
-      );
+        overtimeMs: 0,
+        integrity: TimeIntegrity.ok,
+      ),
+      category: category,
+      criterionCode: kCategoryToCriterion[category]!,
+      polarity: QuickPolarity.positive,
+      verdict: Verdict.correct,
+      impact: ImpactLevel.low,
+      impactConfirmed: true,
+      status: IncidentStatus.enriched,
+      decisionTaken: Decision(outcomes: outcomes, againstTeam: t),
+      infraction: why,
+    );
+  }
+
   const h = TeamSide.home, w = TeamSide.away;
+  const pk = [DecisionOutcome.penalty], fk = [DecisionOutcome.freeKick];
   final offside = InfractionRef.catalog('OFFSIDE_RUCK_MAUL');
   return [
-    e(h, SanctionKind.penalty, 5, offside),
-    e(h, SanctionKind.penalty, 11, InfractionRef.catalog('SIDE_ENTRY')),
-    e(w, SanctionKind.penalty, 12, InfractionRef.catalog('HIGH_TACKLE')),
-    e(w, SanctionKind.yellowCard, 12, InfractionRef.catalog('HIGH_TACKLE')),
-    e(h, SanctionKind.freeKick, 25, offside),
-    e(w, SanctionKind.freeKick, 33, InfractionRef.catalog('SCRUM_EARLY_ENGAGEMENT')),
-    e(h, SanctionKind.penalty, 47, offside),
-    e(h, SanctionKind.penalty, 58, InfractionRef.catalog('SIDE_ENTRY')),
-    e(w, SanctionKind.penalty, 66, InfractionRef.custom('Avance intencionado', lawRef: 'Ley 11')),
-    e(h, SanctionKind.penalty, 70),
+    e(h, pk, 5, offside),
+    e(h, pk, 11, InfractionRef.catalog('SIDE_ENTRY')),
+    e(w, const [DecisionOutcome.penalty, DecisionOutcome.yellowCard], 12, InfractionRef.catalog('HIGH_TACKLE')),
+    e(h, fk, 25, offside),
+    e(w, fk, 33, InfractionRef.catalog('SCRUM_EARLY_ENGAGEMENT')),
+    e(h, pk, 47, offside),
+    e(h, pk, 58, InfractionRef.catalog('SIDE_ENTRY')),
+    e(w, pk, 66, InfractionRef.custom('Avance intencionado', lawRef: 'Ley 11')),
+    e(h, pk, 70),
   ];
 }
 
@@ -182,7 +202,7 @@ class ExportFixture {
       await live.insertScoreEvent(e);
     }
     for (final e in _sanctions(id)) {
-      await live.insertSanction(e);
+      await live.insertIncident(e);
     }
     await live.insertIncident(_inc(id, 30, IncidentCategory.scrum, Verdict.missed, ImpactLevel.matchDefining,
         infraction: InfractionRef.catalog('SCRUM_COLLAPSING'),

@@ -75,7 +75,6 @@ class LiveController extends ChangeNotifier {
   ClockState clockState = ClockState.initial;
   final List<Incident> _incidents = [];
   final List<ScoreEvent> _scores = [];
-  final List<SanctionEvent> _sanctions = [];
 
   String? _lastIncidentId;
   int _refineUntil = 0;
@@ -137,14 +136,15 @@ class LiveController extends ChangeNotifier {
 
   // Marcador y sanciones: todo derivado de los registros activos (match_facts.dart).
   List<ScoreEvent> get scores => List.unmodifiable(_scores);
-  List<SanctionEvent> get sanctions => List.unmodifiable(_sanctions);
+  /// Sanciones = decisiones tomadas (golpe o tarjeta contra un equipo) de las marcas.
+  List<SanctionEvent> get sanctions => sanctionsOf(_incidents);
   Scoreline get scoreline => scorelineOf(_scores);
   bool canConvert(TeamSide team) => conversionAvailable(_scores, team);
   ScoreEvent? get lastScore => lastActiveScore(_scores);
-  SanctionTally get sanctionTally => SanctionTally(_sanctions);
-  List<InfractionCount> breakdown(TeamSide team) => breakdownOf(_sanctions, team);
-  List<SanctionEvent> cards(TeamSide team) => cardsOf(_sanctions, team);
-  SanctionEvent? get lastSanction => lastActiveSanction(_sanctions);
+  SanctionTally get sanctionTally => SanctionTally(sanctions);
+  List<InfractionCount> breakdown(TeamSide team) => breakdownOf(sanctions, team);
+  List<SanctionEvent> cards(TeamSide team) => cardsOf(sanctions, team);
+  SanctionEvent? get lastSanction => lastActiveSanction(sanctions);
   String teamName(TeamSide t) => t == TeamSide.home ? homeTeam : awayTeam;
 
   List<ClockEvent> get clockLog => List.unmodifiable(_clockLog);
@@ -167,9 +167,6 @@ class LiveController extends ChangeNotifier {
       _scores
         ..clear()
         ..addAll(snap.scores);
-      _sanctions
-        ..clear()
-        ..addAll(snap.sanctions);
       loadState = LiveLoadState.ready;
       final recovery = _recovery;
       _recovery = null; // una sola vez, aunque se recargue
@@ -179,6 +176,20 @@ class LiveController extends ChangeNotifier {
     } catch (_) {
       loadState = LiveLoadState.failed;
     }
+    _notify();
+  }
+
+  /// Vuelve a leer marcas y marcador sin pasar por "Recuperando el partido…" (tras editarlas
+  /// desde el directo; el reloj no se toca).
+  Future<void> reloadMarks() async {
+    await flush();
+    final snap = await _repo.load(assessmentId);
+    _incidents
+      ..clear()
+      ..addAll(snap.incidents);
+    _scores
+      ..clear()
+      ..addAll(snap.scores);
     _notify();
   }
 
@@ -288,47 +299,49 @@ class LiveController extends ChangeNotifier {
 
   // ───────────── Sanciones ─────────────
 
-  /// Registra una sanción contra [team] (equipo infractor). El motivo puede quedar sin
-  /// especificar y completarse después con [setSanctionInfraction].
-  SanctionEvent logSanction(TeamSide team, SanctionKind kind, {required int t, InfractionRef? infraction}) {
-    final m = matchTimeAt(t);
-    final event = SanctionEvent(
+  /// Registra una sanción del árbitro contra [team] (equipo infractor). Es una MARCA más: queda
+  /// como última marca, con Bien / Error / Ley / Deshacer, y se revisa como las demás. El motivo
+  /// puede quedar sin especificar y completarse después ([setIncidentInfraction]).
+  Incident logSanction(TeamSide team, SanctionKind kind, {required int t, InfractionRef? infraction}) {
+    final category = categoryForSanction(kind, infraction);
+    final defaults = quickTagDefaults(QuickPolarity.review);
+    final incident = Incident(
       id: _ids.next(),
       assessmentId: assessmentId,
-      seq: _sanctions.length + 1,
-      team: team,
-      kind: kind,
+      seq: _incidents.length + 1,
       sessionMs: t,
       wallUtc: _clock.wallUtc(),
-      period: m.period,
-      matchClockMs: m.matchClockMs,
+      matchTime: matchTimeAt(t),
+      category: category,
+      criterionCode: kCategoryToCriterion[category]!,
+      polarity: QuickPolarity.review,
+      verdict: defaults.verdict,
+      impact: defaults.impact,
+      impactConfirmed: defaults.impactConfirmed,
+      status: IncidentStatus.quick,
+      decisionTaken: Decision(outcomes: [outcomeFor(kind)], againstTeam: team),
       infraction: infraction,
     );
-    _sanctions.add(event);
+    _incidents.add(incident);
+    _lastIncidentId = incident.id;
+    _refineUntil = _clock.now() + 10000;
     _haptics.incidentLogged();
     _notify();
-    _persist(() => _repo.insertSanction(event));
-    return event;
+    _persist(() => _repo.insertIncident(incident));
+    return incident;
   }
 
-  void setSanctionInfraction(String sanctionId, InfractionRef? infraction) {
-    final idx = _sanctions.indexWhere((e) => e.id == sanctionId);
-    if (idx < 0 || _sanctions[idx].voided) return;
-    final updated = _sanctions[idx].copyWith(infraction: infraction);
-    _sanctions[idx] = updated;
-    _notify();
-    _persist(() => _repo.updateSanction(updated));
-  }
-
-  /// Anula la última sanción activa.
+  /// Anula la marca de la última sanción activa (nunca se borra).
   void undoLastSanction() {
     final last = lastSanction;
     if (last == null) return;
-    final voided = last.copyWith(voided: true);
-    _sanctions[_sanctions.indexWhere((e) => e.id == last.id)] = voided;
+    final idx = _incidents.indexWhere((i) => i.id == last.incidentId);
+    final voided = _incidents[idx].copyWith(status: IncidentStatus.voided);
+    _incidents[idx] = voided;
+    if (_lastIncidentId == voided.id) _refineUntil = 0;
     _haptics.undone();
     _notify();
-    _persist(() => _repo.updateSanction(voided));
+    _persist(() => _repo.updateIncident(voided));
   }
 
   void _replace(Incident updated) {

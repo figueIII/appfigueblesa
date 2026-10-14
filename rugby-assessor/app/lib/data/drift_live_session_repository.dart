@@ -40,10 +40,6 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
           ..where((t) => t.assessmentId.equals(assessmentId))
           ..orderBy([(t) => OrderingTerm.asc(t.seq)]))
         .get();
-    final sanctions = await (db.select(db.sanctionEvent)
-          ..where((t) => t.assessmentId.equals(assessmentId))
-          ..orderBy([(t) => OrderingTerm.asc(t.seq)]))
-        .get();
 
     return LiveSessionSnapshot(
       assessmentId: a.id,
@@ -66,22 +62,6 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
             wallUtc: DateTime.parse(e.wallUtc),
             period: e.period == null ? null : decodePeriod(e.period!),
             matchClockMs: e.matchClockMs,
-            voided: e.status == 'VOID',
-          ),
-      ],
-      sanctions: [
-        for (final e in sanctions)
-          d.SanctionEvent(
-            id: e.id,
-            assessmentId: e.assessmentId,
-            seq: e.seq,
-            team: decodeTeam(e.team),
-            kind: decodeSanctionKind(e.kind),
-            sessionMs: e.tSessionMs,
-            wallUtc: DateTime.parse(e.wallUtc),
-            period: e.period == null ? null : decodePeriod(e.period!),
-            matchClockMs: e.matchClockMs,
-            infraction: d.InfractionRef.decode(e.infractionCode, e.infractionCustom, e.infractionLawRef),
             voided: e.status == 'VOID',
           ),
       ],
@@ -194,7 +174,7 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
     if (n != 1) throw StateError('INCIDENT_NOT_FOUND: ${i.id}');
   }
 
-  // ───────────── Marcador y sanciones ─────────────
+  // ───────────── Marcador ─────────────
 
   /// Recalcula el resultado del partido a partir de los tantos activos (misma transacción).
   Future<void> _refreshFinalScore(String assessmentId) => db.customStatement(
@@ -230,34 +210,6 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
         if (n != 1) throw StateError('SCORE_EVENT_NOT_FOUND: ${e.id}');
         await _refreshFinalScore(e.assessmentId);
       });
-
-  @override
-  Future<void> insertSanction(d.SanctionEvent e) => db.into(db.sanctionEvent).insert(SanctionEventCompanion.insert(
-        id: e.id,
-        assessmentId: e.assessmentId,
-        seq: e.seq,
-        team: encodeTeam(e.team),
-        kind: encodeSanctionKind(e.kind),
-        infractionCode: Value(e.infraction?.code),
-        infractionCustom: Value(e.infraction?.customText),
-        infractionLawRef: Value(e.infraction?.customLawRef),
-        tSessionMs: e.sessionMs,
-        wallUtc: _iso(e.wallUtc),
-        period: Value(e.period == null ? null : encodePeriod(e.period!)),
-        matchClockMs: e.matchClockMs,
-        status: e.voided ? 'VOID' : 'ACTIVE',
-      ));
-
-  @override
-  Future<void> updateSanction(d.SanctionEvent e) async {
-    final n = await (db.update(db.sanctionEvent)..where((t) => t.id.equals(e.id))).write(SanctionEventCompanion(
-      status: Value(e.voided ? 'VOID' : 'ACTIVE'),
-      infractionCode: Value(e.infraction?.code),
-      infractionCustom: Value(e.infraction?.customText),
-      infractionLawRef: Value(e.infraction?.customLawRef),
-    ));
-    if (n != 1) throw StateError('SANCTION_NOT_FOUND: ${e.id}');
-  }
 
   // ───────────── Revisión post-partido ─────────────
 
@@ -327,11 +279,9 @@ class DriftLiveSessionRepository implements LiveSessionRepository, ReviewReposit
       ' SELECT t_session_ms AS t, wall_utc AS w FROM incident WHERE assessment_id = ?1'
       ' UNION ALL'
       ' SELECT t_session_ms AS t, wall_utc AS w FROM score_event WHERE assessment_id = ?1'
-      ' UNION ALL'
-      ' SELECT t_session_ms AS t, wall_utc AS w FROM sanction_event WHERE assessment_id = ?1'
       ') ORDER BY t DESC LIMIT 1',
       variables: [Variable.withString(assessmentId)],
-      readsFrom: {db.clockEvent, db.incident, db.scoreEvent, db.sanctionEvent},
+      readsFrom: {db.clockEvent, db.incident, db.scoreEvent},
     ).getSingleOrNull();
     return row == null ? null : TimePoint(row.read<int>('t'), DateTime.parse(row.read<String>('w')));
   }

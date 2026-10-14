@@ -17,10 +17,14 @@ import '../live_labels.dart';
 ///  · reposo: resumen de la última marca.
 /// Valorar es opcional: si no se toca nada, la marca queda "Por revisar".
 class RefineStrip extends StatefulWidget {
-  const RefineStrip({super.key, required this.controller});
+  const RefineStrip({super.key, required this.controller, this.onEdit});
   final LiveController controller;
 
-  static const double height = 120;
+  /// Abre el editor completo de una marca (veredicto, impacto, decisiones, ley, notas) sin
+  /// esperar al final del partido. null = sin acceso al editor.
+  final ValueChanged<String>? onEdit;
+
+  static const double height = 130;
 
   @override
   State<RefineStrip> createState() => _RefineStripState();
@@ -52,8 +56,9 @@ class _RefineStripState extends State<RefineStrip> {
       height: RefineStrip.height,
       child: switch (last) {
         null => const _EmptyHint(),
-        final i when ctl.canRefine(now) => _RefineControls(controller: ctl, incident: i, remainingMs: ctl.refineUntil - now),
-        final i => _LastSummary(incident: i),
+        final i when ctl.canRefine(now) =>
+          _RefineControls(controller: ctl, incident: i, remainingMs: ctl.refineUntil - now, onEdit: widget.onEdit),
+        final i => _LastSummary(controller: ctl, incident: i, onEdit: widget.onEdit),
       },
     );
   }
@@ -71,7 +76,7 @@ class _EmptyHint extends StatelessWidget {
         const SizedBox(width: RefSpace.m),
         Expanded(
           child: Text(
-            'Toca una acción para marcarla con el minuto. La valorarás con calma después del partido.',
+            'Toca una acción para marcarla con el minuto. Puedes valorarla al momento o más tarde.',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: RefType.body.copyWith(color: c.onSurfaceMuted),
@@ -82,11 +87,37 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
-String _incidentTitle(Incident i) => '${kCategoryLabel[i.category]} · ${formatClock(i.matchTime.matchClockMs)}';
+String _incidentTitle(LiveController ctl, Incident i) =>
+    '${incidentHeadline(i, ctl.teamName)} · ${formatClock(i.matchTime.matchClockMs)}';
+
+/// "Editar" (≥ 48 dp): abre el editor completo de la marca.
+class _EditButton extends StatelessWidget {
+  const _EditButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.refColors;
+    return TextButton.icon(
+      key: const ValueKey('edit-last'),
+      onPressed: onPressed,
+      icon: const Icon(Icons.edit_rounded, size: 20),
+      label: const Text('Editar'),
+      style: TextButton.styleFrom(
+        foregroundColor: c.primary,
+        minimumSize: const Size(RefTouch.minTarget, RefTouch.minTarget),
+        padding: const EdgeInsets.symmetric(horizontal: RefSpace.s),
+        textStyle: context.refText(RefType.caption.copyWith(fontSize: 16)),
+      ),
+    );
+  }
+}
 
 class _LastSummary extends StatelessWidget {
-  const _LastSummary({required this.incident});
+  const _LastSummary({required this.controller, required this.incident, this.onEdit});
+  final LiveController controller;
   final Incident incident;
+  final ValueChanged<String>? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -101,8 +132,8 @@ class _LastSummary extends StatelessWidget {
         Expanded(
           child: Text(
             voided
-                ? 'Anulada: ${_incidentTitle(incident)}'
-                : 'Última: ${_incidentTitle(incident)} · ${polarityLabel(incident.polarity)}'
+                ? 'Anulada: ${_incidentTitle(controller, incident)}'
+                : 'Última: ${_incidentTitle(controller, incident)} · ${polarityLabel(incident.polarity)}'
                     '${incident.infraction == null ? '' : ' · ${incident.infraction!.label}'}',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
@@ -112,23 +143,25 @@ class _LastSummary extends StatelessWidget {
             ),
           ),
         ),
+        if (!voided && onEdit != null) _EditButton(onPressed: () => onEdit!(incident.id)),
       ],
     );
   }
 }
 
 class _RefineControls extends StatelessWidget {
-  const _RefineControls({required this.controller, required this.incident, required this.remainingMs});
+  const _RefineControls({required this.controller, required this.incident, required this.remainingMs, this.onEdit});
   final LiveController controller;
   final Incident incident;
   final int remainingMs;
+  final ValueChanged<String>? onEdit;
 
   /// La ley se asigna a ESTA marca aunque la ventana de 10 s termine mientras se elige.
   Future<void> _pickLaw(BuildContext context) async {
     final id = incident.id;
     final choice = await showInfractionPicker(
       context,
-      title: 'Ley · ${_incidentTitle(incident)}',
+      title: 'Ley · ${_incidentTitle(controller, incident)}',
       subtitle: 'Vale tanto si la decisión fue correcta como si fue un error.',
       groups: lawGroupsFor(incident.category),
       current: incident.infraction,
@@ -152,7 +185,7 @@ class _RefineControls extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Marcado: ${_incidentTitle(incident)}',
+                    'Marcado: ${_incidentTitle(controller, incident)}',
                     maxLines: 1,
                     style: RefType.control.copyWith(color: c.onSurface),
                   ),
@@ -160,7 +193,10 @@ class _RefineControls extends StatelessWidget {
               ),
             ),
             const SizedBox(width: RefSpace.s),
-            Text(polarityLabel(incident.polarity), maxLines: 1, style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
+            if (onEdit != null)
+              _EditButton(onPressed: () => onEdit!(incident.id))
+            else
+              Text(polarityLabel(incident.polarity), maxLines: 1, style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
           ],
         ),
         const SizedBox(height: RefSpace.xs),

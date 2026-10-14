@@ -158,7 +158,8 @@ Así se distinguen sin mirar. La skill pide no abusar de la háptica; aquí cada
   - Si no se puede leer, se usa una aproximación (instante de arranque en hora de pared, con ±2 min de tolerancia).
   - Además, si la fuente retrocede, se trata como reinicio aunque el id coincida.
 
-> **v1.1:** la cabecera incluye el **marcador** y el **contador de sanciones**, y la tira de valoración un botón **Ley**. Ver [MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md).
+> **v1.1:** la cabecera incluye el **marcador** y el **contador de sanciones**, y la tira de valoración un botón **Ley**.
+> **v1.1.1:** las sanciones son marcas valorables. **Editar** (en la tira) y el **icono de lista** permiten revisar y editar marcas durante el partido. Ver [MARCADOR_SANCIONES_LEYES.md](MARCADOR_SANCIONES_LEYES.md).
 
 ## 7. Pendiente
 

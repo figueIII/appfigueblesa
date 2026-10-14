@@ -262,7 +262,7 @@ void main() {
 
   // ─── Marcador, sanciones y leyes ───
   Future<void> withFacts(WidgetTester tester, Brightness b) async {
-    final h = await facts.playing(tester, minute: 34, brightness: b);
+    final h = await facts.playing(tester, minute: 34, brightness: b, withEditing: true);
     for (final (team, kind) in const [
       (TeamSide.home, ScoreKind.tryScored),
       (TeamSide.home, ScoreKind.conversion),

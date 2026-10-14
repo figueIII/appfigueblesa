@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../domain/match_facts.dart';
 import '../../domain/model.dart';
 
 const Map<IncidentCategory, String> kCategoryLabel = {
@@ -56,3 +57,19 @@ IconData polarityIcon(QuickPolarity p) => switch (p) {
       QuickPolarity.negative => Icons.cancel_rounded,
       QuickPolarity.review => Icons.flag_rounded,
     };
+
+String _sanctionWord(SanctionKind k) => switch (k) {
+      SanctionKind.penalty => 'Golpe de castigo',
+      SanctionKind.freeKick => 'Golpe franco',
+      SanctionKind.yellowCard => 'Amarilla',
+      SanctionKind.redCard => 'Roja',
+    };
+
+/// Título de una marca: la categoría o, si es una sanción, lo que pitó el árbitro
+/// ("Golpe de castigo contra Club Local RC").
+String incidentHeadline(Incident i, String Function(TeamSide) teamName) {
+  if (!isSanction(i)) return kCategoryLabel[i.category]!;
+  final d = i.decisionTaken!;
+  final kinds = [for (final o in d.outcomes) if (sanctionKindOf(o) case final k?) _sanctionWord(k)];
+  return '${kinds.join(' + ')} contra ${teamName(d.againstTeam!)}';
+}

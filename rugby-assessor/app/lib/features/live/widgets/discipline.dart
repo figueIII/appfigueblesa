@@ -147,6 +147,9 @@ class _SanctionsSheetState extends State<_SanctionsSheet> {
     );
     if (choice == null) return; // cancelado: no se registra nada
     _ctl.logSanction(team, kind, t: t, infraction: choice.value);
+    // La sanción es una marca: se cierra el panel para valorarla al momento en la tira
+    // (Bien / Error / Ley / Deshacer), como cualquier otra.
+    if (mounted) Navigator.of(context).pop();
   }
 
   /// Completa el motivo de una sanción registrada "sin especificar".
@@ -157,7 +160,7 @@ class _SanctionsSheetState extends State<_SanctionsSheet> {
       subtitle: 'Completa el motivo.',
       current: s.infraction,
     );
-    if (choice != null) _ctl.setSanctionInfraction(s.id, choice.value);
+    if (choice != null) _ctl.setIncidentInfraction(s.incidentId, choice.value);
   }
 
   @override
@@ -211,6 +214,11 @@ class _SanctionsSheetState extends State<_SanctionsSheet> {
           padding: const EdgeInsets.fromLTRB(RefSpace.l, 0, RefSpace.l, RefSpace.xl),
           children: [
             Semantics(header: true, child: Text('Sanciones del árbitro', style: RefType.control.copyWith(color: c.onSurface))),
+            const SizedBox(height: RefSpace.xs),
+            Text(
+              'Cada sanción queda como una marca: al registrarla, valórala con Bien o Error como las demás.',
+              style: RefType.caption.copyWith(color: c.onSurfaceMuted),
+            ),
             const SizedBox(height: RefSpace.m),
             Text('Equipo infractor', style: RefType.caption.copyWith(color: c.onSurfaceMuted)),
             const SizedBox(height: RefSpace.xs),

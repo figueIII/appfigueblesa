@@ -1,6 +1,10 @@
-# Marcador, sanciones y leyes (v1.1)
+# Marcador, sanciones y leyes (v1.1, revisado en 1.1.1)
 
-> **Estado:** implementado en la app **1.1.0**, con base de datos **v3** y exportación **2.1**.
+> **Estado:** app **1.1.1**, base de datos **v4**, exportación **2.1**.
+>
+> **Cambio en 1.1.1, tras la primera prueba:**
+> - **Las sanciones son marcas.** Un golpe de castigo, un golpe franco o una tarjeta registrados desde el panel crean una marca con la decisión del árbitro. Esa marca se valora en el momento con Bien o Error, como las demás, y se revisa con ellas.
+> - **Edición durante el partido.** Cualquier marca se puede editar mientras se juega: «Editar» en la tira o el icono de lista arriba, sin parar el reloj.
 >
 > **Comprobado:**
 > - `flutter analyze` sin incidencias.
@@ -28,6 +32,11 @@
   - Si el guardado falla, el marcador en pantalla sigue al día y la escritura espera en la cola ordenada del directo, con el mismo aviso y «Reintentar» que las marcas.
 
 ## 3. Sanciones y desglose
+
+> **Desde 1.1.1, una sanción es una marca.** Su decisión tomada ("Golpe de castigo contra Club Local RC") es lo que cuentan el contador y el desglose.
+> - **Al registrarla:** el panel se cierra y la marca queda en la tira con Bien / Error / Ley / Deshacer.
+> - **Categoría:** la marca cuenta en el criterio de su fase (un golpe por entrada lateral, en Ruck). Las tarjetas cuentan en Tarjeta (consistencia disciplinaria).
+> - **Corregir después:** si en la revisión se corrige la decisión tomada, el contador se corrige solo. Una marca de la rejilla a la que se le añade "decisión tomada: golpe contra X" también cuenta.
 
 - **Contador** (cabecera): columnas GC · GF · amarilla · roja, con una fila por equipo. Es una sola zona táctil con etiqueta accesible completa ("Club Local RC: 3 golpes de castigo, 1 golpe franco…").
 - **Panel:**
@@ -62,6 +71,10 @@
 
 ## 5. Datos y migración
 
+- **Esquema v4:** desaparece `sanction_event`. La migración v3 → v4 convierte cada sanción guardada en una incidencia con su minuto, su motivo y su anulación.
+  - Esas incidencias quedan «Por revisar».
+  - En un partido ya cerrado quedan como «No valorable», porque un informe cerrado no se reabre.
+  - Lo prueba un test que crea una base de datos v3 real.
 - **Esquema v3** (`persistence/schema.sql`, copiado literalmente en `schema.drift`):
   - Tablas **`score_event`** y **`sanction_event`**, de solo inserción.
     - Triggers: ni borrar, ni cambiar el tipo, el equipo o el minuto, ni reactivar lo anulado.
@@ -83,7 +96,13 @@
 - **PDF:** sección **"Marcador y disciplina"** antes de la integridad (título y tabla nunca se separan entre páginas) y la ley de cada incidencia clave en el anexo.
 - **El informe firmado no cambia:** marcador y sanciones son datos del partido y no entran en la huella. La muestra conserva la misma huella `46ab8bec…` que antes.
 
-## 7. Tests nuevos
+## 7. Editar durante el partido (1.1.1)
+
+- **«Editar» en la tira de valoración** (durante los 10 s y después, en el resumen de la última marca): abre el editor completo de esa marca, el mismo de la revisión. Al guardar, **«Guardar y volver al directo»**.
+- **Icono de lista** junto a las opciones del reloj, con una insignia de cuántas faltan por revisar. Abre «Marcas del partido»: la misma cola de la revisión, pero «En directo: el reloj sigue corriendo» y sin el paso a la evaluación, que llega al final.
+- **El reloj sigue durante la edición.** Al volver, el directo relee las marcas sin pantalla de carga.
+
+## 8. Tests nuevos
 
 | Archivo | Qué prueba |
 |---|---|

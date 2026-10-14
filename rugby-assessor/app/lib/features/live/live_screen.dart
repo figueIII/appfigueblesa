@@ -21,11 +21,19 @@ class LiveScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onGoToReview,
+    this.onOpenMarks,
+    this.onEditIncident,
     this.screenAwake = const WakelockScreenAwake(),
   });
 
   final LiveController controller;
   final VoidCallback onGoToReview;
+
+  /// Lista de marcas para revisarlas y editarlas durante el partido (el reloj sigue).
+  final VoidCallback? onOpenMarks;
+
+  /// Editor completo de una marca, también durante el partido.
+  final ValueChanged<String>? onEditIncident;
   final ScreenAwake screenAwake;
 
   @override
@@ -88,7 +96,12 @@ class _LiveScreenState extends State<LiveScreen> {
             child: switch (_ctl.loadState) {
               LiveLoadState.loading => const _LoadingState(),
               LiveLoadState.failed => _FailedState(onRetry: _ctl.load),
-              LiveLoadState.ready => _ReadyLayout(controller: _ctl, onGoToReview: widget.onGoToReview),
+              LiveLoadState.ready => _ReadyLayout(
+                controller: _ctl,
+                onGoToReview: widget.onGoToReview,
+                onOpenMarks: widget.onOpenMarks,
+                onEditIncident: widget.onEditIncident,
+              ),
             },
           ),
         ),
@@ -98,9 +111,11 @@ class _LiveScreenState extends State<LiveScreen> {
 }
 
 class _ReadyLayout extends StatelessWidget {
-  const _ReadyLayout({required this.controller, required this.onGoToReview});
+  const _ReadyLayout({required this.controller, required this.onGoToReview, this.onOpenMarks, this.onEditIncident});
   final LiveController controller;
   final VoidCallback onGoToReview;
+  final VoidCallback? onOpenMarks;
+  final ValueChanged<String>? onEditIncident;
 
   @override
   Widget build(BuildContext context) {
@@ -113,9 +128,10 @@ class _ReadyLayout extends StatelessWidget {
           compact: compact,
           onOpenClockMenu: () => showClockMenuSheet(context, controller),
           onGoToReview: onGoToReview,
+          onOpenMarks: onOpenMarks,
         );
         final grid = TagGrid(controller: controller);
-        final strip = RefineStrip(controller: controller);
+        final strip = RefineStrip(controller: controller, onEdit: onEditIncident);
         final banner = _SaveErrorBanner(controller: controller);
         const pad = EdgeInsets.fromLTRB(RefSpace.l, RefSpace.s, RefSpace.l, RefSpace.l);
 

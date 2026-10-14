@@ -27,6 +27,7 @@ SanctionEvent sanction(TeamSide team, SanctionKind kind, [InfractionRef? why, bo
   _seq++;
   return SanctionEvent(
     id: 'k$_seq',
+    incidentId: 'i$_seq',
     assessmentId: 'a',
     seq: _seq,
     team: team,
@@ -207,6 +208,80 @@ void main() {
       expect(InfractionRef.decode('CUSTOM', 'Avance', 'Ley 11')?.lawRef, 'Ley 11');
       expect(InfractionRef.decode(null, null, null), isNull);
       expect(InfractionRef.decode('RETIRADO', null, null), isNull, reason: 'código que ya no existe');
+    });
+  });
+
+  group('las sanciones son la decisión tomada de las marcas', () {
+    Incident mark(int seq, {Decision? taken, InfractionRef? why, bool voided = false, IncidentCategory c = IncidentCategory.ruck}) => Incident(
+          id: 'm$seq',
+          assessmentId: 'a',
+          seq: seq,
+          sessionMs: seq * 1000,
+          wallUtc: DateTime.utc(2026, 10, 17),
+          matchTime: MatchTimeStamp(
+            period: PeriodId.h1,
+            phase: MatchPhaseLabel.inPlay,
+            periodElapsedMs: seq * 60000,
+            matchClockMs: seq * 60000,
+            overtimeMs: 0,
+            integrity: TimeIntegrity.ok,
+          ),
+          category: c,
+          criterionCode: kCategoryToCriterion[c]!,
+          polarity: QuickPolarity.review,
+          verdict: Verdict.pending,
+          impact: ImpactLevel.medium,
+          impactConfirmed: false,
+          status: voided ? IncidentStatus.voided : IncidentStatus.quick,
+          decisionTaken: taken,
+          infraction: why,
+        );
+
+    test('cada golpe o tarjeta contra un equipo cuenta; "golpe + amarilla" da dos; sin equipo no cuenta', () {
+      final marks = [
+        mark(1, taken: const Decision(outcomes: [DecisionOutcome.penalty], againstTeam: home), why: law('SIDE_ENTRY')),
+        mark(2, taken: const Decision(outcomes: [DecisionOutcome.penalty, DecisionOutcome.yellowCard], againstTeam: away)),
+        mark(3, taken: const Decision(outcomes: [DecisionOutcome.scrum], againstTeam: home)),
+        mark(4, taken: const Decision(outcomes: [DecisionOutcome.penalty])),
+        mark(5, taken: const Decision(outcomes: [DecisionOutcome.redCard20], againstTeam: home)),
+        mark(6, taken: const Decision(outcomes: [DecisionOutcome.freeKick], againstTeam: home), voided: true),
+        mark(7),
+      ];
+      final s = sanctionsOf(marks);
+      expect([for (final e in s) (e.incidentId, e.team, e.kind, e.voided)], [
+        ('m1', home, SanctionKind.penalty, false),
+        ('m2', away, SanctionKind.penalty, false),
+        ('m2', away, SanctionKind.yellowCard, false),
+        ('m5', home, SanctionKind.redCard, false),
+        ('m6', home, SanctionKind.freeKick, true),
+      ]);
+      expect(s.first.infraction, law('SIDE_ENTRY'), reason: 'el motivo es la ley de la marca');
+      expect(s.first.matchClockMs, 60000);
+      final tally = SanctionTally(s);
+      expect(tally.count(home, SanctionKind.penalty), 1);
+      expect(tally.count(home, SanctionKind.freeKick), 0, reason: 'la marca anulada no cuenta');
+      expect(isSanction(marks[0]), isTrue);
+      expect(isSanction(marks[2]), isFalse, reason: 'una melé no es una sanción');
+      expect(isSanction(marks[3]), isFalse, reason: 'sin equipo infractor');
+    });
+
+    test('categoría de la marca creada desde el panel: la del motivo; tarjetas en consistencia disciplinaria', () {
+      expect(categoryForSanction(SanctionKind.penalty, law('SIDE_ENTRY')), IncidentCategory.ruck);
+      expect(categoryForSanction(SanctionKind.penalty, law('HIGH_TACKLE')), IncidentCategory.tackle);
+      expect(categoryForSanction(SanctionKind.freeKick, law('SCRUM_EARLY_ENGAGEMENT')), IncidentCategory.scrum);
+      expect(categoryForSanction(SanctionKind.penalty, law('OFFSIDE_OPEN_PLAY')), IncidentCategory.offside);
+      expect(categoryForSanction(SanctionKind.penalty, law('LINEOUT_NOT_STRAIGHT')), IncidentCategory.lineout);
+      expect(categoryForSanction(SanctionKind.penalty, law('MAUL_COLLAPSING')), IncidentCategory.maul);
+      expect(categoryForSanction(SanctionKind.penalty, law('DISSENT')), IncidentCategory.captainMgmt);
+      expect(categoryForSanction(SanctionKind.penalty, law('INTENTIONAL_OBSTRUCTION')), IncidentCategory.foulPlay);
+      expect(categoryForSanction(SanctionKind.freeKick, law('DELAYING_RESTART')), IncidentCategory.otherLaw);
+      expect(categoryForSanction(SanctionKind.penalty, null), IncidentCategory.otherLaw);
+      expect(categoryForSanction(SanctionKind.penalty, InfractionRef.custom('Avance intencionado')), IncidentCategory.otherLaw);
+      expect(categoryForSanction(SanctionKind.yellowCard, law('HIGH_TACKLE')), IncidentCategory.card);
+      expect(categoryForSanction(SanctionKind.redCard, null), IncidentCategory.card);
+      for (final k in SanctionKind.values) {
+        expect(sanctionKindOf(outcomeFor(k)), k);
+      }
     });
   });
 }

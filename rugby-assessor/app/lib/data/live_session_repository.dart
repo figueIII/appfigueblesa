@@ -24,7 +24,6 @@ class LiveSessionSnapshot {
     required this.clockLog,
     required this.incidents,
     this.scores = const [],
-    this.sanctions = const [],
   });
   final String assessmentId;
   final CategoryConfig category;
@@ -33,7 +32,6 @@ class LiveSessionSnapshot {
   final List<ClockEvent> clockLog;
   final List<Incident> incidents;
   final List<ScoreEvent> scores;
-  final List<SanctionEvent> sanctions;
 }
 
 abstract interface class LiveSessionRepository {
@@ -51,10 +49,6 @@ abstract interface class LiveSessionRepository {
   /// (assessment.final_score_*), que es lo que leen el informe y la exportación.
   Future<void> insertScoreEvent(ScoreEvent event);
   Future<void> voidScoreEvent(ScoreEvent event);
-
-  /// Sanción del árbitro. [updateSanction] solo anula o completa el motivo.
-  Future<void> insertSanction(SanctionEvent event);
-  Future<void> updateSanction(SanctionEvent event);
 }
 
 class ReviewSnapshot {
@@ -85,7 +79,7 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository, ReviewRepo
   final List<ClockEvent> _clock = [];
   final Map<String, Incident> _incidents = {};
   final Map<String, ScoreEvent> _scores = {};
-  final Map<String, SanctionEvent> _sanctions = {};
+
 
   /// Permite simular un fallo de escritura en los tests.
   bool failWrites = false;
@@ -101,11 +95,6 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository, ReviewRepo
     return byId.values.toList()..sort((a, b) => a.seq.compareTo(b.seq));
   }
 
-  List<SanctionEvent> get sanctions {
-    final byId = {for (final e in _seed.sanctions) e.id: e, ..._sanctions};
-    return byId.values.toList()..sort((a, b) => a.seq.compareTo(b.seq));
-  }
-
   /// Resultado guardado (lo que en Drift es assessment.final_score_*).
   Scoreline get storedScore => scorelineOf(scores);
 
@@ -118,7 +107,6 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository, ReviewRepo
         clockLog: clockLog,
         incidents: incidents,
         scores: scores,
-        sanctions: sanctions,
       );
 
   void _guard() {
@@ -153,18 +141,6 @@ class InMemoryLiveSessionRepository implements LiveSessionRepository, ReviewRepo
   Future<void> voidScoreEvent(ScoreEvent event) async {
     _guard();
     _scores[event.id] = event.asVoided();
-  }
-
-  @override
-  Future<void> insertSanction(SanctionEvent event) async {
-    _guard();
-    _sanctions[event.id] = event;
-  }
-
-  @override
-  Future<void> updateSanction(SanctionEvent event) async {
-    _guard();
-    _sanctions[event.id] = event;
   }
 
   final Map<String, String> voidReasons = {};
